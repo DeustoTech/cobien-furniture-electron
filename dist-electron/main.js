@@ -991,7 +991,7 @@ function stopMqtt() {
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 function listenWithVosk(language = "es", onLevel, onPartial) {
-	const bridgePath = join(_dirname$1, "../../../cobien_FrontEnd/app/asr_bridge.py");
+	const bridgePath = join(_dirname$1, "../public/python/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
 		const pythonBin = join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3");

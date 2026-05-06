@@ -16,8 +16,13 @@ export function useVoiceAssistant() {
       if (buffer) {
         const audioCtx = new AudioContext()
         await audioCtx.resume()
-        const decoded = await audioCtx.decodeAudioData(buffer)
+
+        // Convert Buffer/Uint8Array to ArrayBuffer
+        const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+        
+        const decoded = await audioCtx.decodeAudioData(arrayBuffer)
         const source = audioCtx.createBufferSource()
+
         source.buffer = decoded
         source.connect(audioCtx.destination)
         await new Promise<void>(resolve => {
