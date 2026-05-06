@@ -33,6 +33,10 @@ async function speakJoke() {
   }
 }
 
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+}
+
 onMounted(fetchJoke)
 </script>
 
@@ -44,7 +48,7 @@ onMounted(fetchJoke)
         <img src="/images/back.png" alt="Volver" class="hdr-icon" />
       </button>
       <h1 class="header-title">Frase del Día</h1>
-      <button class="icon-btn" @click="speakJoke">
+      <button class="icon-btn" @click="triggerVoiceAssistant">
         <img src="/images/voice.png" alt="Escuchar" class="hdr-icon" />
       </button>
     </div>

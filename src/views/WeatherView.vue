@@ -108,6 +108,10 @@ async function playTTS() {
     console.error('TTS error:', e)
   }
 }
+
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+}
 </script>
 
 <template>
@@ -148,7 +152,7 @@ async function playTTS() {
         <button class="icon-button" @click="goBack">
           <img src="/images/back.png" alt="Volver" class="icon" />
         </button>
-        <button class="icon-button" @click="playTTS">
+        <button class="icon-button" @click="triggerVoiceAssistant">
           <img src="/images/voice.png" alt="Voice" class="icon" />
         </button>
       </div>

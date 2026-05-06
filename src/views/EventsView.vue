@@ -40,35 +40,15 @@ async function speak(text: string) {
   }
 }
 
-function listenWithWebSpeech(timeoutMs = 12000): Promise<string | null> {
-  return new Promise((resolve) => {
-    voiceFlowStep.value = 'listening'
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      resolve(null)
-      return
-    }
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'es-ES'
-    recognition.interimResults = false
-    recognition.maxAlternatives = 1
-    
-    const timer = setTimeout(() => {
-      recognition.stop()
-      resolve(null)
-    }, timeoutMs)
-
-    recognition.onresult = (event: any) => {
-      clearTimeout(timer)
-      const text = event.results[0][0].transcript
-      resolve(text || null)
-    }
-    recognition.onerror = () => {
-      clearTimeout(timer)
-      resolve(null)
-    }
-    recognition.start()
-  })
+async function listenWithVosk(language: string = 'es'): Promise<string | null> {
+  voiceFlowStep.value = 'listening'
+  try {
+    const text = await (window as any).config.sttListen(language)
+    return text || null
+  } catch (e) {
+    console.error('STT Error:', e)
+    return null
+  }
 }
 
 async function startVoiceAddFlow(dateStr: string) {
@@ -79,7 +59,7 @@ async function startVoiceAddFlow(dateStr: string) {
   // Step 1: Ask for title
   await speak('Dime el título del evento personal')
   voiceFlowMessage.value = '🎤 Di el título del evento...'
-  const title = await listenWithWebSpeech()
+  const title = await listenWithVosk()
 
   if (!title) {
     voiceFlowMessage.value = '❌ No he entendido el título. Inténtalo de nuevo.'
@@ -95,7 +75,7 @@ async function startVoiceAddFlow(dateStr: string) {
 
   // Step 2: Ask for description
   voiceFlowMessage.value = '🎤 Di la descripción del evento...'
-  const description = await listenWithWebSpeech()
+  const description = await listenWithVosk()
   const descFinal = description?.trim() || 'Sin descripción'
 
   voiceFlowMessage.value = `✅ Descripción: "${descFinal}"\n\nGuardando evento...`
@@ -207,6 +187,22 @@ function closeModal() {
   isModalOpen.value = false
 }
 
+async function deleteEvent(id: string) {
+  if (confirm('¿Seguro que quieres eliminar este evento personal?')) {
+    const ok = await (window as any).config.deleteEvent(id)
+    if (ok) {
+      selectedEvents.value = selectedEvents.value.filter(e => e.id !== id)
+      // Refresh global list
+      const data = await (window as any).config.getEvents()
+      eventsList.value = data
+    }
+  }
+}
+
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+}
+
 function goBack() {
   router.push('/')
 }
@@ -220,7 +216,7 @@ function goBack() {
         <span>Volver</span>
       </button>
       <div class="title">Eventos</div>
-      <button class="voice-button">
+      <button class="voice-button" @click="triggerVoiceAssistant">
         <img src="/images/voice.png" alt="Voice" class="icon" />
       </button>
     </div>
@@ -292,7 +288,12 @@ function goBack() {
             <p class="event-desc">{{ evt.description }}</p>
             <div class="event-footer">
               <span class="event-loc">📍 {{ evt.location }}</span>
-              <span v-if="evt.audience === 'device'" class="event-badge">Privado</span>
+              <div class="event-badges">
+                <span v-if="evt.audience === 'device'" class="event-badge personal">Personal</span>
+                <button v-if="evt.audience === 'device'" class="delete-msg-btn" @click="deleteEvent(evt.id)">
+                  <img src="/images/trash.png" alt="Borrar" class="btn-icon-vsmall" />
+                </button>
+              </div>
             </div>
           </div>
           <div v-if="selectedEvents.length === 0" class="no-events-hint">No hay eventos este día todavía.</div>
@@ -607,12 +608,43 @@ function goBack() {
 }
 
 .event-badge {
-  background: #FF3B30;
   color: white;
   padding: 0.2rem 0.8rem;
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: bold;
+}
+
+.event-badge.personal {
+  background: #FF3B30;
+}
+
+.event-badges {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.delete-msg-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: #888;
+  padding: 0.4rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.delete-msg-btn:hover {
+  background: #fff0f0;
+  color: #ff3b30;
+}
+
+.btn-icon-vsmall {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: contain;
 }
 
 /* Modal actions row */

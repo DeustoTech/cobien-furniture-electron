@@ -74,6 +74,10 @@ async function deleteMsg() {
   }
 }
 
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+}
+
 function goBack() {
   router.push('/')
 }
@@ -87,7 +91,7 @@ function goBack() {
         <span>Volver</span>
       </button>
       <div class="title">Mensajes</div>
-      <button class="voice-button">
+      <button class="voice-button" @click="triggerVoiceAssistant">
         <img src="/images/voice.png" alt="Voice" class="icon" />
       </button>
     </div>
@@ -116,7 +120,7 @@ function goBack() {
               <div class="message-time">{{ currentMessage.created_at_human }}</div>
             </div>
           </div>
-          <button class="delete-btn" @click="deleteMsg">🗑</button>
+          <button class="delete-btn" @click="deleteMsg"><img src="/images/trash.png" alt="Borrar" class="btn-icon-small" /></button>
         </div>
 
         <div class="message-body">
@@ -326,6 +330,12 @@ function goBack() {
 
 .delete-btn:hover {
   color: var(--accent-red);
+}
+
+.btn-icon-small {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: contain;
 }
 
 .message-body {

@@ -1,18 +1,25 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import VolumePopup from '../components/VolumePopup.vue'
+import BrightnessPopup from '../components/BrightnessPopup.vue'
+import VoiceAssistant from '../components/VoiceAssistant.vue'
+
+
 
 const router = useRouter()
 
 const currentDate = ref('')
 const currentTime = ref('')
-const weatherTemp = ref('—°')
-const weatherCondition = ref('Cargando...')
+const weatherTemp = ref('17°')
+const weatherCondition = ref('Muy nuboso')
+const weatherIcon = ref('/images/sol.png')
 const cityName = ref('Cargando...')
-const minMaxTemp = ref('Min —°   Max —°')
+
+const minMaxTemp = ref('Min 8°  Max 19°')
 const nextEvent = ref('Sin eventos próximos')
-const jokeText = ref('Cargando frase...')
-const systemMeta = ref('CoBienX - v0.0.0')
+const jokeText = ref('¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter.')
+const systemMeta = ref('CoBien2 · v3.2.40')
 
 // Reminder notification
 const reminderActive = ref(false)
@@ -26,68 +33,45 @@ onMounted(async () => {
   
   try {
     const sysInfo = await (window as any).config.getSystemInfo()
-    systemMeta.value = `${sysInfo.deviceId} - v${sysInfo.version}`
-  } catch(e) {
-    console.error('Failed to get system info:', e)
-  }
+    systemMeta.value = `${sysInfo.deviceId} · v${sysInfo.version}`
+  } catch(e) {}
 
   try {
     const config = await (window as any).config.getWeather()
     if (config.primary) {
       cityName.value = config.primary
-    } else {
-      cityName.value = 'Sin Ciudad'
     }
-    // Fetch real weather for home widget
-    if (cityName.value && cityName.value !== 'Sin Ciudad') {
-      const bundle = await (window as any).config.fetchWeather(cityName.value)
-      if (bundle) {
-        weatherTemp.value = bundle.temp
-        weatherCondition.value = bundle.description
-        minMaxTemp.value = `${bundle.tempMin}   ${bundle.tempMax}`
-      }
+    const bundle = await (window as any).config.fetchWeather(cityName.value)
+    if (bundle) {
+      weatherTemp.value = bundle.temp
+      weatherCondition.value = bundle.description
+      weatherIcon.value = bundle.icon
+      minMaxTemp.value = `Min ${bundle.tempMin}  Max ${bundle.tempMax}`
     }
-  } catch(e) {
-    cityName.value = 'Desconocida'
-  }
+
+
+  } catch(e) {}
 
   try {
     const events = await (window as any).config.getEvents()
     if (events && events.length > 0) {
-      const today = new Date()
-      today.setHours(0,0,0,0)
-      const futureEvents = events.filter((e: any) => {
-        if (!e.date) return false
-        const [d, m, y] = e.date.split('-')
-        const evtDate = new Date(parseInt(y), parseInt(m)-1, parseInt(d))
-        return evtDate >= today
-      })
-      if (futureEvents.length > 0) {
-        const next = futureEvents[0]
-        nextEvent.value = `${next.title} - ${next.date.substring(0,5)}`
-      }
+      nextEvent.value = events[0].title
     }
-  } catch(e) {
-    console.error('Failed loading events for home:', e)
-  }
+  } catch(e) {}
 
-  // Load joke
-  try {
-    jokeText.value = await (window as any).config.getRandomJoke()
-  } catch(e) {
-    jokeText.value = '¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.'
-  }
-
-  // Listen for reminder notifications
   try {
     (window as any).config.onReminderFire((reminder: any) => {
       reminderMessage.value = reminder.message
       reminderActive.value = true
-      // Auto-speak via TTS
       ;(window as any).config.ttsSpeak(`Recordatorio: ${reminder.message}`)
     })
   } catch(e) {}
+
+  try {
+    jokeText.value = await (window as any).config.getRandomJoke()
+  } catch(e) {}
 })
+
 
 onUnmounted(() => {
   clearInterval(timer)
@@ -104,97 +88,122 @@ function handleNavigation(route: string) {
   router.push(route)
 }
 
-async function playTTS(text: string) {
-  try {
-    const buffer = await (window as any).tts.speak(text)
-    if (buffer) {
-      const blob = new Blob([buffer], { type: 'audio/wav' })
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.play()
-    } else {
-      console.warn('TTS returned no buffer. Ensure Piper is installed and configured.')
-    }
-  } catch(e) {
-    console.error('Failed to play TTS:', e)
-  }
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
+
+const isVolumePopupOpen = ref(false)
+const isBrightnessPopupOpen = ref(false)
+
+async function openVolumePopup() {
+  isVolumePopupOpen.value = true
+}
+
+async function openBrightnessPopup() {
+  isBrightnessPopupOpen.value = true
+}
+
+
+
 </script>
+
 
 <template>
   <div class="home-container">
-    <!-- Top Header Card -->
     <div class="top-section">
-      <div class="header-card glass-header">
+      <div class="header-panel">
         
         <!-- Column 1: Time and Date -->
         <div class="header-col col-time">
           <div class="date-text">{{ currentDate }}</div>
-          <div class="time-text">{{ currentTime }}</div>
+          <div class="time-display">{{ currentTime }}</div>
         </div>
 
         <div class="v-separator"></div>
 
         <!-- Column 2: Weather -->
         <div class="header-col col-weather">
-          <div class="weather-condition">{{ weatherCondition }} en {{ cityName }}</div>
+          <div class="weather-status">{{ weatherCondition }}</div>
           <div class="weather-main">
-            <!-- Icon is currently a moon placeholder, we can use the actual image -->
-            <img src="/images/noche.png" class="weather-icon" alt="weather" />
+            <img :src="weatherIcon" class="weather-icon" alt="weather" />
             <div class="temp-group">
-              <div class="temp-text">{{ weatherTemp }}</div>
-              <div class="minmax-text">{{ minMaxTemp }}</div>
+
+              <div class="current-temp">{{ weatherTemp }}</div>
+              <div class="minmax-temp">{{ minMaxTemp }}</div>
             </div>
           </div>
         </div>
 
         <div class="v-separator"></div>
 
-        <!-- Column 3: Events and Jokes -->
+        <!-- Column 3: Events & Joke -->
         <div class="header-col col-events">
-          <div class="events-top">
-            <div class="events-content">
-              <div class="section-title">Próximos eventos</div>
-              <div class="event-item">{{ nextEvent }}</div>
-            </div>
-            <div class="top-buttons">
-              <button class="icon-button" @click="handleNavigation('/settings/weather')"><img src="/images/settings.png" alt="settings" /></button>
-              <button class="icon-button" @click="playTTS(jokeText)"><img src="/images/voice.png" alt="voice" /></button>
+          <div class="events-wrap">
+            <div class="section-title">Próximos eventos</div>
+            <div class="event-item">{{ nextEvent }}</div>
+            <div class="section-title joke-title">Frase del día</div>
+            <div class="joke-scroll-container">
+              <div class="joke-text">{{ jokeText }}</div>
             </div>
           </div>
-          <div class="joke-container" @click="handleNavigation('/jokes')" style="cursor:pointer">
-            <div class="section-title">Frase del día</div>
-            <div class="joke-text">{{ jokeText }}</div>
+
+          
+          <div class="top-right-actions">
+            <button class="action-box" @click="handleNavigation('/settings')">
+              <img src="/images/settings.png" alt="Settings" />
+            </button>
+            <button class="action-box" @click="triggerVoiceAssistant">
+              <img src="/images/voice.png" alt="Voice" />
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Navigation Cards 2x2 Grid -->
-    <div class="nav-section">
+    <!-- Navigation Grid 2x2 -->
+    <div class="nav-grid">
       <button class="nav-card" @click="handleNavigation('/weather')">
         <img src="/images/parcial.png" class="nav-card-icon" alt="Tiempo" />
         <span class="nav-card-text">Tiempo</span>
       </button>
+
       <button class="nav-card" @click="handleNavigation('/events')">
         <img src="/images/eventos.png" class="nav-card-icon" alt="Eventos" />
         <span class="nav-card-text">Eventos</span>
       </button>
+
       <button class="nav-card" @click="handleNavigation('/board')">
         <img src="/images/pizarra.png" class="nav-card-icon" alt="Pizarra" />
         <span class="nav-card-text">Pizarra</span>
       </button>
+
       <button class="nav-card" @click="handleNavigation('/call')">
         <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
         <span class="nav-card-text">Llámame</span>
       </button>
-      <button class="nav-card" @click="handleNavigation('/jokes')">
-        <img src="/images/chiste.png" class="nav-card-icon" alt="Frases" onerror="this.style.fontSize='2rem'; this.src=''; this.alt='😄'" />
-        <span class="nav-card-text">Frases</span>
-      </button>
     </div>
 
-    <!-- Reminder notification modal -->
+    <!-- Footer Controls -->
+    <div class="footer-controls">
+      <div class="footer-left">
+        <button class="control-box" @click="openVolumePopup">
+          <img src="/images/volume_ctrl.png" alt="Volume" />
+        </button>
+        <button class="control-box" @click="openBrightnessPopup">
+          <img src="/images/brightness_ctrl.png" alt="Brightness" />
+        </button>
+      </div>
+
+      <div class="system-tag">{{ systemMeta }}</div>
+    </div>
+
+    <!-- Hardware Popups -->
+    <VolumePopup v-if="isVolumePopupOpen" @close="isVolumePopupOpen = false" />
+    <BrightnessPopup v-if="isBrightnessPopupOpen" @close="isBrightnessPopupOpen = false" />
+
+
+
+    <!-- Reminder Modal -->
     <Teleport to="body">
       <div v-if="reminderActive" class="reminder-overlay">
         <div class="reminder-card">
@@ -205,271 +214,251 @@ async function playTTS(text: string) {
         </div>
       </div>
     </Teleport>
-
-    <!-- Footer Controls -->
-    <div class="footer-controls">
-      <!-- We can use local volume/brightness icons if available or emojis as placeholder -->
-      <button class="control-badge">🔊</button>
-      <button class="control-badge">🔆</button>
-    </div>
-    
-    <div class="footer-meta">
-      <div class="meta-badge">{{ systemMeta }}</div>
-    </div>
   </div>
 </template>
 
 <style scoped>
 .home-container {
+  height: 100vh;
+  background: url('/images/Cobien_ImagenFondoInterfaz.png') no-repeat center center fixed;
+  background-size: cover;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 2.5rem 3rem 5rem 3rem;
+  padding: 1.5rem 2.5rem;
   gap: 1.5rem;
-  position: relative;
+  overflow: hidden;
 }
 
-.top-section {
+/* --- Header Panel --- */
+.header-panel {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1.8px solid #000;
+  border-radius: 28px;
   display: flex;
-  width: 100%;
-}
-
-.header-card {
-  width: 100%;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.6); /* Translucent frosted glass */
+  height: 285px;
+  padding: 1.2rem 1.8rem;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  display: flex;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
 }
+
 
 .header-col {
   display: flex;
   flex-direction: column;
 }
 
+.v-separator {
+  width: 1.5px;
+  background: rgba(0, 0, 0, 0.15);
+  margin: 1.2rem 0;
+}
+
+/* Col 1: Time & Date */
 .col-time {
   flex: 1.2;
-  padding-right: 1.5rem;
-  justify-content: flex-start;
 }
 
-.col-weather {
-  flex: 1;
-  padding: 0 1.5rem;
-  justify-content: flex-start;
-}
-
-.col-events {
-  flex: 2;
-  padding-left: 1.5rem;
-  justify-content: flex-start;
-}
-
-.v-separator {
-  width: 2px;
-  background-color: rgba(0, 0, 0, 0.15);
-  margin: 0.5rem 0;
-  border-radius: 1px;
-}
-
-/* Time & Date */
 .date-text {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: #111;
   margin-bottom: 0.5rem;
 }
 
-.time-text {
-  font-size: 7.5rem;
-  font-weight: 400;
-  line-height: 1;
+.time-display {
+  font-size: 8.5rem;
+  font-weight: 800;
   color: #000;
-  letter-spacing: -2px;
+  line-height: 0.9;
+  letter-spacing: -3px;
 }
 
-/* Weather */
-.weather-condition {
-  font-size: 1.3rem;
+/* Col 2: Weather */
+.col-weather {
+  flex: 1;
+  padding: 0 1.5rem;
+}
+
+.weather-status {
+  font-size: 1.6rem;
   font-weight: 700;
   color: #111;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .weather-main {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .weather-icon {
-  width: 5rem;
-  height: 5rem;
+  width: 6.5rem;
+  height: 6.5rem;
   object-fit: contain;
 }
 
-.temp-group {
-  display: flex;
-  flex-direction: column;
-}
 
-.temp-text {
-  font-size: 3rem;
-  font-weight: 600;
+.current-temp {
+  font-size: 3.5rem;
+  font-weight: 800;
   color: #000;
-  line-height: 1.1;
+  line-height: 1;
 }
 
-.minmax-text {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #222;
+.minmax-temp {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #444;
+  margin-top: 0.2rem;
 }
 
-/* Events & Joke */
-.events-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
+/* Col 3: Events & Joke */
+.col-events {
+  flex: 1.6;
+  padding-left: 1.5rem;
+  position: relative;
 }
 
 .section-title {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.4rem;
+  font-weight: 800;
   color: #111;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.joke-title {
+  margin-top: 0.8rem;
+}
+
+.joke-scroll-container {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.joke-scroll-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.joke-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
 }
 
 .event-item, .joke-text {
-  font-size: 1.1rem;
-  color: #222;
-  font-weight: 400;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.3;
 }
 
-.joke-text {
-  line-height: 1.4;
-  padding-right: 2rem;
-}
 
-/* Top Buttons */
-.top-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.icon-button {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 12px;
-  background: white;
-  border: 1px solid rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
-}
-
-.icon-button:active {
-  transform: scale(0.95);
-}
-
-.icon-button img {
-  width: 2.5rem;
-  height: 2.5rem;
-  object-fit: contain;
-}
-
-/* 2x2 Nav Grid */
-.nav-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 1.5rem;
-  flex: 1;
-}
-
-.nav-card {
-  background: white;
-  border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  padding: 0 4rem;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.nav-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.nav-card-icon {
-  width: 7rem;
-  height: 7rem;
-  object-fit: contain;
-}
-
-.nav-card-text {
-  font-size: 2.8rem;
-  font-weight: 400;
-  color: #000;
-  margin-left: 3rem;
-}
-
-/* Footer */
-.footer-controls {
+.top-right-actions {
   position: absolute;
-  bottom: 1.5rem;
-  left: 3rem;
+  top: 0.5rem;
+  right: 0;
   display: flex;
   gap: 0.8rem;
 }
 
-.control-badge {
+.action-box {
+  width: 4.8rem;
+  height: 4.8rem;
   background: white;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 12px;
-  width: 3.5rem;
-  height: 3.5rem;
-  font-size: 1.5rem;
+  border: 1.8px solid #000;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.06);
 }
 
-.control-badge:active {
-  transform: scale(0.95);
+.action-box img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
 }
 
-.footer-meta {
-  position: absolute;
-  bottom: 1.5rem;
-  right: 3rem;
+/* --- Nav Grid --- */
+.nav-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1.5rem;
 }
 
-.meta-badge {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  padding: 0.4rem 1rem;
-  border-radius: 20px;
-  border: 1px solid rgba(0,0,0,0.1);
-  font-size: 0.85rem;
+.nav-card {
+  background: white;
+  border: 2.5px solid rgba(0, 0, 0, 0.85);
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 3.5rem;
+  gap: 3rem;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.nav-card:active {
+  transform: scale(0.98);
+}
+
+.nav-card-icon {
+  width: 8.5rem;
+  height: 8.5rem;
+  object-fit: contain;
+}
+
+.nav-card-text {
+  font-size: 4.2rem;
   font-weight: 700;
-  color: #333;
+  color: #000;
 }
 
-/* Reminder modal */
+/* --- Footer --- */
+.footer-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.footer-left {
+  display: flex;
+  gap: 1.2rem;
+}
+
+.control-box {
+  width: 5rem;
+  height: 5rem;
+  background: white;
+  border: 1.8px solid #000;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.control-box img {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: contain;
+}
+
+.system-tag {
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  padding: 0.4rem 1.4rem;
+  border-radius: 100px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  backdrop-filter: blur(5px);
+}
+
+/* --- Reminder Modal --- */
 .reminder-overlay {
   position: fixed;
   inset: 0;
@@ -478,52 +467,28 @@ async function playTTS(text: string) {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  backdrop-filter: blur(4px);
 }
 
 .reminder-card {
   background: white;
-  border-radius: 28px;
-  padding: 3rem 4rem;
-  width: min(500px, 90vw);
+  border-radius: 32px;
+  padding: 3rem;
+  width: 500px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes popIn {
-  from { transform: scale(0.85); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.reminder-icon { font-size: 4rem; }
-
-.reminder-title {
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #111;
-  margin: 0;
-}
-
-.reminder-msg {
-  font-size: 1.5rem;
-  color: #555;
-  text-align: center;
-  margin: 0;
+  border: 3px solid #000;
 }
 
 .reminder-dismiss {
-  background: #1E90FF;
+  background: #000;
   color: white;
   border: none;
-  border-radius: 14px;
-  padding: 0.9rem 3rem;
-  font-size: 1.3rem;
+  border-radius: 16px;
+  padding: 1rem 3rem;
+  font-size: 1.4rem;
   font-weight: 700;
   cursor: pointer;
-  margin-top: 0.5rem;
 }
 </style>

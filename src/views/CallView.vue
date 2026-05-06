@@ -67,6 +67,10 @@ function dismissStatus() {
   callStatus.value = 'idle'
   callingContact.value = null
 }
+
+function triggerVoiceAssistant() {
+  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+}
 </script>
 
 <template>
@@ -77,7 +81,7 @@ function dismissStatus() {
         <img src="/images/back.png" alt="Volver" class="hdr-icon" />
       </button>
       <h1 class="header-title">Contactos</h1>
-      <button class="icon-btn" @click="(window as any).config.ttsSpeak('Pantalla de contactos para videollamada')">
+      <button class="icon-btn" @click="triggerVoiceAssistant">
         <img src="/images/voice.png" alt="Voz" class="hdr-icon" />
       </button>
     </div>
