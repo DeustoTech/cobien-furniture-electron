@@ -38,6 +38,33 @@ def fuzzy_match(text: str, target: str, threshold: float = 0.8) -> bool:
     return False
 
 
+def is_cobien(text: str) -> bool:
+    """Specialized evaluator for the 'cobien' wake word."""
+    text = text.lower().strip()
+    
+    # Common variations and misrecognitions
+    variations = [
+        "cobien", 
+        "como bien", 
+        "cómo bien", 
+        "con bien", 
+        "convien", 
+        "comien", 
+        "cobian", 
+        "cobién",
+        "co bien",
+        "convian",
+        "combien"
+    ]
+    
+    if any(v in text for v in variations):
+        return True
+        
+    # Fuzzy match as safety net
+    return fuzzy_match(text, "cobien", threshold=0.7)
+
+
+
 
 def select_input_device(preferred_device: Optional[Any] = None) -> Tuple[Optional[int], str]:
     """Resolve a valid microphone input device.
@@ -290,8 +317,14 @@ class SpeechRecognizer:
                     if recognized:
                         print(f"[ASR] Final: {recognized}", file=sys.stderr)
                     
-                    if fuzzy_match(recognized, keyword):
-                        print(f"[ASR] Wake word '{keyword}' fuzzy-detected!", file=sys.stderr)
+                    is_match = False
+                    if keyword.lower() == "cobien":
+                        is_match = is_cobien(recognized)
+                    else:
+                        is_match = fuzzy_match(recognized, keyword)
+
+                    if is_match:
+                        print(f"[ASR] Wake word '{keyword}' detected!", file=sys.stderr)
                         return True
                 else:
                     partial = json.loads(self.recognizer.PartialResult())
@@ -299,9 +332,17 @@ class SpeechRecognizer:
                     if p_text:
                          print(f"[ASR] Partial: {p_text}", file=sys.stderr)
                     
-                    if fuzzy_match(p_text, keyword, threshold=0.85): # Partial needs to be slightly stricter
-                        print(f"[ASR] Wake word '{keyword}' fuzzy-detected (partial)!", file=sys.stderr)
+                    is_match = False
+                    if keyword.lower() == "cobien":
+                        # Partial needs to be more careful to avoid false positives
+                        is_match = is_cobien(p_text) and len(p_text) >= 5
+                    else:
+                        is_match = fuzzy_match(p_text, keyword, threshold=0.85)
+
+                    if is_match:
+                        print(f"[ASR] Wake word '{keyword}' detected (partial)!", file=sys.stderr)
                         return True
+
 
 
         return False
