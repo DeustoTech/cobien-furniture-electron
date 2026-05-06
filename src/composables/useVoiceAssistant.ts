@@ -61,8 +61,10 @@ export function useVoiceAssistant() {
       console.error('Global STT Error:', e)
       return null
     }
+  }
 
-    async function startAssistant() {
+  async function startAssistant() {
+
     if (isActive.value) return
     isActive.value = true
     
