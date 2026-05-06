@@ -13,23 +13,28 @@ const idleTimeout = ref(60)
 onMounted(async () => {
   try {
     const settings = await (window as any).config.getSettings()
-    if (settings.idle_timeout_sec) {
+    if (settings && settings.idle_timeout_sec) {
       idleTimeout.value = settings.idle_timeout_sec
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Error loading settings:', e)
+  }
 
-  window.addEventListener('start-voice-assistant', () => {
+  // Listen for manual trigger (from buttons)
+  document.addEventListener('start-voice-assistant', () => {
     voiceAssistantRef.value?.startAssistant()
   })
 
-  // Wake word detection
-  (window as any).config.onWakeWordDetected(() => {
-    console.log('[WAKE] UI Triggered by voice')
-    voiceAssistantRef.value?.startAssistant()
-  })
+  // Listen for voice wake word
+  if ((window as any).config?.onWakeWordDetected) {
+    (window as any).config.onWakeWordDetected(() => {
+      console.log('[WAKE] UI Triggered by voice')
+      voiceAssistantRef.value?.startAssistant()
+    })
+  }
 })
-
 </script>
+
 
 <template>
   <router-view />
