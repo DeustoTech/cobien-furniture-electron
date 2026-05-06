@@ -210,16 +210,22 @@ function goBack() {
 
 <template>
   <div class="view-container">
-    <div class="header">
-      <button class="back-button" @click="goBack">
-        <span class="icon-placeholder">🔙</span>
-        <span>Volver</span>
-      </button>
-      <div class="title">Eventos</div>
-      <button class="voice-button" @click="triggerVoiceAssistant">
-        <img src="/images/voice.png" alt="Voice" class="icon" />
-      </button>
+    <div class="header glass-panel">
+      <div class="header-left">
+        <h1 class="header-title">Eventos</h1>
+      </div>
+
+      <div class="header-actions">
+        <button class="voice-button" @click="triggerVoiceAssistant">
+          <img src="/images/voice.png" alt="Voice" class="icon" />
+          <span>Voz</span>
+        </button>
+        <button class="back-btn" @click="goBack">
+          <img src="/images/back.png" alt="Volver" />
+        </button>
+      </div>
     </div>
+
 
     <div class="glass-panel calendar-card">
       <div class="calendar-header">
@@ -357,34 +363,60 @@ function goBack() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.title {
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.6);
-  padding: 0.5rem 2rem;
+  padding: 1.5rem 2rem;
   border-radius: 20px;
-  backdrop-filter: blur(10px);
 }
 
-.back-button, .voice-button {
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: #111;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.back-btn {
+  width: 4.5rem;
+  height: 4.5rem;
+  background: white;
+  border: 2px solid #000;
+  border-radius: 16px;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 2rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 15px;
-  background: white;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
   transition: transform 0.2s;
 }
 
-.back-button:active, .voice-button:active {
+.back-btn:active { transform: scale(0.95); }
+
+.back-btn img {
+  width: 2.8rem;
+  height: 2.8rem;
+}
+
+.voice-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 2rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-blue);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+  transition: transform 0.2s;
+}
+
+.voice-button:active {
   transform: scale(0.95);
 }
 
@@ -392,11 +424,9 @@ function goBack() {
   width: 2rem;
   height: 2rem;
   object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
-.icon-placeholder {
-  font-size: 2rem;
-}
 
 .calendar-card {
   flex: 1;
