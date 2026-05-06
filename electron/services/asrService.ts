@@ -17,6 +17,7 @@ export function listenWithVosk(
 
   return new Promise((resolve) => {
     const pythonBin = join(_dirname, '../../../cobien_FrontEnd/app/.venv/bin/python3')
+    console.log(`[ASR] Spawning bridge: ${pythonBin} ${bridgePath} ${modelPath}`)
     const python = spawn(pythonBin, [bridgePath, modelPath])
 
     let result = ''
@@ -44,15 +45,16 @@ export function listenWithVosk(
           } catch(e) {}
         }
       }
-
     })
 
     python.stderr.on('data', (data) => {
-      console.error(`ASR Bridge Error: ${data}`)
+      console.error(`[ASR] Bridge Error: ${data}`)
     })
 
     python.on('close', (code) => {
+      console.log(`[ASR] Bridge closed with code ${code}`)
       try {
+
         const lines = result.trim().split('\n')
         let lastJson = ''
         for (let i = lines.length - 1; i >= 0; i--) {

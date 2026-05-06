@@ -15,6 +15,7 @@ export function useVoiceAssistant() {
       const buffer = await (window as any).config.ttsSpeak(text)
       if (buffer) {
         const audioCtx = new AudioContext()
+        await audioCtx.resume()
         const decoded = await audioCtx.decodeAudioData(buffer)
         const source = audioCtx.createBufferSource()
         source.buffer = decoded
@@ -23,6 +24,7 @@ export function useVoiceAssistant() {
           source.onended = () => resolve()
           source.start()
         })
+
       } else {
         await new Promise(r => setTimeout(r, 1500))
       }

@@ -191,7 +191,9 @@ function setupIPC() {
   })
 
   ipcMain.handle('tts:speak', async (event, text: string) => {
+    console.log(`[TTS] Speaking: "${text}"`)
     const { bin, model } = getPiperConfig()
+    console.log(`[TTS] Config: bin=${bin}, model=${model}`)
     
     if (!model) {
       console.error('TTS: No Piper model configured.')
@@ -203,7 +205,7 @@ function setupIPC() {
     return new Promise((resolve, reject) => {
       const child = execFile(bin, ['--model', model, '--output_file', tempWav], async (error, stdout, stderr) => {
         if (error) {
-          console.error('Piper TTS error:', error, stderr)
+          console.error('[TTS] Piper exec error:', error, stderr)
           resolve(null)
           return
         }
@@ -211,9 +213,10 @@ function setupIPC() {
         try {
           const buffer = await fs.readFile(tempWav)
           await fs.unlink(tempWav)
+          console.log(`[TTS] Generated WAV: ${buffer.length} bytes`)
           resolve(buffer)
         } catch(e) {
-          console.error('Error reading temp wav:', e)
+          console.error('[TTS] Error reading temp wav:', e)
           resolve(null)
         }
       })
@@ -221,6 +224,7 @@ function setupIPC() {
       child.stdin?.write(text)
       child.stdin?.end()
     })
+
   })
 
   ipcMain.handle('stt:listen', async (event, language: string) => {

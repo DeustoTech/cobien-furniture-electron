@@ -994,7 +994,9 @@ function listenWithVosk(language = "es", onLevel, onPartial) {
 	const bridgePath = join(_dirname$1, "../../../cobien_FrontEnd/app/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
-		const python = spawn(join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3"), [bridgePath, modelPath]);
+		const pythonBin = join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3");
+		console.log(`[ASR] Spawning bridge: ${pythonBin} ${bridgePath} ${modelPath}`);
+		const python = spawn(pythonBin, [bridgePath, modelPath]);
 		let result = "";
 		python.stdout.on("data", (data) => {
 			const chunk = data.toString();
@@ -1013,9 +1015,10 @@ function listenWithVosk(language = "es", onLevel, onPartial) {
 			}
 		});
 		python.stderr.on("data", (data) => {
-			console.error(`ASR Bridge Error: ${data}`);
+			console.error(`[ASR] Bridge Error: ${data}`);
 		});
 		python.on("close", (code) => {
+			console.log(`[ASR] Bridge closed with code ${code}`);
 			try {
 				const lines = result.trim().split("\n");
 				let lastJson = "";
@@ -1220,7 +1223,9 @@ function setupIPC() {
 		app.quit();
 	});
 	ipcMain.handle("tts:speak", async (event, text) => {
+		console.log(`[TTS] Speaking: "${text}"`);
 		const { bin, model } = getPiperConfig();
+		console.log(`[TTS] Config: bin=${bin}, model=${model}`);
 		if (!model) {
 			console.error("TTS: No Piper model configured.");
 			return null;
@@ -1234,16 +1239,17 @@ function setupIPC() {
 				tempWav
 			], async (error, stdout, stderr) => {
 				if (error) {
-					console.error("Piper TTS error:", error, stderr);
+					console.error("[TTS] Piper exec error:", error, stderr);
 					resolve(null);
 					return;
 				}
 				try {
 					const buffer = await promises.readFile(tempWav);
 					await promises.unlink(tempWav);
+					console.log(`[TTS] Generated WAV: ${buffer.length} bytes`);
 					resolve(buffer);
 				} catch (e) {
-					console.error("Error reading temp wav:", e);
+					console.error("[TTS] Error reading temp wav:", e);
 					resolve(null);
 				}
 			});
