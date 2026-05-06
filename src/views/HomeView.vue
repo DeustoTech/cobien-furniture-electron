@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+
 import VolumePopup from '../components/VolumePopup.vue'
 import BrightnessPopup from '../components/BrightnessPopup.vue'
 import VoiceAssistant from '../components/VoiceAssistant.vue'
@@ -150,9 +152,10 @@ async function openBrightnessPopup() {
 
           
           <div class="top-right-actions">
-            <button class="action-box" @click="handleNavigation('/settings')">
+            <button class="action-box" @click="handleNavigation('/admin-login')">
               <img src="/images/settings.png" alt="Settings" />
             </button>
+
             <button class="action-box" @click="triggerVoiceAssistant">
               <img src="/images/voice.png" alt="Voice" />
             </button>

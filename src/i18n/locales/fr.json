@@ -31,14 +31,16 @@
     "title": "Paramètres",
     "restart": "Redémarrer",
     "exit": "Quitter",
-    "language": "Langue",
+    "language": "Langue et Voix",
+    "lang": "Langue et Voix",
     "cities": "Villes",
-    "colors": "Couleurs Boutons",
-    "notifications": "Notifications",
+    "colors": "Couleurs",
+    "notif": "Notifications",
     "rfid": "Cartes RFID",
     "audio": "Audio",
     "logs": "Journaux système",
-    "parameters": "Paramètres Lanceur"
+    "parameters": "Paramètres Lanceur",
+    "enter_pin": "Entrez le code d'accès"
   },
   "assistant": {
     "title": "Assistant CoBien",

@@ -7,7 +7,9 @@ import CallView from '../views/CallView.vue'
 import JokesView from '../views/JokesView.vue'
 import SettingsWeatherView from '../views/SettingsWeatherView.vue'
 import AudioSettingsView from '../views/AudioSettingsView.vue'
+import AdminLoginView from '../views/AdminLogin.vue'
 import LanguageSettingsView from '../views/LanguageSettingsView.vue'
+
 import SettingsView from '../views/SettingsView.vue'
 
 
@@ -21,7 +23,13 @@ const router = createRouter({
       component: HomeView
     },
     {
+      path: '/admin-login',
+      name: 'admin-login',
+      component: AdminLoginView
+    },
+    {
       path: '/settings',
+
       name: 'settings',
       component: SettingsView
     },

@@ -31,14 +31,17 @@
     "title": "Configuración",
     "restart": "Reiniciar",
     "exit": "Salir",
-    "language": "Idioma",
+    "language": "Idioma y Voz",
+    "lang": "Idioma y Voz",
     "cities": "Ciudades",
-    "colors": "Colores Botones",
+    "colors": "Colores",
     "notifications": "Notificaciones",
+    "notif": "Notificaciones",
     "rfid": "Tarjetas RFID",
     "audio": "Audio",
     "logs": "Logs del sistema",
-    "parameters": "Parámetros Launcher"
+    "parameters": "Parámetros Launcher",
+    "enter_pin": "Introduce el código de acceso"
   },
   "assistant": {
     "title": "Asistente CoBien",

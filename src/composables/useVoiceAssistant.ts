@@ -8,7 +8,9 @@ import { useSettings } from './useSettings'
 
 export function useVoiceAssistant() {
   const router = useRouter()
+  const { locale, t } = useI18n()
   const { voiceGenders } = useSettings()
+
   
   const isActive = ref(false)
   const message = ref('')
