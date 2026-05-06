@@ -1,0 +1,39 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
+import WeatherView from '../views/WeatherView.vue'
+import EventsView from '../views/EventsView.vue'
+import BoardView from '../views/BoardView.vue'
+import CallView from '../views/CallView.vue'
+
+const router = createRouter({
+  history: createWebHashHistory(), // Hash history works better with Electron local files
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomeView
+    },
+    {
+      path: '/weather',
+      name: 'weather',
+      component: WeatherView
+    },
+    {
+      path: '/events',
+      name: 'events',
+      component: EventsView
+    },
+    {
+      path: '/board',
+      name: 'board',
+      component: BoardView
+    },
+    {
+      path: '/call',
+      name: 'call',
+      component: CallView
+    }
+  ]
+})
+
+export default router
