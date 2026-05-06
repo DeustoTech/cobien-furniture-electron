@@ -263,14 +263,23 @@ class SpeechRecognizer:
                 
                 if self.recognizer.AcceptWaveform(data):
                     res = json.loads(self.recognizer.Result())
-                    if keyword.lower() in res.get("text", "").lower():
+                    recognized = res.get("text", "").lower()
+                    if recognized:
+                        print(f"[ASR] Final: {recognized}", file=sys.stderr)
+                    
+                    if keyword.lower() in recognized:
                         print(f"[ASR] Wake word '{keyword}' detected!", file=sys.stderr)
                         return True
                 else:
                     partial = json.loads(self.recognizer.PartialResult())
-                    if keyword.lower() in partial.get("partial", "").lower():
+                    p_text = partial.get("partial", "").lower()
+                    if p_text:
+                         print(f"[ASR] Partial: {p_text}", file=sys.stderr)
+                    
+                    if keyword.lower() in p_text:
                         print(f"[ASR] Wake word '{keyword}' detected (partial)!", file=sys.stderr)
                         return True
+
         return False
 
 
