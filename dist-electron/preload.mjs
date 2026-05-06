@@ -30,6 +30,7 @@ electron.contextBridge.exposeInMainWorld("config", {
 	getRandomJoke: () => electron.ipcRenderer.invoke("jokes:getRandom"),
 	getContacts: () => electron.ipcRenderer.invoke("contacts:list"),
 	requestCall: (userName) => electron.ipcRenderer.invoke("contacts:requestCall", userName),
+	syncContacts: () => electron.ipcRenderer.invoke("contacts:sync"),
 	openCall: (userName) => electron.ipcRenderer.invoke("contacts:openCall", userName),
 	addReminder: (message, isoDatetime) => electron.ipcRenderer.invoke("reminders:add", message, isoDatetime),
 	listReminders: () => electron.ipcRenderer.invoke("reminders:list"),

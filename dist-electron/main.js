@@ -551,6 +551,81 @@ async function loadContacts() {
 	}
 	return contacts;
 }
+async function downloadImage(url, baseName, apiKey) {
+	try {
+		const res = await fetch(url, {
+			headers: { "X-Api-Key": apiKey },
+			signal: AbortSignal.timeout(15e3)
+		});
+		if (!res.ok) return null;
+		const contentType = res.headers.get("Content-Type") || "";
+		let ext = ".jpg";
+		if (contentType.includes("png")) ext = ".png";
+		else if (contentType.includes("webp")) ext = ".webp";
+		else if (contentType.includes("gif")) ext = ".gif";
+		const fileName = baseName + ext;
+		const filePath = join(CONTACTS_DIR, fileName);
+		const buffer = await res.arrayBuffer();
+		await promises.writeFile(filePath, Buffer.from(buffer));
+		return fileName;
+	} catch (e) {
+		console.error(`[CONTACTS] Failed to download image ${url}:`, e);
+		return null;
+	}
+}
+async function syncContacts(deviceId, apiKey, baseUrl) {
+	try {
+		if (!fsSync.existsSync(CONTACTS_DIR)) fsSync.mkdirSync(CONTACTS_DIR, { recursive: true });
+		const url = `${baseUrl.rstrip("/")}/pizarra/api/contacts/?device_id=${deviceId}`;
+		const res = await fetch(url, {
+			headers: { "X-Api-Key": apiKey },
+			signal: AbortSignal.timeout(1e4)
+		});
+		if (!res.ok) throw new Error(`API returned ${res.status}`);
+		const data = await res.json();
+		const rawContacts = Array.isArray(data) ? data : data.contacts || [];
+		const mapped = [];
+		let imagesDownloaded = 0;
+		for (const raw of rawContacts) {
+			const displayName = (raw.display_name || raw.name || "").trim();
+			const userName = (raw.user_name || raw.username || "").trim();
+			const imageUrl = (raw.image_url || raw.image || "").trim();
+			if (!displayName || !userName) continue;
+			mapped.push({
+				display: displayName,
+				user: userName
+			});
+			if (imageUrl) {
+				let fullUrl = imageUrl;
+				if (imageUrl.startsWith("/")) fullUrl = baseUrl.rstrip("/") + "/" + imageUrl.lstrip("/");
+				if (await downloadImage(fullUrl, normalizeName(displayName), apiKey)) imagesDownloaded++;
+			}
+		}
+		const content = mapped.map((c) => `${c.display}=${c.user}`).join("\n") + "\n";
+		await promises.writeFile(CONTACTS_FILE, content);
+		console.log(`[CONTACTS] Sync complete. ${mapped.length} contacts, ${imagesDownloaded} images.`);
+		return {
+			count: mapped.length,
+			images: imagesDownloaded
+		};
+	} catch (e) {
+		console.error("[CONTACTS] Sync failed:", e);
+		return {
+			count: 0,
+			images: 0
+		};
+	}
+}
+if (!String.prototype.rstrip) String.prototype.rstrip = function(chars) {
+	let res = this;
+	while (res.endsWith(chars)) res = res.slice(0, -chars.length);
+	return res;
+};
+if (!String.prototype.lstrip) String.prototype.lstrip = function(chars) {
+	let res = this;
+	while (res.startsWith(chars)) res = res.slice(chars.length);
+	return res;
+};
 async function requestCall(userName, deviceId, apiKey, baseUrl) {
 	if (!userName || !/^[A-Za-z0-9_.-]+$/.test(userName)) return {
 		ok: false,
@@ -568,7 +643,7 @@ async function requestCall(userName, deviceId, apiKey, baseUrl) {
 		detail: "Device ID no configurado"
 	};
 	try {
-		const url = `${baseUrl}/pizarra/api/notify/`;
+		const url = `${baseUrl.rstrip("/")}/pizarra/api/notify/`;
 		const res = await fetch(url, {
 			method: "POST",
 			headers: {
@@ -1056,6 +1131,10 @@ function setupIPC() {
 	ipcMain.handle("contacts:list", async () => {
 		return await loadContacts();
 	});
+	ipcMain.handle("contacts:sync", async () => {
+		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
+		return await syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+	});
 	ipcMain.handle("contacts:requestCall", async (_, userName) => {
 		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
 		return await requestCall(userName, process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
@@ -1178,6 +1257,9 @@ app.whenReady().then(() => {
 		return net.fetch("file://" + url);
 	});
 	setupIPC();
+	const baseUrl = (JSON.parse(fsSync.readFileSync(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, "");
+	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
+	syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, baseUrl).catch(console.error);
 	createWindow();
 	loadPendingReminders((reminder) => {
 		if (mainWindow) mainWindow.webContents.send("reminder:fire", reminder);

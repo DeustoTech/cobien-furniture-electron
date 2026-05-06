@@ -35,7 +35,9 @@ contextBridge.exposeInMainWorld('config', {
   getRandomJoke: () => ipcRenderer.invoke('jokes:getRandom'),
   getContacts: () => ipcRenderer.invoke('contacts:list'),
   requestCall: (userName: string) => ipcRenderer.invoke('contacts:requestCall', userName),
+  syncContacts: () => ipcRenderer.invoke('contacts:sync'),
   openCall: (userName: string) => ipcRenderer.invoke('contacts:openCall', userName),
+
   addReminder: (message: string, isoDatetime: string) => ipcRenderer.invoke('reminders:add', message, isoDatetime),
   listReminders: () => ipcRenderer.invoke('reminders:list'),
   deleteReminder: (id: string) => ipcRenderer.invoke('reminders:delete', id),

@@ -12,7 +12,8 @@ import { getEvents, addPersonalEvent, deleteEvent } from './services/eventsMongo
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 import { fetchWeatherBundle } from './services/weatherService'
 import { getRandomJoke } from './services/jokesService'
-import { loadContacts, requestCall } from './services/contactsService'
+import { loadContacts, requestCall, syncContacts } from './services/contactsService'
+
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 import { startMqtt, stopMqtt } from './services/mqttService'
 import { listenWithVosk } from './services/asrService'
@@ -108,6 +109,15 @@ function setupIPC() {
   ipcMain.handle('contacts:list', async () => {
     return await loadContacts()
   })
+
+  ipcMain.handle('contacts:sync', async () => {
+    const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
+    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+    return await syncContacts(deviceId, apiKey, baseUrl)
+  })
+
 
   ipcMain.handle('contacts:requestCall', async (_, userName: string) => {
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
@@ -256,7 +266,16 @@ app.whenReady().then(() => {
   })
 
   setupIPC()
+  
+  // Initial Syncs
+  const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
+  const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+  const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
+  const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+  syncContacts(deviceId, apiKey, baseUrl).catch(console.error)
+
   createWindow()
+
 
   // Load pending reminders and wire notification to renderer
   loadPendingReminders((reminder) => {

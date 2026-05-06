@@ -58,6 +58,109 @@ export async function loadContacts(): Promise<Contact[]> {
   return contacts
 }
 
+async function downloadImage(url: string, baseName: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-Api-Key': apiKey },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return null
+
+    const contentType = res.headers.get('Content-Type') || ''
+    let ext = '.jpg'
+    if (contentType.includes('png')) ext = '.png'
+    else if (contentType.includes('webp')) ext = '.webp'
+    else if (contentType.includes('gif')) ext = '.gif'
+
+    const fileName = baseName + ext
+    const filePath = join(CONTACTS_DIR, fileName)
+    
+    const buffer = await res.arrayBuffer()
+    await fs.writeFile(filePath, Buffer.from(buffer))
+    return fileName
+  } catch (e) {
+    console.error(`[CONTACTS] Failed to download image ${url}:`, e)
+    return null
+  }
+}
+
+export async function syncContacts(
+  deviceId: string,
+  apiKey: string,
+  baseUrl: string
+): Promise<{ count: number; images: number }> {
+  try {
+    if (!fsSync.existsSync(CONTACTS_DIR)) {
+      fsSync.mkdirSync(CONTACTS_DIR, { recursive: true })
+    }
+
+    const url = `${baseUrl.rstrip('/')}/pizarra/api/contacts/?device_id=${deviceId}`
+    const res = await fetch(url, {
+      headers: { 'X-Api-Key': apiKey },
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!res.ok) throw new Error(`API returned ${res.status}`)
+
+    const data = await res.json()
+    const rawContacts = Array.isArray(data) ? data : (data.contacts || [])
+    
+    const mapped: { display: string; user: string }[] = []
+    let imagesDownloaded = 0
+
+    for (const raw of rawContacts) {
+      const displayName = (raw.display_name || raw.name || '').trim()
+      const userName = (raw.user_name || raw.username || '').trim()
+      const imageUrl = (raw.image_url || raw.image || '').trim()
+
+      if (!displayName || !userName) continue
+
+      mapped.push({ display: displayName, user: userName })
+
+      if (imageUrl) {
+        let fullUrl = imageUrl
+        if (imageUrl.startsWith('/')) {
+          fullUrl = baseUrl.rstrip('/') + '/' + imageUrl.lstrip('/')
+        }
+        const downloaded = await downloadImage(fullUrl, normalizeName(displayName), apiKey)
+        if (downloaded) imagesDownloaded++
+      }
+    }
+
+    // Update list_contacts.txt
+    const content = mapped.map(c => `${c.display}=${c.user}`).join('\n') + '\n'
+    await fs.writeFile(CONTACTS_FILE, content)
+
+    console.log(`[CONTACTS] Sync complete. ${mapped.length} contacts, ${imagesDownloaded} images.`)
+    return { count: mapped.length, images: imagesDownloaded }
+  } catch (e) {
+    console.error('[CONTACTS] Sync failed:', e)
+    return { count: 0, images: 0 }
+  }
+}
+
+// Add string helpers for URL manipulation if not present
+declare global {
+  interface String {
+    rstrip(chars: string): string
+    lstrip(chars: string): string
+  }
+}
+if (!String.prototype.rstrip) {
+  String.prototype.rstrip = function(chars) {
+    let res = this
+    while (res.endsWith(chars)) res = res.slice(0, -chars.length)
+    return res
+  }
+}
+if (!String.prototype.lstrip) {
+  String.prototype.lstrip = function(chars) {
+    let res = this
+    while (res.startsWith(chars)) res = res.slice(chars.length)
+    return res
+  }
+}
+
 export async function requestCall(
   userName: string,
   deviceId: string,
@@ -71,7 +174,7 @@ export async function requestCall(
   if (!deviceId) return { ok: false, code: 'VC-DEVICE', detail: 'Device ID no configurado' }
 
   try {
-    const url = `${baseUrl}/pizarra/api/notify/`
+    const url = `${baseUrl.rstrip('/')}/pizarra/api/notify/`
     const res = await fetch(url, {
       method: 'POST',
       headers: {
