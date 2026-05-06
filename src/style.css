@@ -1,4 +1,5 @@
 :root {
+  /* ... existing vars ... */
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
@@ -28,13 +29,16 @@
   
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  /* Responsive scaling: 1rem will be ~10px on 1280px screen */
+  font-size: clamp(8px, 0.8vw, 14px);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  user-select: none; /* Good for touchscreens */
+  user-select: none;
 }
 
 body {
@@ -45,17 +49,19 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   color: var(--text-primary);
-  min-height: 100vh;
-  overflow: hidden; /* App feels like a kiosk */
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden; 
   -webkit-font-smoothing: antialiased;
 }
 
 #app {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
+
 
 /* Glassmorphism Utilities */
 .glass-panel {

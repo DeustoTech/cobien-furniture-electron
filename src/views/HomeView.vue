@@ -239,7 +239,7 @@ async function openBrightnessPopup() {
   border-radius: 28px;
 
   display: flex;
-  height: 285px;
+  min-height: 25vh;
   padding: 1.2rem 1.8rem;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
@@ -269,7 +269,7 @@ async function openBrightnessPopup() {
 }
 
 .time-display {
-  font-size: 8.5rem;
+  font-size: clamp(4rem, 8vw, 8.5rem);
   font-weight: 800;
   color: #000;
   line-height: 0.9;
@@ -335,7 +335,7 @@ async function openBrightnessPopup() {
 }
 
 .joke-scroll-container {
-  max-height: 120px;
+  flex: 1;
   overflow-y: auto;
   padding-right: 0.5rem;
 }
@@ -366,11 +366,11 @@ async function openBrightnessPopup() {
 }
 
 .action-box {
-  width: 4.8rem;
-  height: 4.8rem;
+  width: 4rem;
+  height: 4rem;
   background: white;
   border: 1.8px solid #000;
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -379,8 +379,8 @@ async function openBrightnessPopup() {
 }
 
 .action-box img {
-  width: 3rem;
-  height: 3rem;
+  width: 2.5rem;
+  height: 2.5rem;
   object-fit: contain;
 }
 
@@ -390,7 +390,7 @@ async function openBrightnessPopup() {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 32px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   padding: 1.5rem;
   backdrop-filter: blur(8px);
@@ -400,8 +400,8 @@ async function openBrightnessPopup() {
   width: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 2rem;
+  grid-template-rows: 1fr 1fr;
+  gap: 1.5rem;
 }
 
 
@@ -411,10 +411,9 @@ async function openBrightnessPopup() {
   border-radius: 22px;
   display: flex;
   align-items: center;
-  height: 190px;
-  padding: 0 3.5rem;
+  padding: 0 2rem;
 
-  gap: 3rem;
+  gap: 2rem;
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -424,16 +423,17 @@ async function openBrightnessPopup() {
 }
 
 .nav-card-icon {
-  width: 8.5rem;
-  height: 8.5rem;
+  width: clamp(4rem, 8vw, 8rem);
+  height: clamp(4rem, 8vw, 8rem);
   object-fit: contain;
 }
 
 .nav-card-text {
-  font-size: 4.2rem;
+  font-size: clamp(2rem, 4vw, 4rem);
   font-weight: 700;
   color: #000;
 }
+
 
 /* --- Footer --- */
 .footer-controls {

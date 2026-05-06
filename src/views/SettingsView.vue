@@ -82,14 +82,14 @@ const settingsButtons = [
   padding: 2.5rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: 1.2rem 2rem;
   border-radius: 20px;
 }
 
@@ -108,13 +108,6 @@ const settingsButtons = [
   margin-left: 0.5rem;
 }
 
-.device-id {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--accent-blue);
-  margin-top: 0.2rem;
-}
-
 .header-actions {
   display: flex;
   gap: 1.5rem;
@@ -129,17 +122,14 @@ const settingsButtons = [
   font-weight: 700;
   color: white;
   cursor: pointer;
-  transition: transform 0.2s;
 }
-
-.action-btn:active { transform: scale(0.95); }
 
 .action-btn.reboot { background: #e3920c; }
 .action-btn.exit { background: #d92e2e; }
 
 .back-btn {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 4rem;
+  height: 4rem;
   background: white;
   border: 2px solid #000;
   border-radius: 16px;
@@ -150,8 +140,8 @@ const settingsButtons = [
 }
 
 .back-btn img {
-  width: 2.8rem;
-  height: 2.8rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .settings-grid {
@@ -159,30 +149,21 @@ const settingsButtons = [
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: 2rem;
-  padding: 3rem;
+  gap: 1.5rem;
+  padding: 2rem;
   border-radius: 20px;
 }
 
 .settings-card {
   background: white;
-  border: 2.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 24px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 2rem;
   cursor: pointer;
-  transition: all 0.2s;
 }
-
-.settings-card:not(.disabled):hover {
-  border-color: var(--accent-blue);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  transform: translateY(-5px);
-}
-
-.settings-card:active { transform: scale(0.97); }
 
 .settings-card.disabled {
   opacity: 0.6;
@@ -190,7 +171,7 @@ const settingsButtons = [
 }
 
 .card-icon-wrap {
-  width: 8rem;
+  width: clamp(4rem, 6vw, 6rem);
   height: 100%;
   display: flex;
   align-items: center;
@@ -204,10 +185,10 @@ const settingsButtons = [
 }
 
 .card-label {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: clamp(1.2rem, 1.8vw, 1.8rem);
+  font-weight: 700;
   color: #111;
   text-align: left;
-  line-height: 1.2;
 }
+
 </style>
