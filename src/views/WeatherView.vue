@@ -1,72 +1,92 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const cityName = ref('Cargando...')
-const currentTemp = ref('6°')
-const currentCondition = ref('Cielo claro')
-const minTemp = ref('Min 7°')
-const maxTemp = ref('Max 19°')
+const currentTemp = ref('—°')
+const currentCondition = ref('Cargando...')
+const minTemp = ref('Min —°')
+const maxTemp = ref('Max —°')
+const currentIcon = ref('/images/nubes.png')
+const isLoading = ref(false)
 
 const activeCities = ref<string[]>([])
 const currentCityIndex = ref(0)
+
+const hourlyForecast = ref<any[]>([])
+const dailyForecast = ref<any[]>([])
+
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+async function loadWeather(city: string) {
+  if (!city || city === 'Sin Ciudad') return
+  isLoading.value = true
+  try {
+    const bundle = await (window as any).config.fetchWeather(city)
+    if (bundle) {
+      currentTemp.value = bundle.temp
+      currentCondition.value = bundle.description
+      minTemp.value = bundle.tempMin
+      maxTemp.value = bundle.tempMax
+      currentIcon.value = bundle.icon
+      hourlyForecast.value = bundle.hourly || []
+      dailyForecast.value = bundle.daily || []
+    }
+  } catch (e) {
+    console.error('[WEATHER] Failed to fetch:', e)
+  } finally {
+    isLoading.value = false
+  }
+}
 
 onMounted(async () => {
   try {
     const config = await (window as any).config.getWeather()
     if (config.active && config.active.length > 0) {
       activeCities.value = config.active
-      let pIdx = config.active.indexOf(config.primary)
+      const pIdx = config.active.indexOf(config.primary)
       currentCityIndex.value = pIdx !== -1 ? pIdx : 0
       cityName.value = activeCities.value[currentCityIndex.value]
     } else if (config.primary) {
       cityName.value = config.primary
+      activeCities.value = [config.primary]
     } else {
       cityName.value = 'Sin Ciudad'
     }
-  } catch(e) {
+  } catch (e) {
     cityName.value = 'Desconocida'
   }
+
+  await loadWeather(cityName.value)
+
+  // Refresh every 20 minutes like the legacy app
+  refreshTimer = setInterval(() => loadWeather(cityName.value), 20 * 60 * 1000)
 })
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+})
+
+async function switchCity(idx: number) {
+  currentCityIndex.value = idx
+  cityName.value = activeCities.value[idx]
+  currentTemp.value = '—°'
+  currentCondition.value = 'Cargando...'
+  hourlyForecast.value = []
+  dailyForecast.value = []
+  await loadWeather(cityName.value)
+}
 
 function nextCity() {
   if (activeCities.value.length <= 1) return
-  currentCityIndex.value = (currentCityIndex.value + 1) % activeCities.value.length
-  cityName.value = activeCities.value[currentCityIndex.value]
+  switchCity((currentCityIndex.value + 1) % activeCities.value.length)
 }
 
 function prevCity() {
   if (activeCities.value.length <= 1) return
-  currentCityIndex.value = (currentCityIndex.value - 1 + activeCities.value.length) % activeCities.value.length
-  cityName.value = activeCities.value[currentCityIndex.value]
+  switchCity((currentCityIndex.value - 1 + activeCities.value.length) % activeCities.value.length)
 }
-
-// Dummy data for hourly forecast matching the image
-const hourlyForecast = ref([
-  { time: '5 a.m.', icon: '/images/noche.png', temp: '8°' },
-  { time: '6 a.m.', icon: '/images/sol.png', temp: '8°' },
-  { time: '7 a.m.', icon: '/images/sol.png', temp: '7°' },
-  { time: '8 a.m.', icon: '/images/sol.png', temp: '8°' },
-  { time: '9 a.m.', icon: '/images/sol.png', temp: '9°' },
-  { time: '10 a.m.', icon: '/images/parcial.png', temp: '12°' },
-  { time: '11 a.m.', icon: '/images/sol.png', temp: '13°' },
-  { time: '12 p.m.', icon: '/images/sol.png', temp: '15°' },
-  { time: '1 p.m.', icon: '/images/parcial.png', temp: '17°' },
-  { time: '2 p.m.', icon: '/images/parcial.png', temp: '18°' },
-  { time: '3 p.m.', icon: '/images/nubes.png', temp: '18°' },
-  { time: '4 p.m.', icon: '/images/nubes.png', temp: '19°' }
-])
-
-// Dummy data for daily forecast matching the image
-const dailyForecast = ref([
-  { day: 'Jueves', icon: '/images/lluvia.png', precip: '40%', min: 'Min 8°', max: 'Max 21°' },
-  { day: 'Viernes', icon: '/images/lluvia.png', precip: '80%', min: 'Min 11°', max: 'Max 20°' },
-  { day: 'Sábado', icon: '/images/lluvia.png', precip: '50%', min: 'Min 12°', max: 'Max 18°' },
-  { day: 'Domingo', icon: '/images/nubes.png', precip: '31%', min: 'Min 10°', max: 'Max 22°' },
-  { day: 'Lunes', icon: '/images/lluvia.png', precip: '35%', min: 'Min 11°', max: 'Max 18°' },
-  { day: 'Martes', icon: '/images/lluvia.png', precip: '35%', min: 'Min 10°', max: 'Max 18°' }
-])
 
 function goBack() {
   router.push('/')
@@ -74,16 +94,18 @@ function goBack() {
 
 async function playTTS() {
   try {
-    const text = `El tiempo en ${cityName.value} es de ${currentTemp.value} con ${currentCondition.value}.`
-    const buffer = await (window as any).tts.speak(text)
+    const text = `El tiempo en ${cityName.value} es de ${currentTemp.value} con ${currentCondition.value}. ${minTemp.value} y ${maxTemp.value}.`
+    const buffer = await (window as any).config.ttsSpeak(text)
     if (buffer) {
-      const blob = new Blob([buffer], { type: 'audio/wav' })
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.play()
+      const audioCtx = new AudioContext()
+      const decoded = await audioCtx.decodeAudioData(buffer)
+      const source = audioCtx.createBufferSource()
+      source.buffer = decoded
+      source.connect(audioCtx.destination)
+      source.start()
     }
-  } catch(e) {
-    console.error('Failed to play TTS:', e)
+  } catch (e) {
+    console.error('TTS error:', e)
   }
 }
 </script>
@@ -107,7 +129,8 @@ async function playTTS() {
       </div>
       
       <div class="header-center">
-        <img src="/images/noche.png" alt="weather" class="main-weather-icon" />
+        <div v-if="isLoading" class="loading-spinner" />
+        <img v-else :src="currentIcon" alt="weather" class="main-weather-icon" />
         <div class="main-weather-info">
           <div class="main-temp">{{ currentTemp }}</div>
           <div class="main-desc">{{ currentCondition }}</div>
@@ -133,7 +156,10 @@ async function playTTS() {
 
     <!-- Hourly Forecast Bar -->
     <div class="hourly-bar">
-      <div class="hourly-item" v-for="(hour, idx) in hourlyForecast" :key="idx">
+      <div v-if="isLoading && hourlyForecast.length === 0" class="hourly-loading">
+        Cargando previsión horaria...
+      </div>
+      <div v-else class="hourly-item" v-for="(hour, idx) in hourlyForecast" :key="idx">
         <div class="hour-time">{{ hour.time }}</div>
         <img :src="hour.icon" class="hour-icon" alt="hour weather" />
         <div class="hour-temp">{{ hour.temp }}</div>
@@ -142,13 +168,16 @@ async function playTTS() {
 
     <!-- Daily Forecast Cards -->
     <div class="daily-section glass-panel">
-      <div class="daily-card" v-for="(day, idx) in dailyForecast" :key="idx">
-        <div class="day-name">{{ day.day }}</div>
+      <div v-if="isLoading && dailyForecast.length === 0" class="daily-loading">
+        Cargando previsión de la semana...
+      </div>
+      <div v-else class="daily-card" v-for="(day, idx) in dailyForecast" :key="idx">
+        <div class="day-name">{{ day.name }}</div>
         <img :src="day.icon" class="day-icon" alt="daily weather" />
-        <div class="day-precip">{{ day.precip }}</div>
+        <div class="day-precip">💧 {{ day.pop }}%</div>
         <div class="day-minmax">
-          <div>{{ day.min }}</div>
-          <div>{{ day.max }}</div>
+          <div>{{ day.tmin }}</div>
+          <div>{{ day.tmax }}</div>
         </div>
       </div>
     </div>
@@ -390,5 +419,28 @@ async function playTTS() {
   font-weight: 500;
   color: #444;
   margin-top: auto;
+}
+
+/* Loading states */
+.loading-spinner {
+  width: 5rem;
+  height: 5rem;
+  border: 5px solid rgba(0,0,0,0.1);
+  border-top-color: #1E90FF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.hourly-loading,
+.daily-loading {
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 1rem;
+  width: 100%;
 }
 </style>

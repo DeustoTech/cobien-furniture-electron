@@ -6,14 +6,17 @@ const router = useRouter()
 
 const currentDate = ref('')
 const currentTime = ref('')
-const weatherTemp = ref('7°')
-const weatherCondition = ref('Cielo claro')
+const weatherTemp = ref('—°')
+const weatherCondition = ref('Cargando...')
 const cityName = ref('Cargando...')
-const minMaxTemp = ref('Min 7°   Max 19°')
+const minMaxTemp = ref('Min —°   Max —°')
 const nextEvent = ref('Sin eventos próximos')
-const jokeTitle = ref('Frase del día')
-const jokeText = ref('¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.')
+const jokeText = ref('Cargando frase...')
 const systemMeta = ref('CoBienX - v0.0.0')
+
+// Reminder notification
+const reminderActive = ref(false)
+const reminderMessage = ref('')
 
 let timer: number
 
@@ -35,6 +38,15 @@ onMounted(async () => {
     } else {
       cityName.value = 'Sin Ciudad'
     }
+    // Fetch real weather for home widget
+    if (cityName.value && cityName.value !== 'Sin Ciudad') {
+      const bundle = await (window as any).config.fetchWeather(cityName.value)
+      if (bundle) {
+        weatherTemp.value = bundle.temp
+        weatherCondition.value = bundle.description
+        minMaxTemp.value = `${bundle.tempMin}   ${bundle.tempMax}`
+      }
+    }
   } catch(e) {
     cityName.value = 'Desconocida'
   }
@@ -42,17 +54,14 @@ onMounted(async () => {
   try {
     const events = await (window as any).config.getEvents()
     if (events && events.length > 0) {
-      // Find the first event from today onwards
       const today = new Date()
       today.setHours(0,0,0,0)
-      
       const futureEvents = events.filter((e: any) => {
         if (!e.date) return false
         const [d, m, y] = e.date.split('-')
         const evtDate = new Date(parseInt(y), parseInt(m)-1, parseInt(d))
         return evtDate >= today
       })
-      
       if (futureEvents.length > 0) {
         const next = futureEvents[0]
         nextEvent.value = `${next.title} - ${next.date.substring(0,5)}`
@@ -61,6 +70,23 @@ onMounted(async () => {
   } catch(e) {
     console.error('Failed loading events for home:', e)
   }
+
+  // Load joke
+  try {
+    jokeText.value = await (window as any).config.getRandomJoke()
+  } catch(e) {
+    jokeText.value = '¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.'
+  }
+
+  // Listen for reminder notifications
+  try {
+    (window as any).config.onReminderFire((reminder: any) => {
+      reminderMessage.value = reminder.message
+      reminderActive.value = true
+      // Auto-speak via TTS
+      ;(window as any).config.ttsSpeak(`Recordatorio: ${reminder.message}`)
+    })
+  } catch(e) {}
 })
 
 onUnmounted(() => {
@@ -70,9 +96,8 @@ onUnmounted(() => {
 function updateTime() {
   const now = new Date()
   currentTime.value = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  // Formatted like: Miércoles, 6 de mayo, 2026
   currentDate.value = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    .replace(/^\w/, (c) => c.toUpperCase()) // Capitalize first letter
+    .replace(/^\w/, (c) => c.toUpperCase())
 }
 
 function handleNavigation(route: string) {
@@ -137,8 +162,8 @@ async function playTTS(text: string) {
               <button class="icon-button" @click="playTTS(jokeText)"><img src="/images/voice.png" alt="voice" /></button>
             </div>
           </div>
-          <div class="joke-container">
-            <div class="section-title">{{ jokeTitle }}</div>
+          <div class="joke-container" @click="handleNavigation('/jokes')" style="cursor:pointer">
+            <div class="section-title">Frase del día</div>
             <div class="joke-text">{{ jokeText }}</div>
           </div>
         </div>
@@ -163,7 +188,23 @@ async function playTTS(text: string) {
         <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
         <span class="nav-card-text">Llámame</span>
       </button>
+      <button class="nav-card" @click="handleNavigation('/jokes')">
+        <img src="/images/chiste.png" class="nav-card-icon" alt="Frases" onerror="this.style.fontSize='2rem'; this.src=''; this.alt='😄'" />
+        <span class="nav-card-text">Frases</span>
+      </button>
     </div>
+
+    <!-- Reminder notification modal -->
+    <Teleport to="body">
+      <div v-if="reminderActive" class="reminder-overlay">
+        <div class="reminder-card">
+          <div class="reminder-icon">⏰</div>
+          <h2 class="reminder-title">Recordatorio</h2>
+          <p class="reminder-msg">{{ reminderMessage }}</p>
+          <button class="reminder-dismiss" @click="reminderActive = false">Entendido</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Footer Controls -->
     <div class="footer-controls">
@@ -426,5 +467,63 @@ async function playTTS(text: string) {
   font-size: 0.85rem;
   font-weight: 700;
   color: #333;
+}
+
+/* Reminder modal */
+.reminder-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.reminder-card {
+  background: white;
+  border-radius: 28px;
+  padding: 3rem 4rem;
+  width: min(500px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.reminder-icon { font-size: 4rem; }
+
+.reminder-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.reminder-msg {
+  font-size: 1.5rem;
+  color: #555;
+  text-align: center;
+  margin: 0;
+}
+
+.reminder-dismiss {
+  background: #1E90FF;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 0.9rem 3rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.5rem;
 }
 </style>

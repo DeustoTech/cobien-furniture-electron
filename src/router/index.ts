@@ -4,6 +4,7 @@ import WeatherView from '../views/WeatherView.vue'
 import EventsView from '../views/EventsView.vue'
 import BoardView from '../views/BoardView.vue'
 import CallView from '../views/CallView.vue'
+import JokesView from '../views/JokesView.vue'
 import SettingsWeatherView from '../views/SettingsWeatherView.vue'
 
 const router = createRouter({
@@ -38,6 +39,11 @@ const router = createRouter({
       path: '/call',
       name: 'call',
       component: CallView
+    },
+    {
+      path: '/jokes',
+      name: 'jokes',
+      component: JokesView
     }
   ]
 })

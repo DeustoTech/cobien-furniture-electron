@@ -10,6 +10,10 @@ import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
 import { getEvents, addPersonalEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
+import { fetchWeatherBundle } from './services/weatherService'
+import { getRandomJoke } from './services/jokesService'
+import { loadContacts, requestCall } from './services/contactsService'
+import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -78,6 +82,55 @@ function setupIPC() {
 
   ipcMain.handle('events:get', async () => {
     return await getEvents(configPath)
+  })
+
+  ipcMain.handle('weather:fetch', async (_, cityName: string) => {
+    return await fetchWeatherBundle(cityName)
+  })
+
+  ipcMain.handle('jokes:getRandom', async () => {
+    return await getRandomJoke('es')
+  })
+
+  ipcMain.handle('contacts:list', async () => {
+    return await loadContacts()
+  })
+
+  ipcMain.handle('contacts:requestCall', async (_, userName: string) => {
+    const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
+    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+    return await requestCall(userName, deviceId, apiKey, baseUrl)
+  })
+
+  ipcMain.handle('contacts:openCall', async (_, userName: string) => {
+    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+    const url = `${baseUrl}/videocall/?room=${encodeURIComponent(userName)}&device=${encodeURIComponent(deviceId)}`
+
+    const { BrowserWindow: BW } = await import('electron')
+    const callWin = new BW({
+      width: 1024,
+      height: 768,
+      fullscreen: true,
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    })
+    callWin.loadURL(url)
+    return true
+  })
+
+  ipcMain.handle('reminders:add', async (_, message: string, isoDatetime: string) => {
+    return await addReminder(message, isoDatetime)
+  })
+
+  ipcMain.handle('reminders:list', async () => {
+    return await listReminders()
+  })
+
+  ipcMain.handle('reminders:delete', async (_, id: string) => {
+    return await deleteReminder(id)
   })
 
   ipcMain.handle('events:addPersonal', async (_, payload: any) => {
@@ -163,6 +216,13 @@ app.whenReady().then(() => {
 
   setupIPC()
   createWindow()
+
+  // Load pending reminders and wire notification to renderer
+  loadPendingReminders((reminder) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('reminder:fire', reminder)
+    }
+  })
 
   if (mainWindow) {
     const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
