@@ -35,7 +35,7 @@ async function getConfig(configPath: string, localConfigPath: string) {
 async function sendHeartbeat(configPath: string, localConfigPath: string) {
   const services = await getConfig(configPath, localConfigPath)
   const url = services.device_heartbeat_url || 'https://portal.co-bien.eu/pizarra/api/devices/heartbeat/'
-  const apiKey = services.notify_api_key || ''
+  const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || ''
 
   try {
     const res = await fetch(url, {
@@ -65,7 +65,7 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
 async function pollNotifications(mainWindow: BrowserWindow, configPath: string, localConfigPath: string) {
   const services = await getConfig(configPath, localConfigPath)
   const url = services.device_poll_url || 'https://portal.co-bien.eu/pizarra/api/device/poll/'
-  const apiKey = services.notify_api_key || ''
+  const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || ''
 
   try {
     const res = await fetch(`${url}?device_id=CoBien6`, {
