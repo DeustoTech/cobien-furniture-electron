@@ -128,3 +128,17 @@ export async function addPersonalEvent(payload: {
     return false
   }
 }
+
+export async function deleteEvent(id: string) {
+  try {
+    const client = await getClient()
+    const db = client.db('LabasAppDB')
+    const collection = db.collection('eventos')
+    
+    const result = await collection.deleteOne({ _id: new ObjectId(id) })
+    return result.deletedCount > 0
+  } catch (e) {
+    console.error('[EVENTS] Error deleting event:', e)
+    return false
+  }
+}

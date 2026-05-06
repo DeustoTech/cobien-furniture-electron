@@ -6,6 +6,7 @@ import BoardView from '../views/BoardView.vue'
 import CallView from '../views/CallView.vue'
 import JokesView from '../views/JokesView.vue'
 import SettingsWeatherView from '../views/SettingsWeatherView.vue'
+import SettingsView from '../views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(), // Hash history works better with Electron local files
@@ -14,6 +15,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView
     },
     {
       path: '/settings/weather',
@@ -39,11 +45,6 @@ const router = createRouter({
       path: '/call',
       name: 'call',
       component: CallView
-    },
-    {
-      path: '/jokes',
-      name: 'jokes',
-      component: JokesView
     }
   ]
 })
