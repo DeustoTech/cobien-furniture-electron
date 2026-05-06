@@ -10,10 +10,12 @@ export function listenWithVosk(
   onPartial?: (text: string) => void
 ): Promise<string | null> {
 
-  const bridgePath = join(_dirname, '../../../cobien_FrontEnd/app/asr_bridge.py')
+  const bridgePath = join(_dirname, '../public/python/asr_bridge.py')
   const modelPath = language === 'es' 
     ? join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
     : join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22')
+
+
 
   return new Promise((resolve) => {
     const pythonBin = join(_dirname, '../../../cobien_FrontEnd/app/.venv/bin/python3')
