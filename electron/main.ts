@@ -44,17 +44,40 @@ function getPiperConfig(lang = 'es', gender = 'male') {
     const services = { ...defaultData.services, ...localData.services }
     
     const internalBin = join(_dirname, '../public/models/piper/bin/piper')
-    const internalModel = join(_dirname, '../public/models/piper/es_ES-davefx-medium.onnx')
+    const defaultModel = join(_dirname, '../public/models/piper/es_ES-davefx-medium.onnx')
 
     const bin = services.tts_piper_bin || internalBin
     
     // Determine model based on lang and gender
     let modelKey = `tts_piper_model_${lang}_${gender}`
-    let model = services[modelKey] || services[`tts_piper_model_${lang}`] || internalModel
+    let modelName = services[modelKey] || services[`tts_piper_model_${lang}`]
     
-    // Resolve relative paths
-    if (model && !model.startsWith('/') && !model.includes(':') && !model.startsWith('http')) {
-      model = join(_dirname, '../../../cobien_FrontEnd/app', model)
+    let model = ''
+
+    if (modelName) {
+      if (modelName.startsWith('/') || modelName.includes(':') || modelName.startsWith('http')) {
+        model = modelName
+      } else {
+        // Try FrontEnd app path
+        const fePath = join(_dirname, '../../../cobien_FrontEnd/app', modelName)
+        // Try Electron public path
+        const elPath = join(_dirname, '../public/models/piper', modelName)
+        
+        if (fsSync.existsSync(fePath)) {
+          model = fePath
+        } else if (fsSync.existsSync(elPath)) {
+          model = elPath
+        } else {
+          model = fePath // Fallback to FE path (old behavior)
+        }
+      }
+    } else {
+      // Fallback based on hardcoded defaults if not in config
+      if (lang === 'es' && gender === 'male') model = defaultModel
+      else if (lang === 'es' && gender === 'female') model = join(_dirname, '../public/models/piper/es_ES-mls_10246-low.onnx')
+      else if (lang === 'fr' && gender === 'male') model = join(_dirname, '../public/models/piper/fr_FR-mls_1840-low.onnx')
+      else if (lang === 'fr' && gender === 'female') model = join(_dirname, '../public/models/piper/fr_FR-siwis-medium.onnx')
+      else model = defaultModel
     }
     
     return { bin, model }
@@ -65,6 +88,7 @@ function getPiperConfig(lang = 'es', gender = 'male') {
     return { bin: internalBin, model: internalModel }
   }
 }
+
 
 
 function setupIPC() {

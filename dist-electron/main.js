@@ -1159,10 +1159,23 @@ function getPiperConfig(lang = "es", gender = "male") {
 			...localData.services
 		};
 		const internalBin = join(_dirname, "../public/models/piper/bin/piper");
-		const internalModel = join(_dirname, "../public/models/piper/es_ES-davefx-medium.onnx");
+		const defaultModel = join(_dirname, "../public/models/piper/es_ES-davefx-medium.onnx");
 		const bin = services.tts_piper_bin || internalBin;
-		let model = services[`tts_piper_model_${lang}_${gender}`] || services[`tts_piper_model_${lang}`] || internalModel;
-		if (model && !model.startsWith("/") && !model.includes(":") && !model.startsWith("http")) model = join(_dirname, "../../../cobien_FrontEnd/app", model);
+		let modelName = services[`tts_piper_model_${lang}_${gender}`] || services[`tts_piper_model_${lang}`];
+		let model = "";
+		if (modelName) if (modelName.startsWith("/") || modelName.includes(":") || modelName.startsWith("http")) model = modelName;
+		else {
+			const fePath = join(_dirname, "../../../cobien_FrontEnd/app", modelName);
+			const elPath = join(_dirname, "../public/models/piper", modelName);
+			if (fsSync.existsSync(fePath)) model = fePath;
+			else if (fsSync.existsSync(elPath)) model = elPath;
+			else model = fePath;
+		}
+		else if (lang === "es" && gender === "male") model = defaultModel;
+		else if (lang === "es" && gender === "female") model = join(_dirname, "../public/models/piper/es_ES-mls_10246-low.onnx");
+		else if (lang === "fr" && gender === "male") model = join(_dirname, "../public/models/piper/fr_FR-mls_1840-low.onnx");
+		else if (lang === "fr" && gender === "female") model = join(_dirname, "../public/models/piper/fr_FR-siwis-medium.onnx");
+		else model = defaultModel;
 		return {
 			bin,
 			model

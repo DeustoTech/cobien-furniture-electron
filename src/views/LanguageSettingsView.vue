@@ -17,7 +17,28 @@ function setLang(newLang: string) {
 
 function setGender(l: string, gender: 'male' | 'female') {
   voiceGenders.value[l] = gender
+  previewVoice(l, gender)
 }
+
+async function previewVoice(l: string, g: 'male' | 'female') {
+  const text = l === 'es' ? 'Hola' : 'Bonjour'
+  try {
+    const buffer = await (window as any).config.ttsSpeak(text, l, g)
+    if (buffer) {
+      const audioCtx = new AudioContext()
+      await audioCtx.resume()
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
+      const source = audioCtx.createBufferSource()
+      source.buffer = decoded
+      source.connect(audioCtx.destination)
+      source.start()
+    }
+  } catch (e) {
+    console.error('Preview error:', e)
+  }
+}
+
 </script>
 
 <template>
