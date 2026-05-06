@@ -26,12 +26,28 @@ export function listenWithVosk(language: string = 'es'): Promise<string | null> 
 
     python.on('close', (code) => {
       try {
-        const parsed = JSON.parse(result.trim())
+        const lines = result.trim().split('\n')
+        let lastJson = ''
+        for (let i = lines.length - 1; i >= 0; i--) {
+          if (lines[i].startsWith('{') && lines[i].endsWith('}')) {
+            lastJson = lines[i]
+            break
+          }
+        }
+        
+        if (!lastJson) {
+          console.error('ASR Bridge: No JSON found in output', result)
+          resolve(null)
+          return
+        }
+
+        const parsed = JSON.parse(lastJson)
         resolve(parsed.text || null)
       } catch (e) {
         console.error('ASR Bridge parse error:', e, result)
         resolve(null)
       }
     })
+
   })
 }

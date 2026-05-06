@@ -1004,7 +1004,18 @@ function listenWithVosk(language = "es") {
 		});
 		python.on("close", (code) => {
 			try {
-				resolve(JSON.parse(result.trim()).text || null);
+				const lines = result.trim().split("\n");
+				let lastJson = "";
+				for (let i = lines.length - 1; i >= 0; i--) if (lines[i].startsWith("{") && lines[i].endsWith("}")) {
+					lastJson = lines[i];
+					break;
+				}
+				if (!lastJson) {
+					console.error("ASR Bridge: No JSON found in output", result);
+					resolve(null);
+					return;
+				}
+				resolve(JSON.parse(lastJson).text || null);
 			} catch (e) {
 				console.error("ASR Bridge parse error:", e, result);
 				resolve(null);
