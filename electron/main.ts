@@ -25,8 +25,8 @@ let mainWindow: BrowserWindow | null = null
 
 function getPiperConfig() {
   try {
-    const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
-    const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
+    const configPath = join(_dirname, '../../../cobien/cobien_FrontEnd/app/config/config.default.json')
+    const localPath = join(_dirname, '../../../cobien/cobien_FrontEnd/app/config/config.local.json')
     
     const defaultData = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
     let localData = {}
@@ -54,7 +54,7 @@ function getPiperConfig() {
 }
 
 function setupIPC() {
-  const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
+  const configPath = join(_dirname, '../../../cobien/cobien_FrontEnd/app/config/config.default.json')
 
   ipcMain.handle('config:getWeather', async () => {
     try {
@@ -266,8 +266,8 @@ app.whenReady().then(() => {
   })
 
   if (mainWindow) {
-    const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
-    const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
+    const configPath = join(_dirname, '../../../cobien/cobien_FrontEnd/app/config/config.default.json')
+    const localPath = join(_dirname, '../../../cobien/cobien_FrontEnd/app/config/config.local.json')
     startBackendSync(mainWindow, configPath, localPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)

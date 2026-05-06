@@ -9,7 +9,7 @@ import * as fsSync from 'node:fs'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-const CONTACTS_DIR = join(_dirname, '../../../../cobien_FrontEnd/app/contacts')
+const CONTACTS_DIR = join(_dirname, '../../../../cobien/cobien_FrontEnd/app/contacts')
 const CONTACTS_FILE = join(CONTACTS_DIR, 'list_contacts.txt')
 const DEFAULT_IMG = join(CONTACTS_DIR, 'default_user.png')
 

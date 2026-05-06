@@ -508,7 +508,7 @@ async function getRandomJoke(lang = "es") {
 * contactsService.ts — Load contacts from legacy list_contacts.txt
 * and send videocall notifications via portal API.
 */
-var CONTACTS_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../../cobien_FrontEnd/app/contacts");
+var CONTACTS_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../../cobien/cobien_FrontEnd/app/contacts");
 var CONTACTS_FILE = join(CONTACTS_DIR, "list_contacts.txt");
 var DEFAULT_IMG = join(CONTACTS_DIR, "default_user.png");
 function normalizeName(name) {
@@ -916,8 +916,8 @@ function stopMqtt() {
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 function listenWithVosk(language = "es") {
-	const bridgePath = join(_dirname$1, "../../../../cobien_FrontEnd/app/asr_bridge.py");
-	const modelPath = language === "es" ? join(_dirname$1, "../../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
+	const bridgePath = join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/asr_bridge.py");
+	const modelPath = language === "es" ? join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
 		const python = spawn("python3", [bridgePath, modelPath]);
 		let result = "";
@@ -980,8 +980,8 @@ var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToP
 var mainWindow = null;
 function getPiperConfig() {
 	try {
-		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
-		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
+		const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.local.json");
 		const defaultData = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
 		let localData = {};
 		try {
@@ -1006,7 +1006,7 @@ function getPiperConfig() {
 	}
 }
 function setupIPC() {
-	const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+	const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
 	ipcMain.handle("config:getWeather", async () => {
 		try {
 			const data = JSON.parse(await promises.readFile(configPath, "utf-8"));
@@ -1183,8 +1183,8 @@ app.whenReady().then(() => {
 		if (mainWindow) mainWindow.webContents.send("reminder:fire", reminder);
 	});
 	if (mainWindow) {
-		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
-		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
+		const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.local.json");
 		startBackendSync(mainWindow, configPath, localPath);
 		startMqtt(mainWindow);
 	}

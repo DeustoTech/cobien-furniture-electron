@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url'
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
 export function listenWithVosk(language: string = 'es'): Promise<string | null> {
-  const bridgePath = join(_dirname, '../../../../cobien_FrontEnd/app/asr_bridge.py')
+  const bridgePath = join(_dirname, '../../../../cobien/cobien_FrontEnd/app/asr_bridge.py')
   const modelPath = language === 'es' 
-    ? join(_dirname, '../../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
-    : join(_dirname, '../../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22')
+    ? join(_dirname, '../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
+    : join(_dirname, '../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22')
 
   return new Promise((resolve) => {
     const python = spawn('python3', [bridgePath, modelPath])
