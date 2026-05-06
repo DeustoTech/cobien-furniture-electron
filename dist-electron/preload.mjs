@@ -51,6 +51,7 @@ electron.contextBridge.exposeInMainWorld("config", {
 	submitQuickReply: (id, text) => electron.ipcRenderer.invoke("board:reply", id, text),
 	ttsSpeak: (text) => electron.ipcRenderer.invoke("tts:speak", text),
 	sttListen: (language) => electron.ipcRenderer.invoke("stt:listen", language),
+	abortStt: () => electron.ipcRenderer.invoke("stt:abort"),
 	getSystemInfo: () => electron.ipcRenderer.invoke("config:getSystemInfo"),
 	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
 	restartApp: () => electron.ipcRenderer.invoke("app:restart"),

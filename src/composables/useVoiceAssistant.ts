@@ -62,9 +62,7 @@ export function useVoiceAssistant() {
       return null
     }
 
-  }
-
-  async function startAssistant() {
+    async function startAssistant() {
     if (isActive.value) return
     isActive.value = true
     
@@ -83,9 +81,10 @@ export function useVoiceAssistant() {
     const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
     
     await speak(randomGreeting)
-
+    if (!isActive.value) return // Aborted
     
     const command = await listen()
+    if (!isActive.value) return // Aborted
     
     if (!command) {
       message.value = 'No te he entendido. Inténtalo de nuevo.'
@@ -116,13 +115,17 @@ export function useVoiceAssistant() {
       router.push('/')
     } else if (text.includes('añadir') || text.includes('nuevo event') || text.includes('crear event')) {
       await speak('Dime el título del evento personal.')
+      if (!isActive.value) return
       const title = await listen()
+      if (!isActive.value) return
       if (!title) {
         await speak('No he entendido el título. Proceso cancelado.')
       } else {
         message.value = `Título: "${title}"`
         await speak(`Dime la descripción para el evento: ${title}.`)
+        if (!isActive.value) return
         const description = await listen()
+        if (!isActive.value) return
         const descFinal = description || 'Sin descripción'
         
         message.value = `Guardando: "${title}" - ${descFinal}`
@@ -148,8 +151,7 @@ export function useVoiceAssistant() {
           await speak('Error de conexión con la base de datos.')
         }
       }
-    }
- else {
+    } else {
       await speak('Lo siento, no sé cómo ayudarte con eso.')
     }
 
@@ -164,12 +166,29 @@ export function useVoiceAssistant() {
     } catch(e) {}
   }
 
+  function cancelAssistant() {
+    console.log('[ASR] Cancelling assistant flow')
+    isActive.value = false
+    step.value = 'idle'
+    try {
+      (window as any).config.abortStt()
+      // Force restart wake word listening
+      setTimeout(() => {
+        (window as any).config.restartWakeWord()
+      }, 500)
+    } catch(e) {
+      console.error('Cancel error:', e)
+    }
+  }
+
 
   return {
     isActive,
     message,
     audioLevel,
     step,
-    startAssistant
+    startAssistant,
+    cancelAssistant
   }
 }
+

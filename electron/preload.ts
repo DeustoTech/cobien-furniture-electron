@@ -59,6 +59,8 @@ contextBridge.exposeInMainWorld('config', {
   submitQuickReply: (id: string, text: string) => ipcRenderer.invoke('board:reply', id, text),
   ttsSpeak: (text: string) => ipcRenderer.invoke('tts:speak', text),
   sttListen: (language: string) => ipcRenderer.invoke('stt:listen', language),
+  abortStt: () => ipcRenderer.invoke('stt:abort'),
+
   getSystemInfo: () => ipcRenderer.invoke('config:getSystemInfo'),
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
   restartApp: () => ipcRenderer.invoke('app:restart'),

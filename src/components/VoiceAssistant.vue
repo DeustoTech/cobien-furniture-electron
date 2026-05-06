@@ -2,7 +2,7 @@
 import { useVoiceAssistant } from '../composables/useVoiceAssistant'
 import { defineExpose } from 'vue'
 
-const { isActive, message, step, audioLevel, startAssistant } = useVoiceAssistant()
+const { isActive, message, step, audioLevel, startAssistant, cancelAssistant } = useVoiceAssistant()
 
 
 defineExpose({
@@ -34,12 +34,13 @@ defineExpose({
 
 
         <div class="voice-footer">
-          <button class="close-voice-btn" @click="isActive = false">Cancelar</button>
+          <button class="close-voice-btn" @click="cancelAssistant">Cancelar</button>
         </div>
       </div>
     </div>
   </Teleport>
 </template>
+
 
 <style scoped>
 .voice-overlay {

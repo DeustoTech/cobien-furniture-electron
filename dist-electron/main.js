@@ -990,13 +990,23 @@ function stopMqtt() {
 //#endregion
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+var currentPythonProcess = null;
+function abortStt() {
+	if (currentPythonProcess) {
+		console.log("[ASR] Aborting current STT process");
+		currentPythonProcess.kill();
+		currentPythonProcess = null;
+	}
+}
 function listenWithVosk(language = "es", onLevel, onPartial) {
+	abortStt();
 	const bridgePath = join(_dirname$1, "../public/python/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
 		const pythonBin = join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3");
 		console.log(`[ASR] Spawning bridge: ${pythonBin} ${bridgePath} ${modelPath}`);
-		const python = spawn(pythonBin, [bridgePath, modelPath]);
+		currentPythonProcess = spawn(pythonBin, [bridgePath, modelPath]);
+		const python = currentPythonProcess;
 		let result = "";
 		python.stdout.on("data", (data) => {
 			const chunk = data.toString();
@@ -1311,6 +1321,9 @@ function setupIPC() {
 	});
 	ipcMain.handle("hardware:adjustBrightness", async (_, value) => {
 		return await adjustBrightness(value);
+	});
+	ipcMain.handle("stt:abort", () => {
+		abortStt();
 	});
 	ipcMain.handle("asr:restartWakeWord", () => {
 		if (mainWindow) startWakeWordDetection(mainWindow, _dirname);

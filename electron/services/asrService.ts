@@ -4,23 +4,35 @@ import { fileURLToPath } from 'node:url'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
+let currentPythonProcess: any = null
+
+export function abortStt() {
+  if (currentPythonProcess) {
+    console.log('[ASR] Aborting current STT process')
+    currentPythonProcess.kill()
+    currentPythonProcess = null
+  }
+}
+
 export function listenWithVosk(
   language: string = 'es',
   onLevel?: (level: number) => void,
   onPartial?: (text: string) => void
 ): Promise<string | null> {
+  // If there's a process running, abort it
+  abortStt()
 
   const bridgePath = join(_dirname, '../public/python/asr_bridge.py')
   const modelPath = language === 'es' 
     ? join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
     : join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22')
 
-
-
   return new Promise((resolve) => {
     const pythonBin = join(_dirname, '../../../cobien_FrontEnd/app/.venv/bin/python3')
     console.log(`[ASR] Spawning bridge: ${pythonBin} ${bridgePath} ${modelPath}`)
-    const python = spawn(pythonBin, [bridgePath, modelPath])
+    currentPythonProcess = spawn(pythonBin, [bridgePath, modelPath])
+    const python = currentPythonProcess
+
 
     let result = ''
     python.stdout.on('data', (data) => {
