@@ -68,7 +68,22 @@ export function useVoiceAssistant() {
     if (isActive.value) return
     isActive.value = true
     
-    await speak('Hola, ¿en qué puedo ayudarte?')
+    const greetings = [
+      "Hola, ¿en qué puedo ayudarte?",
+      "Dime, ¿qué necesitas?",
+      "Hola, estoy escuchando.",
+      "¿En qué puedo asistirte hoy?",
+      "Hola, ¿qué quieres que haga?",
+      "Dime, ¿cómo te puedo ayudar?",
+      "Estoy a tu disposición, dime.",
+      "Hola, ¿necesitas algo?",
+      "Te escucho, ¿qué deseas?",
+      "Hola, ¿qué tal? ¿En qué puedo ayudarte?"
+    ]
+    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
+    
+    await speak(randomGreeting)
+
     
     const command = await listen()
     
