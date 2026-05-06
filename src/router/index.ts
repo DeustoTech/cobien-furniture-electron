@@ -4,7 +4,7 @@ import WeatherView from '../views/WeatherView.vue'
 import EventsView from '../views/EventsView.vue'
 import BoardView from '../views/BoardView.vue'
 import CallView from '../views/CallView.vue'
-import JokesView from '../views/JokesView.vue'
+
 import SettingsWeatherView from '../views/SettingsWeatherView.vue'
 import AudioSettingsView from '../views/AudioSettingsView.vue'
 import AdminLoginView from '../views/AdminLogin.vue'

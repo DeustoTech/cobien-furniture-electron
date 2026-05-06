@@ -41,7 +41,10 @@
     "audio": "Audio",
     "logs": "Logs del sistema",
     "parameters": "Parámetros Launcher",
-    "enter_pin": "Introduce el código de acceso"
+    "enter_pin": "Introduce el código de acceso",
+    "engine": "Motor de Voz",
+    "engine_desc": "Selecciona el motor para generar la voz del asistente",
+    "piper": "Piper (Rápido/Local)"
   },
   "assistant": {
     "title": "Asistente CoBien",

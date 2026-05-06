@@ -4,7 +4,7 @@ import { useSettings } from '../composables/useSettings'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
-const { lang, voiceGenders } = useSettings()
+const { lang, ttsEngine } = useSettings()
 const { t } = useI18n()
 
 function goBack() {
@@ -13,17 +13,24 @@ function goBack() {
 
 function setLang(newLang: string) {
   lang.value = newLang
+  const gender = newLang === 'es' ? 'male' : 'female'
+  previewVoice(newLang, gender)
 }
 
-function setGender(l: string, gender: 'male' | 'female') {
-  voiceGenders.value[l] = gender
-  previewVoice(l, gender)
+
+function setEngine(engine: 'piper') {
+  ttsEngine.value = engine
 }
+
+
+
 
 async function previewVoice(l: string, g: 'male' | 'female') {
-  const text = l === 'es' ? 'Hola' : 'Bonjour'
+  const text = l === 'es' ? '¡Hola! Esta será mi voz' : 'Bonjour ! Ce sera ma voix'
+
   try {
-    const buffer = await (window as any).config.ttsSpeak(text, l, g)
+    const buffer = await (window as any).config.ttsSpeak(text, l, g, ttsEngine.value)
+
     if (buffer) {
       const audioCtx = new AudioContext()
       await audioCtx.resume()
@@ -55,7 +62,23 @@ async function previewVoice(l: string, g: 'male' | 'female') {
     </div>
 
     <div class="settings-content glass-panel">
+      <div class="engine-section">
+        <h3>{{ t('settings.engine') }}</h3>
+        <p class="section-desc">{{ t('settings.engine_desc') }}</p>
+        <div class="engine-grid">
+          <button 
+            class="engine-btn" 
+            :class="{ active: ttsEngine === 'piper' }"
+            @click="setEngine('piper')"
+          >
+            <div class="engine-name">{{ t('settings.piper') }}</div>
+            <div class="engine-tag">Fast & Local</div>
+          </button>
+        </div>
+      </div>
+
       <div class="lang-section">
+
         <h3>{{ t('settings.language') }}</h3>
         <div class="lang-grid">
           <button 
@@ -63,67 +86,21 @@ async function previewVoice(l: string, g: 'male' | 'female') {
             :class="{ active: lang === 'es' }"
             @click="setLang('es')"
           >
-            <span class="flag">🇪🇸</span> Spanish
+            Spanish
+
           </button>
           <button 
             class="lang-btn" 
             :class="{ active: lang === 'fr' }"
             @click="setLang('fr')"
           >
-            <span class="flag">🇫🇷</span> French
+            French
+
           </button>
         </div>
       </div>
 
-      <div class="voice-section">
-        <h3>Voz del Asistente</h3>
-        
-        <!-- Spanish Voice -->
-        <div class="voice-row">
-          <div class="voice-info">
-            <span class="flag">🇪🇸</span> Spanish Voice
-          </div>
-          <div class="voice-options">
-            <button 
-              class="opt-btn" 
-              :class="{ active: voiceGenders.es === 'male' }"
-              @click="setGender('es', 'male')"
-            >
-              Masculino
-            </button>
-            <button 
-              class="opt-btn" 
-              :class="{ active: voiceGenders.es === 'female' }"
-              @click="setGender('es', 'female')"
-            >
-              Femenino
-            </button>
-          </div>
-        </div>
 
-        <!-- French Voice -->
-        <div class="voice-row">
-          <div class="voice-info">
-            <span class="flag">🇫🇷</span> French Voice
-          </div>
-          <div class="voice-options">
-            <button 
-              class="opt-btn" 
-              :class="{ active: voiceGenders.fr === 'male' }"
-              @click="setGender('fr', 'male')"
-            >
-              Masculino
-            </button>
-            <button 
-              class="opt-btn" 
-              :class="{ active: voiceGenders.fr === 'female' }"
-              @click="setGender('fr', 'female')"
-            >
-              Femenino
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -131,7 +108,8 @@ async function previewVoice(l: string, g: 'male' | 'female') {
 <style scoped>
 .view-container {
   height: 100vh;
-  padding: 2rem 3rem;
+  padding: 4rem 3rem 2rem;
+
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -151,8 +129,9 @@ async function previewVoice(l: string, g: 'male' | 'female') {
 }
 
 .back-btn {
-  width: 4rem;
-  height: 4rem;
+  width: 5.5rem;
+  height: 5.5rem;
+
   background: white;
   border: 2px solid #000;
   border-radius: 16px;
@@ -162,7 +141,8 @@ async function previewVoice(l: string, g: 'male' | 'female') {
 }
 
 .back-btn img {
-  width: 2.5rem;
+  width: 3.5rem;
+
 }
 
 .settings-content {
@@ -176,9 +156,59 @@ async function previewVoice(l: string, g: 'male' | 'female') {
 
 h3 {
   font-size: 1.8rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   color: #333;
 }
+
+.section-desc {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.engine-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.engine-btn {
+  padding: 1.5rem;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.engine-btn.active {
+  border-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.engine-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.engine-tag {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.engine-btn.active .engine-tag {
+  color: var(--accent-blue);
+}
+
+.lang-section {
+  margin-top: 1rem;
+}
+
 
 .lang-grid {
   display: grid;

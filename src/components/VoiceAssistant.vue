@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useVoiceAssistant } from '../composables/useVoiceAssistant'
-import { defineExpose } from 'vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const { isActive, message, step, audioLevel, startAssistant, cancelAssistant } = useVoiceAssistant()
+
 
 
 defineExpose({
@@ -16,7 +18,8 @@ defineExpose({
       <div class="voice-card glass-panel">
         <div class="voice-header">
           <img src="/images/voice.png" alt="voz" class="voice-icon" />
-          <h2>Asistente CoBien</h2>
+          <h2>{{ t('assistant.title') }}</h2>
+
         </div>
 
         <div class="voice-body">
@@ -34,7 +37,8 @@ defineExpose({
 
 
         <div class="voice-footer">
-          <button class="close-voice-btn" @click="cancelAssistant">Cancelar</button>
+          <button class="close-voice-btn" @click="cancelAssistant">{{ t('common.cancel') }}</button>
+
         </div>
       </div>
     </div>

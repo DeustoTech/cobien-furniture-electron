@@ -92,22 +92,7 @@ function goBack() {
   router.push('/')
 }
 
-async function playTTS() {
-  try {
-    const text = `El tiempo en ${cityName.value} es de ${currentTemp.value} con ${currentCondition.value}. ${minTemp.value} y ${maxTemp.value}.`
-    const buffer = await (window as any).config.ttsSpeak(text)
-    if (buffer) {
-      const audioCtx = new AudioContext()
-      const decoded = await audioCtx.decodeAudioData(buffer)
-      const source = audioCtx.createBufferSource()
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      source.start()
-    }
-  } catch (e) {
-    console.error('TTS error:', e)
-  }
-}
+
 
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))

@@ -21,17 +21,20 @@ onMounted(async () => {
   }
 
   // Listen for manual trigger (from buttons)
-  document.addEventListener('start-voice-assistant', () => {
+  window.addEventListener('start-voice-assistant', () => {
     voiceAssistantRef.value?.startAssistant()
   })
+
 
   // Listen for voice wake word
   if ((window as any).config?.onWakeWordDetected) {
     (window as any).config.onWakeWordDetected(() => {
       console.log('[WAKE] UI Triggered by voice')
+      window.dispatchEvent(new Event('wake-word-detected'))
       voiceAssistantRef.value?.startAssistant()
     })
   }
+
 })
 </script>
 

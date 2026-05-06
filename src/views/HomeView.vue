@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 
 import VolumePopup from '../components/VolumePopup.vue'
 import BrightnessPopup from '../components/BrightnessPopup.vue'
-import VoiceAssistant from '../components/VoiceAssistant.vue'
+
 
 const router = useRouter()
 const { t } = useI18n()
@@ -92,8 +92,9 @@ function handleNavigation(route: string) {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+  window.dispatchEvent(new Event('start-voice-assistant'))
 }
+
 
 const isVolumePopupOpen = ref(false)
 const isBrightnessPopupOpen = ref(false)
@@ -232,7 +233,8 @@ async function openBrightnessPopup() {
   background-size: cover;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 2.5rem;
+  padding: 3rem 2.5rem 1.5rem;
+
   gap: 1.5rem;
   overflow: hidden;
 }
@@ -371,8 +373,9 @@ async function openBrightnessPopup() {
 }
 
 .action-box {
-  width: 4rem;
-  height: 4rem;
+  width: 5.5rem;
+  height: 5.5rem;
+
   background: white;
   border: 1.8px solid #000;
   border-radius: 12px;
@@ -384,8 +387,9 @@ async function openBrightnessPopup() {
 }
 
 .action-box img {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+
   object-fit: contain;
 }
 
@@ -397,7 +401,8 @@ async function openBrightnessPopup() {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 1rem 1.5rem;
+
   backdrop-filter: blur(8px);
 }
 
@@ -414,27 +419,34 @@ async function openBrightnessPopup() {
   background: white;
   border: 2.2px solid rgba(0, 0, 0, 0.35);
   border-radius: 22px;
-  display: flex;
-  align-items: center;
-  padding: 0 2rem;
-
-  gap: 2rem;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  min-height: 250px;
   cursor: pointer;
   transition: transform 0.15s;
 }
+
 
 .nav-card:active {
   transform: scale(0.98);
 }
 
 .nav-card-icon {
-  width: clamp(4rem, 8vw, 8rem);
-  height: clamp(4rem, 8vw, 8rem);
+  width: clamp(6rem, 12vw, 12rem);
+  height: clamp(6rem, 12vw, 12rem);
+
+
   object-fit: contain;
 }
 
 .nav-card-text {
-  font-size: clamp(2rem, 4vw, 4rem);
+  font-size: clamp(2.2rem, 4.5vw, 4.5rem);
+  line-height: 1.1;
+  text-align: center;
+
+
   font-weight: 700;
   color: #000;
 }
@@ -453,8 +465,9 @@ async function openBrightnessPopup() {
 }
 
 .control-box {
-  width: 5rem;
-  height: 5rem;
+  width: 5.5rem;
+  height: 5.5rem;
+
   background: white;
   border: 1.8px solid #000;
   border-radius: 14px;
@@ -465,8 +478,9 @@ async function openBrightnessPopup() {
 }
 
 .control-box img {
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 3.5rem;
+  height: 3.5rem;
+
   object-fit: contain;
 }
 

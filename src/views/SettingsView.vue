@@ -85,7 +85,8 @@ const settingsButtons = [
 <style scoped>
 .view-container {
   height: 100vh;
-  padding: 2.5rem 3rem;
+  padding: 4rem 3rem 2.5rem;
+
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -134,8 +135,9 @@ const settingsButtons = [
 .action-btn.exit { background: #d92e2e; }
 
 .back-btn {
-  width: 4rem;
-  height: 4rem;
+  width: 5.5rem;
+  height: 5.5rem;
+
   background: white;
   border: 2px solid #000;
   border-radius: 16px;
@@ -146,8 +148,9 @@ const settingsButtons = [
 }
 
 .back-btn img {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+
 }
 
 .settings-grid {

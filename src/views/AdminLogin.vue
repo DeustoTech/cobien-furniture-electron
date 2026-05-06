@@ -73,7 +73,8 @@ async function verify() {
 }
 
 .login-card {
-  width: 450px;
+  width: 500px;
+
   padding: 3rem;
   border-radius: 40px;
   display: flex;
@@ -127,7 +128,8 @@ async function verify() {
 }
 
 .key {
-  height: 70px;
+  height: 85px;
+
   background: white;
   border: 1.5px solid #eee;
   border-radius: 20px;

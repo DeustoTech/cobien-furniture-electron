@@ -18,7 +18,8 @@ export function useIdle(timeoutSec: number = 60) {
     }
   }
 
-  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'wake-word-detected']
+
 
   onMounted(() => {
     resetTimer()

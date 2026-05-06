@@ -73,10 +73,7 @@ function getPiperConfig(lang = 'es', gender = 'male') {
       }
     } else {
       // Fallback based on hardcoded defaults if not in config
-      if (lang === 'es' && gender === 'male') model = defaultModel
-      else if (lang === 'es' && gender === 'female') model = join(_dirname, '../public/models/piper/es_ES-mls_10246-low.onnx')
-      else if (lang === 'fr' && gender === 'male') model = join(_dirname, '../public/models/piper/fr_FR-mls_1840-low.onnx')
-      else if (lang === 'fr' && gender === 'female') model = join(_dirname, '../public/models/piper/fr_FR-siwis-medium.onnx')
+      if (lang === 'fr') model = join(_dirname, '../public/models/piper/fr_FR-siwis-medium.onnx')
       else model = defaultModel
     }
     
@@ -224,20 +221,32 @@ function setupIPC() {
     app.quit()
   })
 
-  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'male') => {
-    console.log(`[TTS] Speaking (${lang}/${gender}): "${text}"`)
-    const { bin, model } = getPiperConfig(lang, gender)
+  let currentTtsProcess: any = null
 
-    console.log(`[TTS] Config: bin=${bin}, model=${model}`)
+  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'male', engine = 'piper') => {
+    console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`)
+
+    if (currentTtsProcess) {
+      try { currentTtsProcess.kill() } catch(e) {}
+      currentTtsProcess = null
+    }
+    
+    const tempWav = join(os.tmpdir(), `tts_${Date.now()}.wav`)
+
+
+    // XTTS engine removed. Defaulting to Piper implementation.
+    // The engine selection UI and logic now only supports 'piper'.
+
+    // Default: Piper
+    const { bin, model } = getPiperConfig(lang, gender)
+    console.log(`[TTS] Piper Config: bin=${bin}, model=${model}`)
     
     if (!model) {
       console.error('TTS: No Piper model configured.')
       return null
     }
 
-    const tempWav = join(os.tmpdir(), `tts_${Date.now()}.wav`)
-
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const child = execFile(bin, ['--model', model, '--output_file', tempWav], async (error, stdout, stderr) => {
         if (error) {
           console.error('[TTS] Piper exec error:', error, stderr)
@@ -259,8 +268,8 @@ function setupIPC() {
       child.stdin?.write(text)
       child.stdin?.end()
     })
-
   })
+
 
   ipcMain.handle('stt:listen', async (event, language: string) => {
     return await listenWithVosk(language, (level) => {

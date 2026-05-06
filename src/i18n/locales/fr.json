@@ -40,7 +40,10 @@
     "audio": "Audio",
     "logs": "Journaux système",
     "parameters": "Paramètres Lanceur",
-    "enter_pin": "Entrez le code d'accès"
+    "enter_pin": "Entrez le code d'accès",
+    "engine": "Moteur Vocal",
+    "engine_desc": "Sélectionnez le moteur pour générer la voix de l'assistant",
+    "piper": "Piper (Rapide/Local)"
   },
   "assistant": {
     "title": "Assistant CoBien",

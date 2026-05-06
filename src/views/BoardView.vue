@@ -251,7 +251,8 @@ function goBack() {
 <style scoped>
 .view-container {
   height: 100vh;
-  padding: 2.5rem 3rem;
+  padding: 4rem 3rem 2.5rem;
+
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -302,8 +303,9 @@ function goBack() {
 }
 
 .back-btn, .voice-button-small {
-  width: 4rem;
-  height: 4rem;
+  width: 5.5rem;
+  height: 5.5rem;
+
   background: white;
   border: 2px solid #000;
   border-radius: 12px;
@@ -314,8 +316,9 @@ function goBack() {
 }
 
 .back-btn img, .voice-button-small img {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+
 }
 
 /* Board Wrapper & Navigation */

@@ -9,7 +9,8 @@ import { useSettings } from './useSettings'
 export function useVoiceAssistant() {
   const router = useRouter()
   const { locale, t } = useI18n()
-  const { voiceGenders } = useSettings()
+  const { ttsEngine, voiceGenders } = useSettings()
+
 
   
   const isActive = ref(false)
@@ -25,9 +26,11 @@ export function useVoiceAssistant() {
     step.value = 'speaking'
     message.value = text
     try {
-      const lang = locale.value
+      const lang = locale.value as string
+      const engine = ttsEngine.value
       const gender = voiceGenders.value[lang] || 'male'
-      const buffer = await (window as any).config.ttsSpeak(text, lang, gender)
+      const buffer = await (window as any).config.ttsSpeak(text, lang, gender, engine)
+
 
       if (buffer) {
         const audioCtx = new AudioContext()
@@ -81,7 +84,7 @@ export function useVoiceAssistant() {
     if (isActive.value) return
     isActive.value = true
     
-    const greetings = (t('assistant.greetings', { returnObjects: true }) as string[]) || [
+    const greetings = (t('assistant.greetings', { returnObjects: true }) as unknown as string[]) || [
       "Hola, ¿en qué puedo ayudarte?",
       "Dime, ¿qué necesitas?"
     ]

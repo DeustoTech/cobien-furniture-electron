@@ -17,21 +17,7 @@ async function fetchJoke() {
   }
 }
 
-async function speakJoke() {
-  try {
-    const buffer = await (window as any).config.ttsSpeak(currentJoke.value)
-    if (buffer) {
-      const audioCtx = new AudioContext()
-      const decoded = await audioCtx.decodeAudioData(buffer)
-      const source = audioCtx.createBufferSource()
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      source.start()
-    }
-  } catch (e) {
-    console.error('TTS error:', e)
-  }
-}
+
 
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
