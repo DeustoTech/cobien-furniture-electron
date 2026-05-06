@@ -21,6 +21,10 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
 electron.contextBridge.exposeInMainWorld("tts", { speak: (text) => electron.ipcRenderer.invoke("tts:speak", text) });
 electron.contextBridge.exposeInMainWorld("config", {
 	getWeather: () => electron.ipcRenderer.invoke("config:getWeather"),
-	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload)
+	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload),
+	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
+	onNotification: (callback) => {
+		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));
+	}
 });
 //#endregion

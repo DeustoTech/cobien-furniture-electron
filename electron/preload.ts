@@ -26,5 +26,9 @@ contextBridge.exposeInMainWorld('tts', {
 
 contextBridge.exposeInMainWorld('config', {
   getWeather: () => ipcRenderer.invoke('config:getWeather'),
-  saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload)
+  saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
+  reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
+  onNotification: (callback: (payload: any) => void) => {
+    ipcRenderer.on('backend:notification', (_event, data) => callback(data))
+  }
 })

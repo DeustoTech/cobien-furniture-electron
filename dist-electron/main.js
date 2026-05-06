@@ -5,6 +5,78 @@ import { execFile } from "node:child_process";
 import * as fsSync from "node:fs";
 import { promises } from "node:fs";
 import * as os from "node:os";
+import { promises as promises$1 } from "fs";
+//#region electron/services/backendSync.ts
+var currentScreen = "home";
+async function startBackendSync(mainWindow, configPath, localConfigPath) {
+	ipcMain.handle("app:route-changed", (event, routeName) => {
+		currentScreen = routeName;
+	});
+	setInterval(() => sendHeartbeat(configPath, localConfigPath), 6e4);
+	setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), 5e3);
+	sendHeartbeat(configPath, localConfigPath);
+	pollNotifications(mainWindow, configPath, localConfigPath);
+}
+async function getConfig(configPath, localConfigPath) {
+	try {
+		const defaultData = JSON.parse(await promises$1.readFile(configPath, "utf-8"));
+		let localData = {};
+		try {
+			localData = JSON.parse(await promises$1.readFile(localConfigPath, "utf-8"));
+		} catch (e) {}
+		return {
+			...defaultData.services,
+			...localData.services
+		};
+	} catch (e) {
+		return {};
+	}
+}
+async function sendHeartbeat(configPath, localConfigPath) {
+	const services = await getConfig(configPath, localConfigPath);
+	const url = services.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/";
+	const apiKey = services.notify_api_key || "";
+	try {
+		const res = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-API-KEY": apiKey
+			},
+			body: JSON.stringify({
+				device_id: "CoBien6",
+				screen: currentScreen,
+				sent_at: (/* @__PURE__ */ new Date()).toISOString(),
+				software_version: "Electron-v1.0"
+			})
+		});
+		if (!res.ok) console.warn(`[HEARTBEAT] Failed with status: ${res.status}`);
+		else console.log(`[HEARTBEAT] Sent (Screen: ${currentScreen})`);
+	} catch (e) {
+		console.error(`[HEARTBEAT] Network error`);
+	}
+}
+async function pollNotifications(mainWindow, configPath, localConfigPath) {
+	const services = await getConfig(configPath, localConfigPath);
+	const url = services.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/";
+	const apiKey = services.notify_api_key || "";
+	try {
+		const res = await fetch(`${url}?device_id=CoBien6`, {
+			method: "GET",
+			headers: { "X-API-KEY": apiKey }
+		});
+		if (res.ok) {
+			const notifications = (await res.json()).notifications || [];
+			if (notifications.length > 0) {
+				console.log(`[POLL] Received ${notifications.length} notifications`);
+				notifications.forEach((notif) => {
+					mainWindow.webContents.send("backend:notification", notif);
+				});
+			}
+		}
+	} catch (e) {}
+}
+//#endregion
 //#region electron/main.ts
 var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 var mainWindow = null;
@@ -120,6 +192,11 @@ function createWindow() {
 app.whenReady().then(() => {
 	setupIPC();
 	createWindow();
+	if (mainWindow) {
+		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
+		startBackendSync(mainWindow, configPath, localPath);
+	}
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});

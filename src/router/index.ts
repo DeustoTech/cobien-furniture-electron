@@ -42,4 +42,10 @@ const router = createRouter({
   ]
 })
 
+router.afterEach((to) => {
+  if ((window as any).config && (window as any).config.reportRoute) {
+    (window as any).config.reportRoute(to.name || to.path)
+  }
+})
+
 export default router

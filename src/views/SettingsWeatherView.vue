@@ -33,11 +33,13 @@ async function loadConfig() {
 
 async function saveConfig() {
   try {
-    await (window as any).config.saveWeather({
+    // Strip Vue Proxies by deep cloning before sending via IPC
+    const payload = JSON.parse(JSON.stringify({
       catalog: catalog.value,
       active: activeCities.value,
       primary: primaryCity.value
-    })
+    }))
+    await (window as any).config.saveWeather(payload)
   } catch (e) {
     console.error('Failed to save config', e)
   }

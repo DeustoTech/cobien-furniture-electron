@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
+import { startBackendSync } from './services/backendSync'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -130,6 +131,12 @@ function createWindow() {
 app.whenReady().then(() => {
   setupIPC()
   createWindow()
+
+  if (mainWindow) {
+    const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
+    const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
+    startBackendSync(mainWindow, configPath, localPath)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
