@@ -32,7 +32,7 @@ async function downloadAndCacheImage(url: string, prefix: string, id: string): P
     // check if it already exists
     try {
       await fs.access(targetPath)
-      return `file://${targetPath}`
+      return `cobien-media://${targetPath}`
     } catch {
       // file doesn't exist, proceed to download
     }
@@ -53,7 +53,7 @@ async function downloadAndCacheImage(url: string, prefix: string, id: string): P
       const arrayBuffer = await res.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
       await fs.writeFile(targetPath, buffer)
-      return `file://${targetPath}`
+      return `cobien-media://${targetPath}`
     }
     return ''
   } catch(e) {

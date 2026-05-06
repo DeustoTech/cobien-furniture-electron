@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 dotenv.config()
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, net } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
@@ -8,7 +8,7 @@ import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
-import { getEvents } from './services/eventsMongo'
+import { getEvents, addPersonalEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -80,6 +80,13 @@ function setupIPC() {
     return await getEvents(configPath)
   })
 
+  ipcMain.handle('events:addPersonal', async (_, payload: any) => {
+    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const location = data.settings?.device_location || 'Bilbao'
+    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    return await addPersonalEvent({ ...payload, location, deviceId })
+  })
+
   ipcMain.handle('board:fetch', async () => await fetchMessages())
   ipcMain.handle('board:delete', async (_, id) => await deleteMessage(id))
   ipcMain.handle('board:read', async (_, id) => await markMessageRead(id))
@@ -149,6 +156,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('cobien-media', (request) => {
+    const url = request.url.replace('cobien-media://', '')
+    return net.fetch('file://' + url)
+  })
+
   setupIPC()
   createWindow()
 

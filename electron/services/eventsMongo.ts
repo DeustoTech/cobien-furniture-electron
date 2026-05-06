@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, ObjectId } from 'mongodb'
 import { promises as fs } from 'node:fs'
 
 let cachedClient: MongoClient | null = null
@@ -87,5 +87,44 @@ export async function getEvents(configPath: string) {
   } catch(e) {
     console.error('[EVENTS] Error fetching from MongoDB:', e)
     return []
+  }
+}
+
+export async function addPersonalEvent(payload: {
+  date: string      // DD-MM-YYYY
+  title: string
+  description: string
+  deviceId: string
+  location: string
+}) {
+  try {
+    const client = await getClient()
+    const db = client.db('LabasAppDB')
+    const collection = db.collection('eventos')
+
+    // Convert DD-MM-YYYY to a JS Date for the stored field
+    const [day, month, year] = payload.date.split('-').map(Number)
+    const dateObj = new Date(year, month - 1, day)
+
+    const doc = {
+      _id: new ObjectId(),
+      title: payload.title,
+      description: payload.description,
+      date: payload.date,
+      fecha_inicio: dateObj,
+      audience: 'device',
+      target_device: payload.deviceId,
+      location: payload.location,
+      all_day: true,
+      created_by: payload.deviceId,
+      created_at: new Date()
+    }
+
+    await collection.insertOne(doc)
+    console.log(`[EVENTS] Personal event added: ${payload.title} on ${payload.date}`)
+    return true
+  } catch(e) {
+    console.error('[EVENTS] Error adding personal event:', e)
+    return false
   }
 }

@@ -10,6 +10,129 @@ const selectedDate = ref<Date | null>(null)
 const selectedEvents = ref<any[]>([])
 const isModalOpen = ref(false)
 
+// ── Voice flow state ──────────────────────────────────────────────
+const voiceFlowActive = ref(false)
+const voiceFlowMessage = ref('')
+const voiceFlowStep = ref<'idle' | 'listening' | 'speaking'>('idle')
+const voiceTargetDay = ref<string>('') // DD-MM-YYYY
+
+async function speak(text: string) {
+  voiceFlowStep.value = 'speaking'
+  voiceFlowMessage.value = text
+  try {
+    const buffer = await (window as any).config.ttsSpeak(text)
+    if (buffer) {
+      const audioCtx = new AudioContext()
+      const decoded = await audioCtx.decodeAudioData(buffer)
+      const source = audioCtx.createBufferSource()
+      source.buffer = decoded
+      source.connect(audioCtx.destination)
+      await new Promise<void>(resolve => {
+        source.onended = () => resolve()
+        source.start()
+      })
+    } else {
+      // Fallback: small delay to simulate speech
+      await new Promise(r => setTimeout(r, 1500))
+    }
+  } catch(e) {
+    await new Promise(r => setTimeout(r, 1500))
+  }
+}
+
+function listenWithWebSpeech(timeoutMs = 12000): Promise<string | null> {
+  return new Promise((resolve) => {
+    voiceFlowStep.value = 'listening'
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      resolve(null)
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    
+    const timer = setTimeout(() => {
+      recognition.stop()
+      resolve(null)
+    }, timeoutMs)
+
+    recognition.onresult = (event: any) => {
+      clearTimeout(timer)
+      const text = event.results[0][0].transcript
+      resolve(text || null)
+    }
+    recognition.onerror = () => {
+      clearTimeout(timer)
+      resolve(null)
+    }
+    recognition.start()
+  })
+}
+
+async function startVoiceAddFlow(dateStr: string) {
+  voiceTargetDay.value = dateStr
+  voiceFlowActive.value = true
+  voiceFlowStep.value = 'speaking'
+
+  // Step 1: Ask for title
+  await speak('Dime el título del evento personal')
+  voiceFlowMessage.value = '🎤 Di el título del evento...'
+  const title = await listenWithWebSpeech()
+
+  if (!title) {
+    voiceFlowMessage.value = '❌ No he entendido el título. Inténtalo de nuevo.'
+    await speak('No he entendido el título.')
+    await new Promise(r => setTimeout(r, 1500))
+    voiceFlowActive.value = false
+    voiceFlowStep.value = 'idle'
+    return
+  }
+
+  voiceFlowMessage.value = `✅ Título: "${title}"\n\nAhora di la descripción...`
+  await speak(`Título detectado: ${title}. Ahora dime la descripción del evento.`)
+
+  // Step 2: Ask for description
+  voiceFlowMessage.value = '🎤 Di la descripción del evento...'
+  const description = await listenWithWebSpeech()
+  const descFinal = description?.trim() || 'Sin descripción'
+
+  voiceFlowMessage.value = `✅ Descripción: "${descFinal}"\n\nGuardando evento...`
+  await speak(`Descripción detectada: ${descFinal}. Guardando evento.`)
+
+  // Step 3: Save
+  try {
+    const ok = await (window as any).config.addPersonalEvent({
+      date: dateStr,
+      title: title.trim(),
+      description: descFinal
+    })
+    if (ok) {
+      voiceFlowMessage.value = '🎉 ¡Evento guardado correctamente!'
+      await speak('Evento añadido correctamente.')
+      // Reload events
+      const data = await (window as any).config.getEvents()
+      eventsList.value = data
+    } else {
+      voiceFlowMessage.value = '❌ Ha ocurrido un error al guardar el evento.'
+      await speak('Ha ocurrido un error al añadir el evento.')
+    }
+  } catch(e) {
+    voiceFlowMessage.value = '❌ Error de conexión con la base de datos.'
+  }
+
+  await new Promise(r => setTimeout(r, 1800))
+  voiceFlowActive.value = false
+  voiceFlowStep.value = 'idle'
+}
+
+function cancelVoiceFlow() {
+  voiceFlowActive.value = false
+  voiceFlowStep.value = 'idle'
+}
+// ──────────────────────────────────────────────────────────────────
+
 onMounted(async () => {
   try {
     const data = await (window as any).config.getEvents()
@@ -33,32 +156,25 @@ const firstDayOfWeek = computed(() => {
   const year = currentDate.value.getFullYear()
   const month = currentDate.value.getMonth()
   let day = new Date(year, month, 1).getDay()
-  // Adjust so Monday is 0, Sunday is 6
   return day === 0 ? 6 : day - 1
 })
 
 const calendarDays = computed(() => {
   const days = []
-  // Empty slots before the 1st
   for (let i = 0; i < firstDayOfWeek.value; i++) {
-    days.push({ empty: true, date: 0, events: [] })
+    days.push({ empty: true, date: 0, events: [], dateStr: '' })
   }
-  
   const year = currentDate.value.getFullYear()
   const month = currentDate.value.getMonth() + 1
   const monthStr = month.toString().padStart(2, '0')
-  
-  // Actual days
   for (let i = 1; i <= daysInMonth.value; i++) {
     const dayStr = i.toString().padStart(2, '0')
     const dateToMatch = `${dayStr}-${monthStr}-${year}`
-    
-    // Find events matching this day
     const dayEvents = eventsList.value.filter(e => e.date === dateToMatch)
-    
     days.push({ 
       empty: false, 
       date: i, 
+      dateStr: dateToMatch,
       events: dayEvents,
       hasEvent: dayEvents.length > 0 
     })
@@ -79,8 +195,7 @@ function nextMonth() {
 }
 
 function openDayModal(day: any) {
-  if (day.empty || !day.hasEvent) return
-  
+  if (day.empty) return
   const year = currentDate.value.getFullYear()
   const month = currentDate.value.getMonth()
   selectedDate.value = new Date(year, month, day.date)
@@ -155,7 +270,18 @@ function goBack() {
       <div class="modal-content glass-panel">
         <div class="modal-header">
           <h2 class="modal-date">{{ selectedDate?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) }}</h2>
-          <button class="close-btn" @click="closeModal">✕</button>
+          <div class="modal-actions">
+            <button 
+              v-if="selectedDate"
+              class="voice-add-btn"
+              @click="closeModal(); startVoiceAddFlow((() => { const d = selectedDate!; const day = d.getDate().toString().padStart(2,'0'); const m = (d.getMonth()+1).toString().padStart(2,'0'); return `${day}-${m}-${d.getFullYear()}` })()); "
+            >
+              <img src="/images/plus.png" alt="+" class="btn-icon" />
+              <img src="/images/voice.png" alt="voz" class="btn-icon" />
+              <span>Añadir evento</span>
+            </button>
+            <button class="close-btn" @click="closeModal">✕</button>
+          </div>
         </div>
         
         <div class="events-list">
@@ -169,9 +295,51 @@ function goBack() {
               <span v-if="evt.audience === 'device'" class="event-badge">Privado</span>
             </div>
           </div>
+          <div v-if="selectedEvents.length === 0" class="no-events-hint">No hay eventos este día todavía.</div>
+        </div>
+
+        <!-- Shortcut: tap anywhere on empty day also shows add button -->
+        <div class="modal-footer-add">
+          <button 
+            v-if="selectedDate"
+            class="voice-add-btn-full"
+            @click="closeModal(); startVoiceAddFlow((() => { const d = selectedDate!; const day = d.getDate().toString().padStart(2,'0'); const m = (d.getMonth()+1).toString().padStart(2,'0'); return `${day}-${m}-${d.getFullYear()}` })()); "
+          >
+            <img src="/images/plus.png" alt="+" class="btn-icon" />
+            <img src="/images/voice.png" alt="voz" class="btn-icon" />
+            <span>Añadir evento personal por voz</span>
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- Day click with no events: open modal to allow adding -->
+    <!-- Any day (even empty) is clickable now for voice add -->
+    <div v-if="!isModalOpen" style="display:none" />
+
+    <!-- ── Voice Flow Modal ───────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="voiceFlowActive" class="voice-modal-overlay">
+        <div class="voice-modal-card">
+          <div class="voice-modal-header">
+            <img src="/images/voice.png" alt="voz" class="voice-icon-large" />
+            <h2>Asistente de Voz</h2>
+          </div>
+
+          <div class="voice-modal-body">
+            <div class="voice-status-indicator" :class="voiceFlowStep">
+              <div v-if="voiceFlowStep === 'listening'" class="pulse-ring" />
+              <div v-if="voiceFlowStep === 'speaking'" class="wave-icon">🔊</div>
+            </div>
+            <p class="voice-message">{{ voiceFlowMessage }}</p>
+          </div>
+
+          <div class="voice-modal-footer">
+            <button class="cancel-voice-btn" @click="cancelVoiceFlow">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -445,5 +613,195 @@ function goBack() {
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: bold;
+}
+
+/* Modal actions row */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Voice add button in modal header */
+.voice-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #1E90FF, #0066cc);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 12px rgba(30, 144, 255, 0.4);
+}
+
+.voice-add-btn:active {
+  transform: scale(0.95);
+}
+
+/* Voice add full-width button at modal bottom */
+.modal-footer-add {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  padding-top: 1rem;
+}
+
+.voice-add-btn-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  background: linear-gradient(135deg, #2196F3, #1565C0);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 1rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.5);
+}
+
+.voice-add-btn-full:active {
+  transform: scale(0.97);
+}
+
+.btn-icon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.no-events-hint {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  padding: 2rem 0;
+}
+
+/* ── Voice Flow Modal ─────────────────────────────────────────────── */
+.voice-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.voice-modal-card {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 28px;
+  padding: 3rem 3.5rem;
+  width: min(650px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  animation: voiceModalIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes voiceModalIn {
+  from { transform: scale(0.85) translateY(30px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.voice-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  padding-bottom: 1.5rem;
+}
+
+.voice-modal-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.voice-icon-large {
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+}
+
+.voice-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 120px;
+}
+
+.voice-status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wave-icon {
+  font-size: 3rem;
+  animation: wavePulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes wavePulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.3); }
+}
+
+/* Listening pulse ring */
+.pulse-ring {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #1E90FF;
+  border-radius: 50%;
+  animation: pulseRing 1s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.voice-message {
+  font-size: 1.5rem;
+  color: #222;
+  text-align: center;
+  line-height: 1.6;
+  white-space: pre-line;
+  font-weight: 500;
+  margin: 0;
+}
+
+.voice-modal-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.cancel-voice-btn {
+  background: rgba(0,0,0,0.07);
+  border: none;
+  border-radius: 14px;
+  padding: 0.8rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancel-voice-btn:hover {
+  background: rgba(255, 59, 48, 0.15);
+  color: #FF3B30;
 }
 </style>

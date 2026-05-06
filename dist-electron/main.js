@@ -1,12 +1,12 @@
 import dotenv from "dotenv";
-import { BrowserWindow, app, ipcMain } from "electron";
+import { BrowserWindow, app, ipcMain, net, protocol } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import * as fsSync from "node:fs";
 import { createWriteStream, promises } from "node:fs";
 import * as os from "node:os";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 //#region electron/services/backendSync.ts
 var currentScreen = "home";
 async function startBackendSync(mainWindow, configPath, localConfigPath) {
@@ -133,6 +133,32 @@ async function getEvents(configPath) {
 		return [];
 	}
 }
+async function addPersonalEvent(payload) {
+	try {
+		const collection = (await getClient()).db("LabasAppDB").collection("eventos");
+		const [day, month, year] = payload.date.split("-").map(Number);
+		const dateObj = new Date(year, month - 1, day);
+		const doc = {
+			_id: new ObjectId(),
+			title: payload.title,
+			description: payload.description,
+			date: payload.date,
+			fecha_inicio: dateObj,
+			audience: "device",
+			target_device: payload.deviceId,
+			location: payload.location,
+			all_day: true,
+			created_by: payload.deviceId,
+			created_at: /* @__PURE__ */ new Date()
+		};
+		await collection.insertOne(doc);
+		console.log(`[EVENTS] Personal event added: ${payload.title} on ${payload.date}`);
+		return true;
+	} catch (e) {
+		console.error("[EVENTS] Error adding personal event:", e);
+		return false;
+	}
+}
 //#endregion
 //#region electron/services/boardService.ts
 var CACHE_DIR_NAME = "board_cache";
@@ -154,7 +180,7 @@ async function downloadAndCacheImage(url, prefix, id) {
 		const targetPath = join(dir, `${prefix}_${id}${ext}`);
 		try {
 			await promises.access(targetPath);
-			return `file://${targetPath}`;
+			return `cobien-media://${targetPath}`;
 		} catch {}
 		const headers = {};
 		if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
@@ -165,7 +191,7 @@ async function downloadAndCacheImage(url, prefix, id) {
 			const arrayBuffer = await res.arrayBuffer();
 			const buffer = Buffer.from(arrayBuffer);
 			await promises.writeFile(targetPath, buffer);
-			return `file://${targetPath}`;
+			return `cobien-media://${targetPath}`;
 		}
 		return "";
 	} catch (e) {
@@ -320,6 +346,15 @@ function setupIPC() {
 	ipcMain.handle("events:get", async () => {
 		return await getEvents(configPath);
 	});
+	ipcMain.handle("events:addPersonal", async (_, payload) => {
+		const location = JSON.parse(await promises.readFile(configPath, "utf-8")).settings?.device_location || "Bilbao";
+		const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+		return await addPersonalEvent({
+			...payload,
+			location,
+			deviceId
+		});
+	});
 	ipcMain.handle("board:fetch", async () => await fetchMessages());
 	ipcMain.handle("board:delete", async (_, id) => await deleteMessage(id));
 	ipcMain.handle("board:read", async (_, id) => await markMessageRead(id));
@@ -381,6 +416,10 @@ function createWindow() {
 	} else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
 }
 app.whenReady().then(() => {
+	protocol.handle("cobien-media", (request) => {
+		const url = request.url.replace("cobien-media://", "");
+		return net.fetch("file://" + url);
+	});
 	setupIPC();
 	createWindow();
 	if (mainWindow) {

@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('config', {
   getWeather: () => ipcRenderer.invoke('config:getWeather'),
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
   getEvents: () => ipcRenderer.invoke('events:get'),
+  addPersonalEvent: (payload: any) => ipcRenderer.invoke('events:addPersonal', payload),
   getBoardMessages: () => ipcRenderer.invoke('board:fetch'),
   deleteBoardMessage: (id: string) => ipcRenderer.invoke('board:delete', id),
   markMessageRead: (id: string) => ipcRenderer.invoke('board:read', id),
