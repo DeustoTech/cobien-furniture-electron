@@ -38,7 +38,13 @@ contextBridge.exposeInMainWorld('config', {
   syncContacts: () => ipcRenderer.invoke('contacts:sync'),
   openCall: (userName: string) => ipcRenderer.invoke('contacts:openCall', userName),
 
+  onAsrPartial: (callback: (text: string) => void) => {
+    const subscription = (_event: any, text: string) => callback(text)
+    ipcRenderer.on('asr:partial', subscription)
+    return () => ipcRenderer.removeListener('asr:partial', subscription)
+  },
   onAsrLevel: (callback: (level: number) => void) => {
+
     const subscription = (_event: any, level: number) => callback(level)
     ipcRenderer.on('asr:level', subscription)
     return () => ipcRenderer.removeListener('asr:level', subscription)

@@ -33,24 +33,28 @@ export function useVoiceAssistant() {
 
   async function listen(): Promise<string | null> {
     step.value = 'listening'
-    message.value = '🎤 Escuchando...'
-    
-    // Subscribe to audio levels
+    // Subscribe to audio levels and partial results
     const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
       audioLevel.value = lvl
+    })
+    const stopPartial = (window as any).config.onAsrPartial((text: string) => {
+      if (text) message.value = `🎤 ${text}...`
     })
 
     try {
       const text = await (window as any).config.sttListen('es')
       stopLevel()
+      stopPartial()
       audioLevel.value = 0
       return text || null
     } catch (e) {
       stopLevel()
+      stopPartial()
       audioLevel.value = 0
       console.error('Global STT Error:', e)
       return null
     }
+
   }
 
   async function startAssistant() {

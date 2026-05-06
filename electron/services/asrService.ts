@@ -6,8 +6,10 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLT
 
 export function listenWithVosk(
   language: string = 'es',
-  onLevel?: (level: number) => void
+  onLevel?: (level: number) => void,
+  onPartial?: (text: string) => void
 ): Promise<string | null> {
+
   const bridgePath = join(_dirname, '../../../cobien_FrontEnd/app/asr_bridge.py')
   const modelPath = language === 'es' 
     ? join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
@@ -22,18 +24,27 @@ export function listenWithVosk(
       const chunk = data.toString()
       result += chunk
       
-      // Look for level updates in the stream
+      // Look for level and partial updates in the stream
       const lines = chunk.split('\n')
       for (const line of lines) {
-        if (line.includes('"level":')) {
+        const trimmed = line.trim()
+        if (trimmed.includes('"level":')) {
           try {
-            const parsed = JSON.parse(line.trim())
+            const parsed = JSON.parse(trimmed)
             if (typeof parsed.level === 'number' && onLevel) {
               onLevel(parsed.level)
             }
           } catch(e) {}
+        } else if (trimmed.includes('"partial":')) {
+          try {
+            const parsed = JSON.parse(trimmed)
+            if (typeof parsed.partial === 'string' && onPartial) {
+              onPartial(parsed.partial)
+            }
+          } catch(e) {}
         }
       }
+
     })
 
     python.stderr.on('data', (data) => {

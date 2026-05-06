@@ -226,8 +226,11 @@ function setupIPC() {
   ipcMain.handle('stt:listen', async (event, language: string) => {
     return await listenWithVosk(language, (level) => {
       event.sender.send('asr:level', level)
+    }, (partial) => {
+      event.sender.send('asr:partial', partial)
     })
   })
+
 
 
   ipcMain.handle('hardware:adjustVolume', async (_, value: number, isAbsolute = false) => {

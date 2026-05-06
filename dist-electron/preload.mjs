@@ -32,6 +32,11 @@ electron.contextBridge.exposeInMainWorld("config", {
 	requestCall: (userName) => electron.ipcRenderer.invoke("contacts:requestCall", userName),
 	syncContacts: () => electron.ipcRenderer.invoke("contacts:sync"),
 	openCall: (userName) => electron.ipcRenderer.invoke("contacts:openCall", userName),
+	onAsrPartial: (callback) => {
+		const subscription = (_event, text) => callback(text);
+		electron.ipcRenderer.on("asr:partial", subscription);
+		return () => electron.ipcRenderer.removeListener("asr:partial", subscription);
+	},
 	onAsrLevel: (callback) => {
 		const subscription = (_event, level) => callback(level);
 		electron.ipcRenderer.on("asr:level", subscription);

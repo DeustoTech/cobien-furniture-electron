@@ -990,7 +990,7 @@ function stopMqtt() {
 //#endregion
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-function listenWithVosk(language = "es", onLevel) {
+function listenWithVosk(language = "es", onLevel, onPartial) {
 	const bridgePath = join(_dirname$1, "../../../cobien_FrontEnd/app/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
@@ -1000,10 +1000,17 @@ function listenWithVosk(language = "es", onLevel) {
 			const chunk = data.toString();
 			result += chunk;
 			const lines = chunk.split("\n");
-			for (const line of lines) if (line.includes("\"level\":")) try {
-				const parsed = JSON.parse(line.trim());
-				if (typeof parsed.level === "number" && onLevel) onLevel(parsed.level);
-			} catch (e) {}
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (trimmed.includes("\"level\":")) try {
+					const parsed = JSON.parse(trimmed);
+					if (typeof parsed.level === "number" && onLevel) onLevel(parsed.level);
+				} catch (e) {}
+				else if (trimmed.includes("\"partial\":")) try {
+					const parsed = JSON.parse(trimmed);
+					if (typeof parsed.partial === "string" && onPartial) onPartial(parsed.partial);
+				} catch (e) {}
+			}
 		});
 		python.stderr.on("data", (data) => {
 			console.error(`ASR Bridge Error: ${data}`);
@@ -1247,6 +1254,8 @@ function setupIPC() {
 	ipcMain.handle("stt:listen", async (event, language) => {
 		return await listenWithVosk(language, (level) => {
 			event.sender.send("asr:level", level);
+		}, (partial) => {
+			event.sender.send("asr:partial", partial);
 		});
 	});
 	ipcMain.handle("hardware:adjustVolume", async (_, value, isAbsolute = false) => {
