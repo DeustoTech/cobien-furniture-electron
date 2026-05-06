@@ -160,28 +160,31 @@ async function openBrightnessPopup() {
       </div>
     </div>
 
-    <!-- Navigation Grid 2x2 -->
-    <div class="nav-grid">
-      <button class="nav-card" @click="handleNavigation('/weather')">
-        <img src="/images/parcial.png" class="nav-card-icon" alt="Tiempo" />
-        <span class="nav-card-text">Tiempo</span>
-      </button>
+    <!-- Navigation Grid 2x2 with Translucent Background -->
+    <div class="nav-section">
+      <div class="nav-grid">
+        <button class="nav-card" @click="handleNavigation('/weather')">
+          <img src="/images/parcial.png" class="nav-card-icon" alt="Tiempo" />
+          <span class="nav-card-text">Tiempo</span>
+        </button>
 
-      <button class="nav-card" @click="handleNavigation('/events')">
-        <img src="/images/eventos.png" class="nav-card-icon" alt="Eventos" />
-        <span class="nav-card-text">Eventos</span>
-      </button>
+        <button class="nav-card" @click="handleNavigation('/events')">
+          <img src="/images/eventos.png" class="nav-card-icon" alt="Eventos" />
+          <span class="nav-card-text">Eventos</span>
+        </button>
 
-      <button class="nav-card" @click="handleNavigation('/board')">
-        <img src="/images/pizarra.png" class="nav-card-icon" alt="Pizarra" />
-        <span class="nav-card-text">Pizarra</span>
-      </button>
+        <button class="nav-card" @click="handleNavigation('/board')">
+          <img src="/images/pizarra.png" class="nav-card-icon" alt="Pizarra" />
+          <span class="nav-card-text">Pizarra</span>
+        </button>
 
-      <button class="nav-card" @click="handleNavigation('/call')">
-        <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
-        <span class="nav-card-text">Llámame</span>
-      </button>
+        <button class="nav-card" @click="handleNavigation('/call')">
+          <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
+          <span class="nav-card-text">Llámame</span>
+        </button>
+      </div>
     </div>
+
 
     <!-- Footer Controls -->
     <div class="footer-controls">
@@ -233,8 +236,8 @@ async function openBrightnessPopup() {
 .header-panel {
   width: 100%;
   background: rgba(255, 255, 255, 0.72);
-  border: 1.8px solid #000;
   border-radius: 28px;
+
   display: flex;
   height: 285px;
   padding: 1.2rem 1.8rem;
@@ -382,21 +385,35 @@ async function openBrightnessPopup() {
 }
 
 /* --- Nav Grid --- */
-.nav-grid {
+.nav-section {
   flex: 1;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  backdrop-filter: blur(8px);
+}
+
+.nav-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 1.5rem;
+  grid-template-rows: auto auto;
+  gap: 2rem;
 }
+
 
 .nav-card {
   background: white;
-  border: 2.5px solid rgba(0, 0, 0, 0.85);
-  border-radius: 30px;
+  border: 2.2px solid rgba(0, 0, 0, 0.35);
+  border-radius: 22px;
   display: flex;
   align-items: center;
+  height: 190px;
   padding: 0 3.5rem;
+
   gap: 3rem;
   cursor: pointer;
   transition: transform 0.15s;
