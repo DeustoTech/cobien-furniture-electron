@@ -31,14 +31,16 @@ export function startWakeWordDetection(mainWindow: BrowserWindow, _dirname: stri
   })
 
   wakeWordProcess.stderr?.on('data', (data) => {
-    // console.error(`[WAKE] Error: ${data}`)
+    console.error(`[WAKE] Bridge Error: ${data}`)
   })
 
-  wakeWordProcess.on('close', () => {
+  wakeWordProcess.on('close', (code) => {
+    console.log(`[WAKE] Bridge closed with code ${code}`)
     isListening = false
     wakeWordProcess = null
   })
 }
+
 
 export function stopWakeWordDetection() {
   if (wakeWordProcess) {

@@ -1104,8 +1104,11 @@ function startWakeWordDetection(mainWindow, _dirname) {
 			break;
 		}
 	});
-	wakeWordProcess.stderr?.on("data", (data) => {});
-	wakeWordProcess.on("close", () => {
+	wakeWordProcess.stderr?.on("data", (data) => {
+		console.error(`[WAKE] Bridge Error: ${data}`);
+	});
+	wakeWordProcess.on("close", (code) => {
+		console.log(`[WAKE] Bridge closed with code ${code}`);
 		isListening = false;
 		wakeWordProcess = null;
 	});

@@ -30,7 +30,9 @@ def main():
         
         if is_wake_mode:
             # Loop indefinitely for wake word
+            sys.stderr.write(f"[ASR] Entering wake-word mode for '{wake_word}'\n")
             while True:
+
                 found = recognizer.wait_for_keyword(wake_word)
                 if found:
                     print(json.dumps({"wake_word_detected": wake_word}))
