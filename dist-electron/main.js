@@ -990,14 +990,20 @@ function stopMqtt() {
 //#endregion
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-function listenWithVosk(language = "es") {
+function listenWithVosk(language = "es", onLevel) {
 	const bridgePath = join(_dirname$1, "../../../cobien_FrontEnd/app/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
 		const python = spawn(join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3"), [bridgePath, modelPath]);
 		let result = "";
 		python.stdout.on("data", (data) => {
-			result += data.toString();
+			const chunk = data.toString();
+			result += chunk;
+			const lines = chunk.split("\n");
+			for (const line of lines) if (line.includes("\"level\":")) try {
+				const parsed = JSON.parse(line.trim());
+				if (typeof parsed.level === "number" && onLevel) onLevel(parsed.level);
+			} catch (e) {}
 		});
 		python.stderr.on("data", (data) => {
 			console.error(`ASR Bridge Error: ${data}`);
@@ -1006,12 +1012,15 @@ function listenWithVosk(language = "es") {
 			try {
 				const lines = result.trim().split("\n");
 				let lastJson = "";
-				for (let i = lines.length - 1; i >= 0; i--) if (lines[i].startsWith("{") && lines[i].endsWith("}")) {
-					lastJson = lines[i];
-					break;
+				for (let i = lines.length - 1; i >= 0; i--) {
+					const line = lines[i].trim();
+					if (line.startsWith("{") && line.endsWith("}") && line.includes("\"text\":")) {
+						lastJson = line;
+						break;
+					}
 				}
 				if (!lastJson) {
-					console.error("ASR Bridge: No JSON found in output", result);
+					console.error("ASR Bridge: No text JSON found in output", result);
 					resolve(null);
 					return;
 				}
@@ -1235,8 +1244,10 @@ function setupIPC() {
 			child.stdin?.end();
 		});
 	});
-	ipcMain.handle("stt:listen", async (_, language) => {
-		return await listenWithVosk(language);
+	ipcMain.handle("stt:listen", async (event, language) => {
+		return await listenWithVosk(language, (level) => {
+			event.sender.send("asr:level", level);
+		});
 	});
 	ipcMain.handle("hardware:adjustVolume", async (_, value, isAbsolute = false) => {
 		return await adjustVolume(value, isAbsolute);

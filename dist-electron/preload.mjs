@@ -32,6 +32,11 @@ electron.contextBridge.exposeInMainWorld("config", {
 	requestCall: (userName) => electron.ipcRenderer.invoke("contacts:requestCall", userName),
 	syncContacts: () => electron.ipcRenderer.invoke("contacts:sync"),
 	openCall: (userName) => electron.ipcRenderer.invoke("contacts:openCall", userName),
+	onAsrLevel: (callback) => {
+		const subscription = (_event, level) => callback(level);
+		electron.ipcRenderer.on("asr:level", subscription);
+		return () => electron.ipcRenderer.removeListener("asr:level", subscription);
+	},
 	addReminder: (message, isoDatetime) => electron.ipcRenderer.invoke("reminders:add", message, isoDatetime),
 	listReminders: () => electron.ipcRenderer.invoke("reminders:list"),
 	deleteReminder: (id) => electron.ipcRenderer.invoke("reminders:delete", id),

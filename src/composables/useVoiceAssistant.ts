@@ -5,6 +5,7 @@ export function useVoiceAssistant() {
   const router = useRouter()
   const isActive = ref(false)
   const message = ref('')
+  const audioLevel = ref(0)
   const step = ref<'idle' | 'listening' | 'speaking'>('idle')
 
   async function speak(text: string) {
@@ -33,10 +34,20 @@ export function useVoiceAssistant() {
   async function listen(): Promise<string | null> {
     step.value = 'listening'
     message.value = '🎤 Escuchando...'
+    
+    // Subscribe to audio levels
+    const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
+      audioLevel.value = lvl
+    })
+
     try {
       const text = await (window as any).config.sttListen('es')
+      stopLevel()
+      audioLevel.value = 0
       return text || null
     } catch (e) {
+      stopLevel()
+      audioLevel.value = 0
       console.error('Global STT Error:', e)
       return null
     }
@@ -125,7 +136,10 @@ export function useVoiceAssistant() {
   return {
     isActive,
     message,
+    audioLevel,
     step,
     startAssistant
   }
+}
+
 }

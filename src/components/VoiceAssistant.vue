@@ -2,7 +2,8 @@
 import { useVoiceAssistant } from '../composables/useVoiceAssistant'
 import { defineExpose } from 'vue'
 
-const { isActive, message, step, startAssistant } = useVoiceAssistant()
+const { isActive, message, step, audioLevel, startAssistant } = useVoiceAssistant()
+
 
 defineExpose({
   startAssistant
@@ -20,12 +21,17 @@ defineExpose({
 
         <div class="voice-body">
           <div class="status-indicator" :class="step">
-            <div v-if="step === 'listening'" class="pulse-ring" />
+            <div v-if="step === 'listening'" class="visualizer">
+              <div v-for="i in 5" :key="i" class="bar" :style="{ transform: `scaleY(${0.2 + audioLevel * 2})` }"></div>
+            </div>
             <div v-if="step === 'speaking'" class="wave-icon">🔊</div>
             <div v-if="step === 'idle'" class="idle-icon">⏳</div>
           </div>
-          <p class="voice-text">{{ message }}</p>
+          <div class="transcription-container">
+            <p class="voice-text">{{ message }}</p>
+          </div>
         </div>
+
 
         <div class="voice-footer">
           <button class="close-voice-btn" @click="isActive = false">Cancelar</button>
@@ -131,6 +137,34 @@ defineExpose({
   from { transform: translateY(0); }
   to { transform: translateY(-10px); }
 }
+
+.visualizer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+}
+
+.bar {
+  width: 12px;
+  height: 100%;
+  background: #007aff;
+  border-radius: 6px;
+  transition: transform 0.1s ease;
+  transform-origin: center;
+}
+
+.transcription-container {
+  background: rgba(0,0,0,0.03);
+  padding: 1.5rem 2rem;
+  border-radius: 20px;
+  width: 100%;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 .close-voice-btn {
   width: 100%;

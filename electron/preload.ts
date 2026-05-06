@@ -38,7 +38,13 @@ contextBridge.exposeInMainWorld('config', {
   syncContacts: () => ipcRenderer.invoke('contacts:sync'),
   openCall: (userName: string) => ipcRenderer.invoke('contacts:openCall', userName),
 
+  onAsrLevel: (callback: (level: number) => void) => {
+    const subscription = (_event: any, level: number) => callback(level)
+    ipcRenderer.on('asr:level', subscription)
+    return () => ipcRenderer.removeListener('asr:level', subscription)
+  },
   addReminder: (message: string, isoDatetime: string) => ipcRenderer.invoke('reminders:add', message, isoDatetime),
+
   listReminders: () => ipcRenderer.invoke('reminders:list'),
   deleteReminder: (id: string) => ipcRenderer.invoke('reminders:delete', id),
   getBoardMessages: () => ipcRenderer.invoke('board:fetch'),

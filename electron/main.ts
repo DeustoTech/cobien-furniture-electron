@@ -223,9 +223,12 @@ function setupIPC() {
     })
   })
 
-  ipcMain.handle('stt:listen', async (_, language: string) => {
-    return await listenWithVosk(language)
+  ipcMain.handle('stt:listen', async (event, language: string) => {
+    return await listenWithVosk(language, (level) => {
+      event.sender.send('asr:level', level)
+    })
   })
+
 
   ipcMain.handle('hardware:adjustVolume', async (_, value: number, isAbsolute = false) => {
     return await adjustVolume(value, isAbsolute)

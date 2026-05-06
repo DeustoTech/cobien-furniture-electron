@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-export function listenWithVosk(language: string = 'es'): Promise<string | null> {
+export function listenWithVosk(
+  language: string = 'es',
+  onLevel?: (level: number) => void
+): Promise<string | null> {
   const bridgePath = join(_dirname, '../../../cobien_FrontEnd/app/asr_bridge.py')
   const modelPath = language === 'es' 
     ? join(_dirname, '../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42')
@@ -14,10 +17,23 @@ export function listenWithVosk(language: string = 'es'): Promise<string | null> 
     const pythonBin = join(_dirname, '../../../cobien_FrontEnd/app/.venv/bin/python3')
     const python = spawn(pythonBin, [bridgePath, modelPath])
 
-    
     let result = ''
     python.stdout.on('data', (data) => {
-      result += data.toString()
+      const chunk = data.toString()
+      result += chunk
+      
+      // Look for level updates in the stream
+      const lines = chunk.split('\n')
+      for (const line of lines) {
+        if (line.includes('"level":')) {
+          try {
+            const parsed = JSON.parse(line.trim())
+            if (typeof parsed.level === 'number' && onLevel) {
+              onLevel(parsed.level)
+            }
+          } catch(e) {}
+        }
+      }
     })
 
     python.stderr.on('data', (data) => {
@@ -29,14 +45,15 @@ export function listenWithVosk(language: string = 'es'): Promise<string | null> 
         const lines = result.trim().split('\n')
         let lastJson = ''
         for (let i = lines.length - 1; i >= 0; i--) {
-          if (lines[i].startsWith('{') && lines[i].endsWith('}')) {
-            lastJson = lines[i]
+          const line = lines[i].trim()
+          if (line.startsWith('{') && line.endsWith('}') && line.includes('"text":')) {
+            lastJson = line
             break
           }
         }
         
         if (!lastJson) {
-          console.error('ASR Bridge: No JSON found in output', result)
+          console.error('ASR Bridge: No text JSON found in output', result)
           resolve(null)
           return
         }
@@ -51,3 +68,4 @@ export function listenWithVosk(language: string = 'es'): Promise<string | null> 
 
   })
 }
+
