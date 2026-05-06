@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const currentDate = ref(new Date())
+const eventsList = ref<any[]>([])
+const selectedDate = ref<Date | null>(null)
+const selectedEvents = ref<any[]>([])
+const isModalOpen = ref(false)
+
+onMounted(async () => {
+  try {
+    const data = await (window as any).config.getEvents()
+    eventsList.value = data
+  } catch (e) {
+    console.error('Error loading events:', e)
+  }
+})
 
 const currentMonthName = computed(() => {
   return currentDate.value.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
@@ -28,11 +41,27 @@ const calendarDays = computed(() => {
   const days = []
   // Empty slots before the 1st
   for (let i = 0; i < firstDayOfWeek.value; i++) {
-    days.push({ empty: true, date: 0 })
+    days.push({ empty: true, date: 0, events: [] })
   }
+  
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth() + 1
+  const monthStr = month.toString().padStart(2, '0')
+  
   // Actual days
   for (let i = 1; i <= daysInMonth.value; i++) {
-    days.push({ empty: false, date: i, hasEvent: i === 6 || i === 15 }) // Dummy events
+    const dayStr = i.toString().padStart(2, '0')
+    const dateToMatch = `${dayStr}-${monthStr}-${year}`
+    
+    // Find events matching this day
+    const dayEvents = eventsList.value.filter(e => e.date === dateToMatch)
+    
+    days.push({ 
+      empty: false, 
+      date: i, 
+      events: dayEvents,
+      hasEvent: dayEvents.length > 0 
+    })
   }
   return days
 })
@@ -47,6 +76,20 @@ function nextMonth() {
   const newDate = new Date(currentDate.value)
   newDate.setMonth(newDate.getMonth() + 1)
   currentDate.value = newDate
+}
+
+function openDayModal(day: any) {
+  if (day.empty || !day.hasEvent) return
+  
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth()
+  selectedDate.value = new Date(year, month, day.date)
+  selectedEvents.value = day.events
+  isModalOpen.value = true
+}
+
+function closeModal() {
+  isModalOpen.value = false
 }
 
 function goBack() {
@@ -89,11 +132,43 @@ function goBack() {
           v-for="(day, index) in calendarDays" 
           :key="index"
           :class="['day', { empty: day.empty, active: day.hasEvent }]"
+          @click="openDayModal(day)"
         >
           <template v-if="!day.empty">
-            {{ day.date }}
-            <span v-if="day.hasEvent" class="event-dot"></span>
+            <span class="day-num">{{ day.date }}</span>
+            <div v-if="day.hasEvent" class="dots-container">
+              <span 
+                v-for="(evt, i) in day.events.slice(0,3)" 
+                :key="i" 
+                class="event-dot"
+                :style="{ backgroundColor: evt.color }"
+              ></span>
+              <span v-if="day.events.length > 3" class="more-dots">+</span>
+            </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Detail Modal -->
+    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content glass-panel">
+        <div class="modal-header">
+          <h2 class="modal-date">{{ selectedDate?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) }}</h2>
+          <button class="close-btn" @click="closeModal">✕</button>
+        </div>
+        
+        <div class="events-list">
+          <div v-for="evt in selectedEvents" :key="evt.id" class="event-card" :style="{ borderLeftColor: evt.color }">
+            <div class="event-time" v-if="!evt.all_day">{{ evt.start_time }} <span v-if="evt.end_time">- {{ evt.end_time }}</span></div>
+            <div class="event-time" v-else>Todo el día</div>
+            <h3 class="event-title">{{ evt.title }}</h3>
+            <p class="event-desc">{{ evt.description }}</p>
+            <div class="event-footer">
+              <span class="event-loc">📍 {{ evt.location }}</span>
+              <span v-if="evt.audience === 'device'" class="event-badge">Privado</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -160,6 +235,8 @@ function goBack() {
   padding: 2rem;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 .calendar-header {
@@ -210,11 +287,14 @@ function goBack() {
   align-items: center;
   justify-content: flex-start;
   padding-top: 1rem;
-  font-size: 2rem;
-  font-weight: 600;
   cursor: pointer;
   position: relative;
   transition: background 0.2s;
+}
+
+.day-num {
+  font-size: 2rem;
+  font-weight: 600;
 }
 
 .day:not(.empty):hover {
@@ -234,11 +314,136 @@ function goBack() {
   box-shadow: var(--shadow-md);
 }
 
+.dots-container {
+  display: flex;
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+
 .event-dot {
   width: 10px;
   height: 10px;
-  background-color: var(--accent-red);
   border-radius: 50%;
-  margin-top: 0.5rem;
+}
+
+.more-dots {
+  font-size: 10px;
+  line-height: 10px;
+  color: var(--text-secondary);
+  font-weight: bold;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 20px;
+}
+
+.modal-content {
+  width: 70%;
+  max-height: 80%;
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  animation: modalIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalIn {
+  from { transform: translateY(20px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  padding-bottom: 1rem;
+}
+
+.modal-date {
+  font-size: 2rem;
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--accent-red);
+}
+
+.events-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-right: 1rem;
+}
+
+.event-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border-left: 6px solid #1E90FF;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.event-time {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.event-title {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--text-primary);
+}
+
+.event-desc {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.event-footer {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+.event-badge {
+  background: #FF3B30;
+  color: white;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
 }
 </style>

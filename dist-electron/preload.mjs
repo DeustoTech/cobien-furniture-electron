@@ -22,6 +22,7 @@ electron.contextBridge.exposeInMainWorld("tts", { speak: (text) => electron.ipcR
 electron.contextBridge.exposeInMainWorld("config", {
 	getWeather: () => electron.ipcRenderer.invoke("config:getWeather"),
 	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload),
+	getEvents: () => electron.ipcRenderer.invoke("events:get"),
 	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
 	onNotification: (callback) => {
 		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));

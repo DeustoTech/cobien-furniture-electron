@@ -30,6 +30,29 @@ onMounted(async () => {
   } catch(e) {
     cityName.value = 'Desconocida'
   }
+
+  try {
+    const events = await (window as any).config.getEvents()
+    if (events && events.length > 0) {
+      // Find the first event from today onwards
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      
+      const futureEvents = events.filter((e: any) => {
+        if (!e.date) return false
+        const [d, m, y] = e.date.split('-')
+        const evtDate = new Date(parseInt(y), parseInt(m)-1, parseInt(d))
+        return evtDate >= today
+      })
+      
+      if (futureEvents.length > 0) {
+        const next = futureEvents[0]
+        nextEvent.value = `${next.title} - ${next.date.substring(0,5)}`
+      }
+    }
+  } catch(e) {
+    console.error('Failed loading events for home:', e)
+  }
 })
 
 onUnmounted(() => {

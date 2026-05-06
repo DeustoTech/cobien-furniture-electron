@@ -7,6 +7,7 @@ import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
+import { getEvents } from './services/eventsMongo'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -71,6 +72,10 @@ function setupIPC() {
       console.error('Error saving config:', e)
       return false
     }
+  })
+
+  ipcMain.handle('events:get', async () => {
+    return await getEvents(configPath)
   })
 
   ipcMain.handle('tts:speak', async (event, text: string) => {
