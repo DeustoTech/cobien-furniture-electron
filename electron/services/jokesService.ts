@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-const JOKES_DIR = join(_dirname, '../../../../cobien/cobien_FrontEnd/app/data/jokes')
+const JOKES_DIR = join(_dirname, '../../../cobien_FrontEnd/app/data/jokes')
 
 
 let cachedJokes: string[] = []

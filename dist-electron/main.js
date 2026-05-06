@@ -467,7 +467,7 @@ async function fetchWeatherBundle(cityName) {
 /**
 * jokesService.ts — Load and serve random jokes from legacy cobien_FrontEnd dataset
 */
-var JOKES_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../../cobien/cobien_FrontEnd/app/data/jokes");
+var JOKES_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../cobien_FrontEnd/app/data/jokes");
 var cachedJokes = [];
 var lastJoke = "";
 async function loadJokes(lang = "es") {
@@ -508,7 +508,7 @@ async function getRandomJoke(lang = "es") {
 * contactsService.ts — Load contacts from legacy list_contacts.txt
 * and send videocall notifications via portal API.
 */
-var CONTACTS_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../../cobien/cobien_FrontEnd/app/contacts");
+var CONTACTS_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../cobien_FrontEnd/app/contacts");
 var CONTACTS_FILE = join(CONTACTS_DIR, "list_contacts.txt");
 var DEFAULT_IMG = join(CONTACTS_DIR, "default_user.png");
 function normalizeName(name) {
@@ -576,7 +576,7 @@ async function downloadImage(url, baseName, apiKey) {
 async function syncContacts(deviceId, apiKey, baseUrl) {
 	try {
 		if (!fsSync.existsSync(CONTACTS_DIR)) fsSync.mkdirSync(CONTACTS_DIR, { recursive: true });
-		const url = `${baseUrl.rstrip("/")}/pizarra/api/contacts/?device_id=${deviceId}`;
+		const url = `${rstrip(baseUrl, "/")}/pizarra/api/contacts/?device_id=${deviceId}`;
 		const res = await fetch(url, {
 			headers: { "X-Api-Key": apiKey },
 			signal: AbortSignal.timeout(1e4)
@@ -597,7 +597,7 @@ async function syncContacts(deviceId, apiKey, baseUrl) {
 			});
 			if (imageUrl) {
 				let fullUrl = imageUrl;
-				if (imageUrl.startsWith("/")) fullUrl = baseUrl.rstrip("/") + "/" + imageUrl.lstrip("/");
+				if (imageUrl.startsWith("/")) fullUrl = rstrip(baseUrl, "/") + "/" + lstrip(imageUrl, "/");
 				if (await downloadImage(fullUrl, normalizeName(displayName), apiKey)) imagesDownloaded++;
 			}
 		}
@@ -616,16 +616,16 @@ async function syncContacts(deviceId, apiKey, baseUrl) {
 		};
 	}
 }
-if (!String.prototype.rstrip) String.prototype.rstrip = function(chars) {
-	let res = this;
+function rstrip(str, chars) {
+	let res = str;
 	while (res.endsWith(chars)) res = res.slice(0, -chars.length);
 	return res;
-};
-if (!String.prototype.lstrip) String.prototype.lstrip = function(chars) {
-	let res = this;
+}
+function lstrip(str, chars) {
+	let res = str;
 	while (res.startsWith(chars)) res = res.slice(chars.length);
 	return res;
-};
+}
 async function requestCall(userName, deviceId, apiKey, baseUrl) {
 	if (!userName || !/^[A-Za-z0-9_.-]+$/.test(userName)) return {
 		ok: false,
@@ -643,7 +643,7 @@ async function requestCall(userName, deviceId, apiKey, baseUrl) {
 		detail: "Device ID no configurado"
 	};
 	try {
-		const url = `${baseUrl.rstrip("/")}/pizarra/api/notify/`;
+		const url = `${rstrip(baseUrl, "/")}/pizarra/api/notify/`;
 		const res = await fetch(url, {
 			method: "POST",
 			headers: {
@@ -991,10 +991,10 @@ function stopMqtt() {
 //#region electron/services/asrService.ts
 var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 function listenWithVosk(language = "es") {
-	const bridgePath = join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/asr_bridge.py");
-	const modelPath = language === "es" ? join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
+	const bridgePath = join(_dirname$1, "../../../cobien_FrontEnd/app/asr_bridge.py");
+	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
-		const python = spawn(join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/.venv/bin/python3"), [bridgePath, modelPath]);
+		const python = spawn(join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3"), [bridgePath, modelPath]);
 		let result = "";
 		python.stdout.on("data", (data) => {
 			result += data.toString();
@@ -1053,10 +1053,11 @@ async function adjustBrightness(value) {
 dotenv.config();
 var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 var mainWindow = null;
+var configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
 function getPiperConfig() {
 	try {
-		const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
-		const localPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.local.json");
+		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
 		const defaultData = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
 		let localData = {};
 		try {
@@ -1081,7 +1082,6 @@ function getPiperConfig() {
 	}
 }
 function setupIPC() {
-	const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
 	ipcMain.handle("config:getWeather", async () => {
 		try {
 			const data = JSON.parse(await promises.readFile(configPath, "utf-8"));
@@ -1265,8 +1265,8 @@ app.whenReady().then(() => {
 		if (mainWindow) mainWindow.webContents.send("reminder:fire", reminder);
 	});
 	if (mainWindow) {
-		const configPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.default.json");
-		const localPath = join(_dirname, "../../../cobien/cobien_FrontEnd/app/config/config.local.json");
+		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
 		startBackendSync(mainWindow, configPath, localPath);
 		startMqtt(mainWindow);
 	}

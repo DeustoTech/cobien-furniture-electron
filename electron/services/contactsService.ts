@@ -9,7 +9,7 @@ import * as fsSync from 'node:fs'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-const CONTACTS_DIR = join(_dirname, '../../../../cobien/cobien_FrontEnd/app/contacts')
+const CONTACTS_DIR = join(_dirname, '../../../cobien_FrontEnd/app/contacts')
 const CONTACTS_FILE = join(CONTACTS_DIR, 'list_contacts.txt')
 const DEFAULT_IMG = join(CONTACTS_DIR, 'default_user.png')
 
@@ -94,7 +94,8 @@ export async function syncContacts(
       fsSync.mkdirSync(CONTACTS_DIR, { recursive: true })
     }
 
-    const url = `${baseUrl.rstrip('/')}/pizarra/api/contacts/?device_id=${deviceId}`
+    const url = `${rstrip(baseUrl, '/')}/pizarra/api/contacts/?device_id=${deviceId}`
+
     const res = await fetch(url, {
       headers: { 'X-Api-Key': apiKey },
       signal: AbortSignal.timeout(10000),
@@ -120,7 +121,8 @@ export async function syncContacts(
       if (imageUrl) {
         let fullUrl = imageUrl
         if (imageUrl.startsWith('/')) {
-          fullUrl = baseUrl.rstrip('/') + '/' + imageUrl.lstrip('/')
+          fullUrl = rstrip(baseUrl, '/') + '/' + lstrip(imageUrl, '/')
+
         }
         const downloaded = await downloadImage(fullUrl, normalizeName(displayName), apiKey)
         if (downloaded) imagesDownloaded++
@@ -139,27 +141,18 @@ export async function syncContacts(
   }
 }
 
-// Add string helpers for URL manipulation if not present
-declare global {
-  interface String {
-    rstrip(chars: string): string
-    lstrip(chars: string): string
-  }
+function rstrip(str: string, chars: string): string {
+  let res = str
+  while (res.endsWith(chars)) res = res.slice(0, -chars.length)
+  return res
 }
-if (!String.prototype.rstrip) {
-  String.prototype.rstrip = function(chars) {
-    let res = this
-    while (res.endsWith(chars)) res = res.slice(0, -chars.length)
-    return res
-  }
+
+function lstrip(str: string, chars: string): string {
+  let res = str
+  while (res.startsWith(chars)) res = res.slice(chars.length)
+  return res
 }
-if (!String.prototype.lstrip) {
-  String.prototype.lstrip = function(chars) {
-    let res = this
-    while (res.startsWith(chars)) res = res.slice(chars.length)
-    return res
-  }
-}
+
 
 export async function requestCall(
   userName: string,
@@ -174,7 +167,8 @@ export async function requestCall(
   if (!deviceId) return { ok: false, code: 'VC-DEVICE', detail: 'Device ID no configurado' }
 
   try {
-    const url = `${baseUrl.rstrip('/')}/pizarra/api/notify/`
+    const url = `${rstrip(baseUrl, '/')}/pizarra/api/notify/`
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
