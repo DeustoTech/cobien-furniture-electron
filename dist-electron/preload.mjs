@@ -57,6 +57,12 @@ electron.contextBridge.exposeInMainWorld("config", {
 	exitApp: () => electron.ipcRenderer.invoke("app:exit"),
 	adjustVolume: (value, isAbsolute = false) => electron.ipcRenderer.invoke("hardware:adjustVolume", value, isAbsolute),
 	adjustBrightness: (value) => electron.ipcRenderer.invoke("hardware:adjustBrightness", value),
+	onWakeWordDetected: (callback) => {
+		const subscription = () => callback();
+		electron.ipcRenderer.on("asr:wake-word-detected", subscription);
+		return () => electron.ipcRenderer.removeListener("asr:wake-word-detected", subscription);
+	},
+	restartWakeWord: () => electron.ipcRenderer.invoke("asr:restartWakeWord"),
 	onNotification: (callback) => {
 		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));
 	},

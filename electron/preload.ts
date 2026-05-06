@@ -65,6 +65,13 @@ contextBridge.exposeInMainWorld('config', {
   exitApp: () => ipcRenderer.invoke('app:exit'),
   adjustVolume: (value: number, isAbsolute = false) => ipcRenderer.invoke('hardware:adjustVolume', value, isAbsolute),
   adjustBrightness: (value?: number) => ipcRenderer.invoke('hardware:adjustBrightness', value),
+  onWakeWordDetected: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on('asr:wake-word-detected', subscription)
+    return () => ipcRenderer.removeListener('asr:wake-word-detected', subscription)
+  },
+  restartWakeWord: () => ipcRenderer.invoke('asr:restartWakeWord'),
+
 
 
   onNotification: (callback: (payload: any) => void) => {

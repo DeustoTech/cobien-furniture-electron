@@ -21,7 +21,14 @@ onMounted(async () => {
   window.addEventListener('start-voice-assistant', () => {
     voiceAssistantRef.value?.startAssistant()
   })
+
+  // Wake word detection
+  (window as any).config.onWakeWordDetected(() => {
+    console.log('[WAKE] UI Triggered by voice')
+    voiceAssistantRef.value?.startAssistant()
+  })
 })
+
 </script>
 
 <template>

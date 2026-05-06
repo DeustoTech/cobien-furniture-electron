@@ -18,6 +18,8 @@ import { loadPendingReminders, addReminder, listReminders, deleteReminder } from
 import { startMqtt, stopMqtt } from './services/mqttService'
 import { listenWithVosk } from './services/asrService'
 import { adjustVolume, adjustBrightness } from './services/hardwareService'
+import { startWakeWordDetection, stopWakeWordDetection } from './services/wakeWordService'
+
 
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -244,6 +246,13 @@ function setupIPC() {
     return await adjustBrightness(value)
   })
 
+  ipcMain.handle('asr:restartWakeWord', () => {
+    if (mainWindow) {
+      startWakeWordDetection(mainWindow, _dirname)
+    }
+  })
+
+
 
 }
 
@@ -302,7 +311,11 @@ app.whenReady().then(() => {
     startBackendSync(mainWindow, configPath, localPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)
+    
+    // Start background listening for "cobien"
+    startWakeWordDetection(mainWindow, _dirname)
   }
+
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -14,40 +14,49 @@ def main():
         return
 
     model_path = sys.argv[1]
-    prompt = sys.argv[2] if len(sys.argv) > 2 else None
+    
+    # Check if we are in wake-word mode
+    is_wake_mode = "--wake-word" in sys.argv
+    wake_word = "cobien" # Default wake word
+    
+    # Find wake word in args if present after --wake-word
+    for i, arg in enumerate(sys.argv):
+        if arg == "--wake-word" and i + 1 < len(sys.argv):
+            wake_word = sys.argv[i+1]
+            break
 
     try:
-        # Level callback for visualizer
-        def level_cb(lvl):
-            print(json.dumps({"level": lvl}))
-            sys.stdout.flush()
-
-        # Custom loop to handle partial results if we wanted to modify recognizer.py,
-        # but let's see if we can do it here by calling a more granular method if available.
-        # Since recognizer.py encapsulates the loop, we might need to modify it or 
-        # implement a similar loop here.
-        
-        # Let's check if we can modify recognizer.py or if we should just implement the loop here.
-        # recognizer.py has:
-        # def listen_and_transcribe(self, timeout=15, stop_event=None, level_callback=None)
-        
         recognizer = SpeechRecognizer(model_path)
         
-        # I will modify recognizer.py to support a partial_callback.
-        text = recognizer.listen_and_transcribe(
-            timeout=10, 
-            level_callback=level_cb,
-            partial_callback=lambda p: print(json.dumps({"partial": p})) or sys.stdout.flush()
-        )
-
-
-
-        if text:
-            print(json.dumps({"text": text}))
+        if is_wake_mode:
+            # Loop indefinitely for wake word
+            while True:
+                found = recognizer.wait_for_keyword(wake_word)
+                if found:
+                    print(json.dumps({"wake_word_detected": wake_word}))
+                    sys.stdout.flush()
+                    # After detection, we exit or wait? 
+                    # Usually we exit so Electron can start the full ASR
+                    break
         else:
-            print(json.dumps({"text": ""}))
+            # Standard STT mode
+            def level_cb(lvl):
+                print(json.dumps({"level": lvl}))
+                sys.stdout.flush()
+
+            text = recognizer.listen_and_transcribe(
+                timeout=10, 
+                level_callback=level_cb,
+                partial_callback=lambda p: print(json.dumps({"partial": p})) or sys.stdout.flush()
+            )
+
+            if text:
+                print(json.dumps({"text": text}))
+            else:
+                print(json.dumps({"text": ""}))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
+
 
 if __name__ == "__main__":
     main()

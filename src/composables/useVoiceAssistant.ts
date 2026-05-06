@@ -142,7 +142,13 @@ export function useVoiceAssistant() {
     await new Promise(r => setTimeout(r, 1500))
     isActive.value = false
     step.value = 'idle'
+    
+    // Restart background wake-word listening
+    try {
+      await (window as any).config.restartWakeWord()
+    } catch(e) {}
   }
+
 
   return {
     isActive,

@@ -234,6 +234,46 @@ class SpeechRecognizer:
         print(f"[ASR] Detected text: {result}", file=sys.stderr)
         return result if result else None
 
+    def wait_for_keyword(self, keyword: str, stop_event: Optional[Any] = None) -> bool:
+        """Wait indefinitely for a specific keyword.
+        
+        Returns:
+            True if the keyword was detected, False if cancelled.
+        """
+        print(f"[ASR] Waiting for wake word: {keyword}", file=sys.stderr)
+        self.recognizer.Reset()
+        self._clear_queue()
+        
+        with sd.RawInputStream(
+            samplerate=self.sample_rate,
+            blocksize=8000,
+            dtype='int16',
+            channels=1,
+            device=self.input_device,
+            callback=self._callback
+        ):
+            while True:
+                if stop_event is not None and stop_event.is_set():
+                    return False
+                
+                try:
+                    data = self.q.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                
+                if self.recognizer.AcceptWaveform(data):
+                    res = json.loads(self.recognizer.Result())
+                    if keyword.lower() in res.get("text", "").lower():
+                        print(f"[ASR] Wake word '{keyword}' detected!", file=sys.stderr)
+                        return True
+                else:
+                    partial = json.loads(self.recognizer.PartialResult())
+                    if keyword.lower() in partial.get("partial", "").lower():
+                        print(f"[ASR] Wake word '{keyword}' detected (partial)!", file=sys.stderr)
+                        return True
+        return False
+
+
     """
     def listen_and_transcribe(self, timeout=15):
         print("Habla ahora...", file=sys.stderr)

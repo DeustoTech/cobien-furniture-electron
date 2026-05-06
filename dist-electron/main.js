@@ -1079,6 +1079,45 @@ async function adjustBrightness(value) {
 	}
 }
 //#endregion
+//#region electron/services/wakeWordService.ts
+var wakeWordProcess = null;
+var isListening = false;
+function startWakeWordDetection(mainWindow, _dirname) {
+	if (isListening) return;
+	isListening = true;
+	const pythonBin = join(_dirname, "../../../cobien_FrontEnd/app/.venv/bin/python3");
+	const bridgePath = join(_dirname, "../public/python/asr_bridge.py");
+	const modelPath = join(_dirname, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42");
+	console.log(`[WAKE] Starting detection for "cobien"...`);
+	wakeWordProcess = spawn(pythonBin, [
+		bridgePath,
+		modelPath,
+		"--wake-word",
+		"cobien"
+	]);
+	wakeWordProcess.stdout?.on("data", (data) => {
+		const lines = data.toString().split("\n");
+		for (const line of lines) if (line.includes("\"wake_word_detected\":")) {
+			console.log("[WAKE] Keyword detected!");
+			mainWindow.webContents.send("asr:wake-word-detected");
+			stopWakeWordDetection();
+			break;
+		}
+	});
+	wakeWordProcess.stderr?.on("data", (data) => {});
+	wakeWordProcess.on("close", () => {
+		isListening = false;
+		wakeWordProcess = null;
+	});
+}
+function stopWakeWordDetection() {
+	if (wakeWordProcess) {
+		wakeWordProcess.kill();
+		wakeWordProcess = null;
+	}
+	isListening = false;
+}
+//#endregion
 //#region electron/main.ts
 dotenv.config();
 var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
@@ -1270,6 +1309,9 @@ function setupIPC() {
 	ipcMain.handle("hardware:adjustBrightness", async (_, value) => {
 		return await adjustBrightness(value);
 	});
+	ipcMain.handle("asr:restartWakeWord", () => {
+		if (mainWindow) startWakeWordDetection(mainWindow, _dirname);
+	});
 }
 function createWindow() {
 	mainWindow = new BrowserWindow({
@@ -1306,6 +1348,7 @@ app.whenReady().then(() => {
 		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
 		startBackendSync(mainWindow, configPath, localPath);
 		startMqtt(mainWindow);
+		startWakeWordDetection(mainWindow, _dirname);
 	}
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
