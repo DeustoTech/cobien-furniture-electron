@@ -9,9 +9,23 @@ export default defineConfig({
     electron({
       main: {
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ['mongodb', 'dotenv']
+            }
+          }
+        }
       },
       preload: {
         input: 'electron/preload.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ['mongodb', 'dotenv']
+            }
+          }
+        }
       },
     }),
   ],

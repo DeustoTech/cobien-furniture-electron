@@ -1,4 +1,5 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+dotenv.config()
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -83,6 +84,13 @@ function setupIPC() {
   ipcMain.handle('board:delete', async (_, id) => await deleteMessage(id))
   ipcMain.handle('board:read', async (_, id) => await markMessageRead(id))
   ipcMain.handle('board:reply', async (_, id, text) => await submitQuickReply(id, text))
+
+  ipcMain.handle('config:getSystemInfo', () => {
+    return {
+      version: app.getVersion(),
+      deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX'
+    }
+  })
 
   ipcMain.handle('tts:speak', async (event, text: string) => {
     const { bin, model } = getPiperConfig()

@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('config', {
   deleteBoardMessage: (id: string) => ipcRenderer.invoke('board:delete', id),
   markMessageRead: (id: string) => ipcRenderer.invoke('board:read', id),
   submitQuickReply: (id: string, text: string) => ipcRenderer.invoke('board:reply', id, text),
+  getSystemInfo: () => ipcRenderer.invoke('config:getSystemInfo'),
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
   onNotification: (callback: (payload: any) => void) => {
     ipcRenderer.on('backend:notification', (_event, data) => callback(data))

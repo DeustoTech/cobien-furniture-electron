@@ -13,6 +13,7 @@ const minMaxTemp = ref('Min 7°   Max 19°')
 const nextEvent = ref('Sin eventos próximos')
 const jokeTitle = ref('Frase del día')
 const jokeText = ref('¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.')
+const systemMeta = ref('CoBienX - v0.0.0')
 
 let timer: number
 
@@ -20,6 +21,13 @@ onMounted(async () => {
   updateTime()
   timer = window.setInterval(updateTime, 1000)
   
+  try {
+    const sysInfo = await (window as any).config.getSystemInfo()
+    systemMeta.value = `${sysInfo.deviceId} - v${sysInfo.version}`
+  } catch(e) {
+    console.error('Failed to get system info:', e)
+  }
+
   try {
     const config = await (window as any).config.getWeather()
     if (config.primary) {
@@ -165,7 +173,7 @@ async function playTTS(text: string) {
     </div>
     
     <div class="footer-meta">
-      <div class="meta-badge">CoBien2 - v3.2.40</div>
+      <div class="meta-badge">{{ systemMeta }}</div>
     </div>
   </div>
 </template>

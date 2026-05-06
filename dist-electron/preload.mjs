@@ -27,6 +27,7 @@ electron.contextBridge.exposeInMainWorld("config", {
 	deleteBoardMessage: (id) => electron.ipcRenderer.invoke("board:delete", id),
 	markMessageRead: (id) => electron.ipcRenderer.invoke("board:read", id),
 	submitQuickReply: (id, text) => electron.ipcRenderer.invoke("board:reply", id, text),
+	getSystemInfo: () => electron.ipcRenderer.invoke("config:getSystemInfo"),
 	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
 	onNotification: (callback) => {
 		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));

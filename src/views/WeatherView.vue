@@ -9,10 +9,18 @@ const currentCondition = ref('Cielo claro')
 const minTemp = ref('Min 7°')
 const maxTemp = ref('Max 19°')
 
+const activeCities = ref<string[]>([])
+const currentCityIndex = ref(0)
+
 onMounted(async () => {
   try {
     const config = await (window as any).config.getWeather()
-    if (config.primary) {
+    if (config.active && config.active.length > 0) {
+      activeCities.value = config.active
+      let pIdx = config.active.indexOf(config.primary)
+      currentCityIndex.value = pIdx !== -1 ? pIdx : 0
+      cityName.value = activeCities.value[currentCityIndex.value]
+    } else if (config.primary) {
       cityName.value = config.primary
     } else {
       cityName.value = 'Sin Ciudad'
@@ -21,6 +29,18 @@ onMounted(async () => {
     cityName.value = 'Desconocida'
   }
 })
+
+function nextCity() {
+  if (activeCities.value.length <= 1) return
+  currentCityIndex.value = (currentCityIndex.value + 1) % activeCities.value.length
+  cityName.value = activeCities.value[currentCityIndex.value]
+}
+
+function prevCity() {
+  if (activeCities.value.length <= 1) return
+  currentCityIndex.value = (currentCityIndex.value - 1 + activeCities.value.length) % activeCities.value.length
+  cityName.value = activeCities.value[currentCityIndex.value]
+}
 
 // Dummy data for hourly forecast matching the image
 const hourlyForecast = ref([
@@ -75,7 +95,15 @@ async function playTTS() {
     <div class="header-section">
       <div class="header-left">
         <div class="title">Tiempo</div>
-        <div class="city-name">{{ cityName }}</div>
+        <div class="city-nav">
+          <button v-if="activeCities.length > 1" class="nav-arrow" @click="prevCity">
+            <img src="/images/arrowback.png" alt="Anterior" />
+          </button>
+          <div class="city-name">{{ cityName }}</div>
+          <button v-if="activeCities.length > 1" class="nav-arrow" @click="nextCity">
+            <img src="/images/arrowforward.png" alt="Siguiente" />
+          </button>
+        </div>
       </div>
       
       <div class="header-center">
@@ -159,12 +187,41 @@ async function playTTS() {
   line-height: 1;
 }
 
+.city-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.nav-arrow {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-arrow:active {
+  transform: scale(0.9);
+}
+
+.nav-arrow img {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  opacity: 0.7;
+}
+
 .city-name {
   font-size: 5rem;
   font-weight: 800;
   color: #000;
   line-height: 1.1;
-  margin-top: 0.5rem;
+  margin-top: 0;
 }
 
 .header-center {
