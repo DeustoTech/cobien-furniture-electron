@@ -13,7 +13,30 @@ import sys
 import numpy as np
 from vosk import Model, KaldiRecognizer
 import time
+import difflib
 from typing import Any, Callable, Optional, Tuple
+
+
+def fuzzy_match(text: str, target: str, threshold: float = 0.8) -> bool:
+    """Check if the recognized text is 'close enough' to the target wake word."""
+    text = text.lower().strip()
+    target = target.lower().strip()
+    
+    if target in text:
+        return True
+        
+    # Remove spaces and check (handles "como bien" -> "comobien")
+    compact_text = text.replace(" ", "")
+    if target in compact_text:
+        return True
+        
+    # Check similarity ratio
+    ratio = difflib.SequenceMatcher(None, compact_text, target).ratio()
+    if ratio >= threshold:
+        return True
+        
+    return False
+
 
 
 def select_input_device(preferred_device: Optional[Any] = None) -> Tuple[Optional[int], str]:
@@ -267,8 +290,8 @@ class SpeechRecognizer:
                     if recognized:
                         print(f"[ASR] Final: {recognized}", file=sys.stderr)
                     
-                    if keyword.lower() in recognized:
-                        print(f"[ASR] Wake word '{keyword}' detected!", file=sys.stderr)
+                    if fuzzy_match(recognized, keyword):
+                        print(f"[ASR] Wake word '{keyword}' fuzzy-detected!", file=sys.stderr)
                         return True
                 else:
                     partial = json.loads(self.recognizer.PartialResult())
@@ -276,9 +299,10 @@ class SpeechRecognizer:
                     if p_text:
                          print(f"[ASR] Partial: {p_text}", file=sys.stderr)
                     
-                    if keyword.lower() in p_text:
-                        print(f"[ASR] Wake word '{keyword}' detected (partial)!", file=sys.stderr)
+                    if fuzzy_match(p_text, keyword, threshold=0.85): # Partial needs to be slightly stricter
+                        print(f"[ASR] Wake word '{keyword}' fuzzy-detected (partial)!", file=sys.stderr)
                         return True
+
 
         return False
 
