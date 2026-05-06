@@ -7,7 +7,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['close'])
 
-const volume = ref(props.initialValue ?? 50)
+const volume = ref(50)
 const isActive = ref(false)
 
 async function updateVolume() {
@@ -19,9 +19,16 @@ function close() {
   setTimeout(() => emit('close'), 300)
 }
 
-onMounted(() => {
+onMounted(async () => {
   isActive.value = true
+  try {
+    const sysVol = await (window as any).config.getVolume()
+    volume.value = sysVol
+  } catch (e) {
+    console.error('Error fetching volume:', e)
+  }
 })
+
 </script>
 
 <template>

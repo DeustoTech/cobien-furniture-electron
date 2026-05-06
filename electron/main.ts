@@ -17,7 +17,8 @@ import { loadContacts, requestCall, syncContacts } from './services/contactsServ
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 import { startMqtt, stopMqtt } from './services/mqttService'
 import { listenWithVosk, abortStt } from './services/asrService'
-import { adjustVolume, adjustBrightness } from './services/hardwareService'
+import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
+
 import { startWakeWordDetection, stopWakeWordDetection } from './services/wakeWordService'
 
 
@@ -246,7 +247,12 @@ function setupIPC() {
     return await adjustBrightness(value)
   })
 
+  ipcMain.handle('hardware:getVolume', async () => {
+    return await getVolume()
+  })
+
   ipcMain.handle('stt:abort', () => {
+
     abortStt()
   })
 

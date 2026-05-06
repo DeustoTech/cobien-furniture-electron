@@ -1055,14 +1055,23 @@ function listenWithVosk(language = "es", onLevel, onPartial) {
 //#endregion
 //#region electron/services/hardwareService.ts
 var execAsync = promisify(exec);
-async function adjustVolume(step) {
-	const delta = `${step >= 0 ? "+" : ""}${step}%`;
+async function adjustVolume(value, isAbsolute = false) {
 	try {
-		await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${delta}`);
+		if (isAbsolute) await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${value}%`);
+		else await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${`${value >= 0 ? "+" : ""}${value}%`}`);
 		return true;
 	} catch (e) {
 		console.error("Failed to adjust volume:", e);
 		return false;
+	}
+}
+async function getVolume() {
+	try {
+		const { stdout } = await execAsync("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1");
+		return parseInt(stdout.trim()) || 0;
+	} catch (e) {
+		console.error("Failed to get volume:", e);
+		return 50;
 	}
 }
 async function adjustBrightness(value) {
@@ -1321,6 +1330,9 @@ function setupIPC() {
 	});
 	ipcMain.handle("hardware:adjustBrightness", async (_, value) => {
 		return await adjustBrightness(value);
+	});
+	ipcMain.handle("hardware:getVolume", async () => {
+		return await getVolume();
 	});
 	ipcMain.handle("stt:abort", () => {
 		abortStt();

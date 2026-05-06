@@ -3,17 +3,32 @@ import { promisify } from 'node:util'
 
 const execAsync = promisify(exec)
 
-export async function adjustVolume(step: number) {
-  const sign = step >= 0 ? '+' : ''
-  const delta = `${sign}${step}%`
+export async function adjustVolume(value: number, isAbsolute = false) {
   try {
-    await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${delta}`)
+    if (isAbsolute) {
+      await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${value}%`)
+    } else {
+      const sign = value >= 0 ? '+' : ''
+      const delta = `${sign}${value}%`
+      await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${delta}`)
+    }
     return true
   } catch (e) {
     console.error('Failed to adjust volume:', e)
     return false
   }
 }
+
+export async function getVolume(): Promise<number> {
+  try {
+    const { stdout } = await execAsync("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1")
+    return parseInt(stdout.trim()) || 0
+  } catch (e) {
+    console.error('Failed to get volume:', e)
+    return 50
+  }
+}
+
 
 export async function toggleMute() {
   try {

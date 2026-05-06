@@ -57,6 +57,7 @@ electron.contextBridge.exposeInMainWorld("config", {
 	restartApp: () => electron.ipcRenderer.invoke("app:restart"),
 	exitApp: () => electron.ipcRenderer.invoke("app:exit"),
 	adjustVolume: (value, isAbsolute = false) => electron.ipcRenderer.invoke("hardware:adjustVolume", value, isAbsolute),
+	getVolume: () => electron.ipcRenderer.invoke("hardware:getVolume"),
 	adjustBrightness: (value) => electron.ipcRenderer.invoke("hardware:adjustBrightness", value),
 	onWakeWordDetected: (callback) => {
 		const subscription = () => callback();
