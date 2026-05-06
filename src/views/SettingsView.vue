@@ -34,7 +34,8 @@ const settingsButtons = [
   { id: 'colors', icon: '/images/color.png', label: 'Colores Botones', path: '#' },
   { id: 'notif', icon: '/images/notif.png', label: 'Notificaciones', path: '#' },
   { id: 'rfid', icon: '/images/card.png', label: 'Tarjetas RFID', path: '#' },
-  { id: 'audio', icon: '/images/audio.png', label: 'Audio', path: '#' },
+  { id: 'audio', icon: '/images/audio.png', label: 'Audio', path: '/settings/audio' },
+
   { id: 'logs', icon: '/images/logs.png', label: 'Logs del sistema', path: '#' },
   { id: 'launcher', icon: '/images/settings.png', label: 'Parámetros Launcher', path: '#' },
 ]
