@@ -21,17 +21,39 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
 electron.contextBridge.exposeInMainWorld("tts", { speak: (text) => electron.ipcRenderer.invoke("tts:speak", text) });
 electron.contextBridge.exposeInMainWorld("config", {
 	getWeather: () => electron.ipcRenderer.invoke("config:getWeather"),
+	getSettings: () => electron.ipcRenderer.invoke("config:getSettings"),
 	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload),
 	getEvents: () => electron.ipcRenderer.invoke("events:get"),
 	addPersonalEvent: (payload) => electron.ipcRenderer.invoke("events:addPersonal", payload),
+	deleteEvent: (id) => electron.ipcRenderer.invoke("events:delete", id),
+	fetchWeather: (city) => electron.ipcRenderer.invoke("weather:fetch", city),
+	getRandomJoke: () => electron.ipcRenderer.invoke("jokes:getRandom"),
+	getContacts: () => electron.ipcRenderer.invoke("contacts:list"),
+	requestCall: (userName) => electron.ipcRenderer.invoke("contacts:requestCall", userName),
+	openCall: (userName) => electron.ipcRenderer.invoke("contacts:openCall", userName),
+	addReminder: (message, isoDatetime) => electron.ipcRenderer.invoke("reminders:add", message, isoDatetime),
+	listReminders: () => electron.ipcRenderer.invoke("reminders:list"),
+	deleteReminder: (id) => electron.ipcRenderer.invoke("reminders:delete", id),
 	getBoardMessages: () => electron.ipcRenderer.invoke("board:fetch"),
 	deleteBoardMessage: (id) => electron.ipcRenderer.invoke("board:delete", id),
 	markMessageRead: (id) => electron.ipcRenderer.invoke("board:read", id),
 	submitQuickReply: (id, text) => electron.ipcRenderer.invoke("board:reply", id, text),
+	ttsSpeak: (text) => electron.ipcRenderer.invoke("tts:speak", text),
+	sttListen: (language) => electron.ipcRenderer.invoke("stt:listen", language),
 	getSystemInfo: () => electron.ipcRenderer.invoke("config:getSystemInfo"),
 	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
+	restartApp: () => electron.ipcRenderer.invoke("app:restart"),
+	exitApp: () => electron.ipcRenderer.invoke("app:exit"),
+	adjustVolume: (value, isAbsolute = false) => electron.ipcRenderer.invoke("hardware:adjustVolume", value, isAbsolute),
+	adjustBrightness: (value) => electron.ipcRenderer.invoke("hardware:adjustBrightness", value),
 	onNotification: (callback) => {
 		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));
+	},
+	onReminderFire: (callback) => {
+		electron.ipcRenderer.on("reminder:fire", (_event, data) => callback(data));
+	},
+	onMqttEvent: (callback) => {
+		electron.ipcRenderer.on("mqtt:event", (_event, data) => callback(data));
 	}
 });
 //#endregion
