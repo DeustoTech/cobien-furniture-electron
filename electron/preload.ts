@@ -28,6 +28,10 @@ contextBridge.exposeInMainWorld('config', {
   getWeather: () => ipcRenderer.invoke('config:getWeather'),
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
   getEvents: () => ipcRenderer.invoke('events:get'),
+  getBoardMessages: () => ipcRenderer.invoke('board:fetch'),
+  deleteBoardMessage: (id: string) => ipcRenderer.invoke('board:delete', id),
+  markMessageRead: (id: string) => ipcRenderer.invoke('board:read', id),
+  submitQuickReply: (id: string, text: string) => ipcRenderer.invoke('board:reply', id, text),
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
   onNotification: (callback: (payload: any) => void) => {
     ipcRenderer.on('backend:notification', (_event, data) => callback(data))

@@ -8,6 +8,7 @@ import * as os from 'node:os'
 import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
 import { getEvents } from './services/eventsMongo'
+import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -77,6 +78,11 @@ function setupIPC() {
   ipcMain.handle('events:get', async () => {
     return await getEvents(configPath)
   })
+
+  ipcMain.handle('board:fetch', async () => await fetchMessages())
+  ipcMain.handle('board:delete', async (_, id) => await deleteMessage(id))
+  ipcMain.handle('board:read', async (_, id) => await markMessageRead(id))
+  ipcMain.handle('board:reply', async (_, id, text) => await submitQuickReply(id, text))
 
   ipcMain.handle('tts:speak', async (event, text: string) => {
     const { bin, model } = getPiperConfig()

@@ -23,6 +23,10 @@ electron.contextBridge.exposeInMainWorld("config", {
 	getWeather: () => electron.ipcRenderer.invoke("config:getWeather"),
 	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload),
 	getEvents: () => electron.ipcRenderer.invoke("events:get"),
+	getBoardMessages: () => electron.ipcRenderer.invoke("board:fetch"),
+	deleteBoardMessage: (id) => electron.ipcRenderer.invoke("board:delete", id),
+	markMessageRead: (id) => electron.ipcRenderer.invoke("board:read", id),
+	submitQuickReply: (id, text) => electron.ipcRenderer.invoke("board:reply", id, text),
 	reportRoute: (routeName) => electron.ipcRenderer.invoke("app:route-changed", routeName),
 	onNotification: (callback) => {
 		electron.ipcRenderer.on("backend:notification", (_event, data) => callback(data));
