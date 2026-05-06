@@ -19,4 +19,8 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
 	}
 });
 electron.contextBridge.exposeInMainWorld("tts", { speak: (text) => electron.ipcRenderer.invoke("tts:speak", text) });
+electron.contextBridge.exposeInMainWorld("config", {
+	getWeather: () => electron.ipcRenderer.invoke("config:getWeather"),
+	saveWeather: (payload) => electron.ipcRenderer.invoke("config:saveWeather", payload)
+});
 //#endregion

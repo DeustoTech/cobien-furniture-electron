@@ -23,3 +23,8 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 contextBridge.exposeInMainWorld('tts', {
   speak: (text: string) => ipcRenderer.invoke('tts:speak', text)
 })
+
+contextBridge.exposeInMainWorld('config', {
+  getWeather: () => ipcRenderer.invoke('config:getWeather'),
+  saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload)
+})

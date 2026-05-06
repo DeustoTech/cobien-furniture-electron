@@ -41,6 +41,36 @@ function getPiperConfig() {
 }
 
 function setupIPC() {
+  const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
+
+  ipcMain.handle('config:getWeather', async () => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      return {
+        catalog: data.settings.weather_city_catalog || [],
+        active: data.settings.weather_cities || [],
+        primary: data.settings.weather_primary_city || ''
+      }
+    } catch(e) {
+      console.error('Error reading config:', e)
+      return { catalog: [], active: [], primary: '' }
+    }
+  })
+
+  ipcMain.handle('config:saveWeather', async (event, payload: any) => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      data.settings.weather_city_catalog = payload.catalog
+      data.settings.weather_cities = payload.active
+      data.settings.weather_primary_city = payload.primary
+      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
+      return true
+    } catch(e) {
+      console.error('Error saving config:', e)
+      return false
+    }
+  })
+
   ipcMain.handle('tts:speak', async (event, text: string) => {
     const { bin, model } = getPiperConfig()
     

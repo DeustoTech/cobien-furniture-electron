@@ -4,6 +4,7 @@ import WeatherView from '../views/WeatherView.vue'
 import EventsView from '../views/EventsView.vue'
 import BoardView from '../views/BoardView.vue'
 import CallView from '../views/CallView.vue'
+import SettingsWeatherView from '../views/SettingsWeatherView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(), // Hash history works better with Electron local files
@@ -12,6 +13,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/settings/weather',
+      name: 'settings-weather',
+      component: SettingsWeatherView
     },
     {
       path: '/weather',

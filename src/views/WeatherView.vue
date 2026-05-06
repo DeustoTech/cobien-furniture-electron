@@ -1,13 +1,26 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const cityName = ref('Logroño')
+const cityName = ref('Cargando...')
 const currentTemp = ref('6°')
 const currentCondition = ref('Cielo claro')
 const minTemp = ref('Min 7°')
 const maxTemp = ref('Max 19°')
+
+onMounted(async () => {
+  try {
+    const config = await (window as any).config.getWeather()
+    if (config.primary) {
+      cityName.value = config.primary
+    } else {
+      cityName.value = 'Sin Ciudad'
+    }
+  } catch(e) {
+    cityName.value = 'Desconocida'
+  }
+})
 
 // Dummy data for hourly forecast matching the image
 const hourlyForecast = ref([

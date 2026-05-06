@@ -8,7 +8,7 @@ const currentDate = ref('')
 const currentTime = ref('')
 const weatherTemp = ref('7°')
 const weatherCondition = ref('Cielo claro')
-const cityName = ref('Bilbao')
+const cityName = ref('Cargando...')
 const minMaxTemp = ref('Min 7°   Max 19°')
 const nextEvent = ref('Sin eventos próximos')
 const jokeTitle = ref('Frase del día')
@@ -16,9 +16,20 @@ const jokeText = ref('¿Qué le dice un jardinero a otro? Nos vemos cuando podam
 
 let timer: number
 
-onMounted(() => {
+onMounted(async () => {
   updateTime()
   timer = window.setInterval(updateTime, 1000)
+  
+  try {
+    const config = await (window as any).config.getWeather()
+    if (config.primary) {
+      cityName.value = config.primary
+    } else {
+      cityName.value = 'Sin Ciudad'
+    }
+  } catch(e) {
+    cityName.value = 'Desconocida'
+  }
 })
 
 onUnmounted(() => {
@@ -91,7 +102,7 @@ async function playTTS(text: string) {
               <div class="event-item">{{ nextEvent }}</div>
             </div>
             <div class="top-buttons">
-              <button class="icon-button"><img src="/images/settings.png" alt="settings" /></button>
+              <button class="icon-button" @click="handleNavigation('/settings/weather')"><img src="/images/settings.png" alt="settings" /></button>
               <button class="icon-button" @click="playTTS(jokeText)"><img src="/images/voice.png" alt="voice" /></button>
             </div>
           </div>
