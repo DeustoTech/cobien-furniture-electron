@@ -919,7 +919,7 @@ function listenWithVosk(language = "es") {
 	const bridgePath = join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/asr_bridge.py");
 	const modelPath = language === "es" ? join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
 	return new Promise((resolve) => {
-		const python = spawn("python3", [bridgePath, modelPath]);
+		const python = spawn(join(_dirname$1, "../../../../cobien/cobien_FrontEnd/app/.venv/bin/python3"), [bridgePath, modelPath]);
 		let result = "";
 		python.stdout.on("data", (data) => {
 			result += data.toString();

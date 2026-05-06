@@ -11,7 +11,9 @@ export function listenWithVosk(language: string = 'es'): Promise<string | null> 
     : join(_dirname, '../../../../cobien/cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22')
 
   return new Promise((resolve) => {
-    const python = spawn('python3', [bridgePath, modelPath])
+    const pythonBin = join(_dirname, '../../../../cobien/cobien_FrontEnd/app/.venv/bin/python3')
+    const python = spawn(pythonBin, [bridgePath, modelPath])
+
     
     let result = ''
     python.stdout.on('data', (data) => {
