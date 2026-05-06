@@ -8,12 +8,16 @@ import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
-import { getEvents, addPersonalEvent } from './services/eventsMongo'
+import { getEvents, addPersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 import { fetchWeatherBundle } from './services/weatherService'
 import { getRandomJoke } from './services/jokesService'
 import { loadContacts, requestCall } from './services/contactsService'
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
+import { startMqtt, stopMqtt } from './services/mqttService'
+import { listenWithVosk } from './services/asrService'
+import { adjustVolume, adjustBrightness } from './services/hardwareService'
+
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -63,6 +67,15 @@ function setupIPC() {
     } catch(e) {
       console.error('Error reading config:', e)
       return { catalog: [], active: [], primary: '' }
+    }
+  })
+
+  ipcMain.handle('config:getSettings', async () => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      return data.settings || {}
+    } catch(e) {
+      return {}
     }
   })
 
@@ -139,6 +152,10 @@ function setupIPC() {
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
     return await addPersonalEvent({ ...payload, location, deviceId })
   })
+  
+  ipcMain.handle('events:delete', async (_, id: string) => {
+    return await deleteEvent(id)
+  })
 
   ipcMain.handle('board:fetch', async () => await fetchMessages())
   ipcMain.handle('board:delete', async (_, id) => await deleteMessage(id))
@@ -150,6 +167,15 @@ function setupIPC() {
       version: app.getVersion(),
       deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX'
     }
+  })
+
+  ipcMain.handle('app:restart', () => {
+    app.relaunch()
+    app.exit()
+  })
+
+  ipcMain.handle('app:exit', () => {
+    app.quit()
   })
 
   ipcMain.handle('tts:speak', async (event, text: string) => {
@@ -184,7 +210,21 @@ function setupIPC() {
       child.stdin?.end()
     })
   })
+
+  ipcMain.handle('stt:listen', async (_, language: string) => {
+    return await listenWithVosk(language)
+  })
+
+  ipcMain.handle('hardware:adjustVolume', async (_, value: number, isAbsolute = false) => {
+    return await adjustVolume(value, isAbsolute)
+  })
+  ipcMain.handle('hardware:adjustBrightness', async (_, value?: number) => {
+    return await adjustBrightness(value)
+  })
+
+
 }
+
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -228,6 +268,8 @@ app.whenReady().then(() => {
     const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
     const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
     startBackendSync(mainWindow, configPath, localPath)
+    // Start MQTT sensor bridge (gracefully handles broker not available)
+    startMqtt(mainWindow)
   }
 
   app.on('activate', () => {
@@ -238,6 +280,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopMqtt()
   if (process.platform !== 'darwin') {
     app.quit()
   }
