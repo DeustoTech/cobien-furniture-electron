@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+
+import { useI18n } from 'vue-i18n'
 import VolumePopup from '../components/VolumePopup.vue'
 import BrightnessPopup from '../components/BrightnessPopup.vue'
 import VoiceAssistant from '../components/VoiceAssistant.vue'
 
-
-
 const router = useRouter()
+const { t } = useI18n()
+
 
 const currentDate = ref('')
 const currentTime = ref('')
@@ -139,9 +140,9 @@ async function openBrightnessPopup() {
         <!-- Column 3: Events & Joke -->
         <div class="header-col col-events">
           <div class="events-wrap">
-            <div class="section-title">Próximos eventos</div>
+            <div class="section-title">{{ t('home.next_events') }}</div>
             <div class="event-item">{{ nextEvent }}</div>
-            <div class="section-title joke-title">Frase del día</div>
+            <div class="section-title joke-title">{{ t('home.phrase_of_the_day') }}</div>
             <div class="joke-scroll-container">
               <div class="joke-text">{{ jokeText }}</div>
             </div>
@@ -165,25 +166,26 @@ async function openBrightnessPopup() {
       <div class="nav-grid">
         <button class="nav-card" @click="handleNavigation('/weather')">
           <img src="/images/parcial.png" class="nav-card-icon" alt="Tiempo" />
-          <span class="nav-card-text">Tiempo</span>
+          <span class="nav-card-text">{{ t('home.weather') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/events')">
           <img src="/images/eventos.png" class="nav-card-icon" alt="Eventos" />
-          <span class="nav-card-text">Eventos</span>
+          <span class="nav-card-text">{{ t('home.events') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/board')">
           <img src="/images/pizarra.png" class="nav-card-icon" alt="Pizarra" />
-          <span class="nav-card-text">Pizarra</span>
+          <span class="nav-card-text">{{ t('home.board') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/call')">
           <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
-          <span class="nav-card-text">Llámame</span>
+          <span class="nav-card-text">{{ t('home.call_me') }}</span>
         </button>
       </div>
     </div>
+
 
 
     <!-- Footer Controls -->

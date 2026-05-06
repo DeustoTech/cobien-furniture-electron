@@ -7,7 +7,9 @@ import CallView from '../views/CallView.vue'
 import JokesView from '../views/JokesView.vue'
 import SettingsWeatherView from '../views/SettingsWeatherView.vue'
 import AudioSettingsView from '../views/AudioSettingsView.vue'
+import LanguageSettingsView from '../views/LanguageSettingsView.vue'
 import SettingsView from '../views/SettingsView.vue'
+
 
 
 const router = createRouter({
@@ -33,6 +35,12 @@ const router = createRouter({
       name: 'settings-audio',
       component: AudioSettingsView
     },
+    {
+      path: '/settings/language',
+      name: 'settings-language',
+      component: LanguageSettingsView
+    },
+
     {
       path: '/weather',
 

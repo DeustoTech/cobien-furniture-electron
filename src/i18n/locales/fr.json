@@ -1,0 +1,71 @@
+{
+  "common": {
+    "back": "Retour",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "loading": "Chargement...",
+    "restarting": "Redémarrage...",
+    "exit": "Quitter"
+  },
+  "home": {
+    "next_events": "Événements à venir",
+    "phrase_of_the_day": "Phrase du jour",
+    "weather": "Météo",
+    "events": "Événements",
+    "board": "Tableau",
+    "call_me": "Appelle-moi"
+  },
+  "board": {
+    "title": "Tableau de bord",
+    "empty": "Aucun message sur le tableau",
+    "reply": "Répondre au message",
+    "view_reply": "Voir la réponse",
+    "from": "De {author} :",
+    "no_image": "Pas d'image",
+    "delete_confirm": "Voulez-vous vraiment supprimer ce message ?",
+    "respond_to": "Répondre à {author}",
+    "responded_with": "Vous avez répondu : {text}"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "restart": "Redémarrer",
+    "exit": "Quitter",
+    "language": "Langue",
+    "cities": "Villes",
+    "colors": "Couleurs Boutons",
+    "notifications": "Notifications",
+    "rfid": "Cartes RFID",
+    "audio": "Audio",
+    "logs": "Journaux système",
+    "parameters": "Paramètres Lanceur"
+  },
+  "assistant": {
+    "title": "Assistant CoBien",
+    "listening": "J'écoute...",
+    "speaking": "Je parle...",
+    "understood": "Vous avez dit : \"{text}\"",
+    "not_understood": "Je n'ai pas compris. Réessayez.",
+    "opening_weather": "Ouverture de la météo.",
+    "opening_events": "Ouverture de votre agenda.",
+    "opening_board": "Ouverture du tableau de messages.",
+    "opening_contacts": "Ouverture des contacts pour appeler.",
+    "going_home": "Retour à l'accueil.",
+    "lo_siento": "Désolé, je ne sais pas comment vous aider avec cela.",
+    "error_db": "Erreur de connexion à la base de données.",
+    "event_saved": "Événement ajouté avec succès.",
+    "greetings": [
+      "Bonjour, comment puis-je vous aider ?",
+      "Dites-moi, de quoi avez-vous besoin ?",
+      "Bonjour, je vous écoute.",
+      "Comment puis-je vous assister aujourd'hui ?",
+      "Bonjour, que voulez-vous que je fasse ?",
+      "Dites-moi, comment puis-je vous aider ?",
+      "Je suis à votre disposition, dites-moi.",
+      "Bonjour, avez-vous besoin de quelque chose ?",
+      "Je vous écoute, que désirez-vous ?",
+      "Bonjour, comment allez-vous ? Comment puis-je vous aider ?"
+    ]
+  }
+}
+

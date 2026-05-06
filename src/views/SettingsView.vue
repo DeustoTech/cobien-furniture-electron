@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
+
 const version = ref('...')
 const deviceId = ref('...')
 
@@ -29,7 +33,8 @@ function handleExit() {
 }
 
 const settingsButtons = [
-  { id: 'lang', icon: '/images/language.png', label: 'Idioma', path: '#' },
+  { id: 'lang', icon: '/images/language.png', label: 'Idioma', path: '/settings/language' },
+
   { id: 'cities', icon: '/images/weather.png', label: 'Ciudades', path: '/settings/weather' },
   { id: 'colors', icon: '/images/color.png', label: 'Colores Botones', path: '#' },
   { id: 'notif', icon: '/images/notif.png', label: 'Notificaciones', path: '#' },
@@ -70,7 +75,8 @@ const settingsButtons = [
         <div class="card-icon-wrap">
           <img :src="btn.icon" :alt="btn.label" class="card-icon" />
         </div>
-        <div class="card-label">{{ btn.label }}</div>
+        <div class="card-label">{{ t(`settings.${btn.id}`) }}</div>
+
       </button>
     </div>
   </div>

@@ -1,34 +1,7 @@
 {
   "name": "cobien-furniture-electron",
   "private": true,
-  "version": "0.0.4-29",
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  "version": "0.0.4-30",
 
   "author": "Aritz Madariaga <aritzmadariaga@deusto.es>",
   "type": "module",
@@ -41,7 +14,8 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "mongodb": "^7.2.0",
-    "vue": "^3.5.32"
+    "vue": "^3.5.32",
+    "vue-i18n": "^9.14.5"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

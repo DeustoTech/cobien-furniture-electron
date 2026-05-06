@@ -1145,7 +1145,7 @@ dotenv.config();
 var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 var mainWindow = null;
 var configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
-function getPiperConfig() {
+function getPiperConfig(lang = "es", gender = "male") {
 	try {
 		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
 		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
@@ -1160,9 +1160,12 @@ function getPiperConfig() {
 		};
 		const internalBin = join(_dirname, "../public/models/piper/bin/piper");
 		const internalModel = join(_dirname, "../public/models/piper/es_ES-davefx-medium.onnx");
+		const bin = services.tts_piper_bin || internalBin;
+		let model = services[`tts_piper_model_${lang}_${gender}`] || services[`tts_piper_model_${lang}`] || internalModel;
+		if (model && !model.startsWith("/") && !model.includes(":") && !model.startsWith("http")) model = join(_dirname, "../../../cobien_FrontEnd/app", model);
 		return {
-			bin: services.tts_piper_bin || internalBin,
-			model: services.tts_piper_model_es_male || services.tts_piper_model_es || internalModel
+			bin,
+			model
 		};
 	} catch (e) {
 		console.error("Error reading piper config:", e);
@@ -1283,9 +1286,9 @@ function setupIPC() {
 	ipcMain.handle("app:exit", () => {
 		app.quit();
 	});
-	ipcMain.handle("tts:speak", async (event, text) => {
-		console.log(`[TTS] Speaking: "${text}"`);
-		const { bin, model } = getPiperConfig();
+	ipcMain.handle("tts:speak", async (event, text, lang = "es", gender = "male") => {
+		console.log(`[TTS] Speaking (${lang}/${gender}): "${text}"`);
+		const { bin, model } = getPiperConfig(lang, gender);
 		console.log(`[TTS] Config: bin=${bin}, model=${model}`);
 		if (!model) {
 			console.error("TTS: No Piper model configured.");

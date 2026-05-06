@@ -1,0 +1,71 @@
+{
+  "common": {
+    "back": "Volver",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Borrar",
+    "loading": "Cargando...",
+    "restarting": "Reiniciando...",
+    "exit": "Salir"
+  },
+  "home": {
+    "next_events": "Próximos eventos",
+    "phrase_of_the_day": "Frase del día",
+    "weather": "Tiempo",
+    "events": "Eventos",
+    "board": "Pizarra",
+    "call_me": "Llámame"
+  },
+  "board": {
+    "title": "Pizarra",
+    "empty": "No hay mensajes en la pizarra",
+    "reply": "Contestar mensaje",
+    "view_reply": "Ver respuesta",
+    "from": "De {author}:",
+    "no_image": "Sin imagen",
+    "delete_confirm": "¿Seguro que quieres borrar este mensaje?",
+    "respond_to": "Responder a {author}",
+    "responded_with": "Has respondido: {text}"
+  },
+  "settings": {
+    "title": "Configuración",
+    "restart": "Reiniciar",
+    "exit": "Salir",
+    "language": "Idioma",
+    "cities": "Ciudades",
+    "colors": "Colores Botones",
+    "notifications": "Notificaciones",
+    "rfid": "Tarjetas RFID",
+    "audio": "Audio",
+    "logs": "Logs del sistema",
+    "parameters": "Parámetros Launcher"
+  },
+  "assistant": {
+    "title": "Asistente CoBien",
+    "listening": "Escuchando...",
+    "speaking": "Hablando...",
+    "understood": "Has dicho: \"{text}\"",
+    "not_understood": "No te he entendido. Inténtalo de nuevo.",
+    "opening_weather": "Abriendo el tiempo.",
+    "opening_events": "Abriendo tu agenda.",
+    "opening_board": "Abriendo la pizarra de mensajes.",
+    "opening_contacts": "Abriendo contactos para llamar.",
+    "going_home": "Volviendo al inicio.",
+    "lo_siento": "Lo siento, no sé cómo ayudarte con eso.",
+    "error_db": "Error de conexión con la base de datos.",
+    "event_saved": "Evento añadido correctamente.",
+    "greetings": [
+      "Hola, ¿en qué puedo ayudarte?",
+      "Dime, ¿qué necesitas?",
+      "Hola, estoy escuchando.",
+      "¿En qué puedo asistirte hoy?",
+      "Hola, ¿qué quieres que haga?",
+      "Dime, ¿cómo te puedo ayudar?",
+      "Estoy a tu disposición, dime.",
+      "Hola, ¿necesitas algo?",
+      "Te escucho, ¿qué deseas?",
+      "Hola, ¿qué tal? ¿En qué puedo ayudarte?"
+    ]
+  }
+}
+

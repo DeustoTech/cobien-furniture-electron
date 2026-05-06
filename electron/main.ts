@@ -30,7 +30,7 @@ let mainWindow: BrowserWindow | null = null
 const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
 
 
-function getPiperConfig() {
+function getPiperConfig(lang = 'es', gender = 'male') {
   try {
     const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
     const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
@@ -41,15 +41,21 @@ function getPiperConfig() {
       localData = JSON.parse(fsSync.readFileSync(localPath, 'utf-8'))
     } catch(e) {}
     
-    // Merge services config
     const services = { ...defaultData.services, ...localData.services }
     
-    // Fallback to internal piper and models if not configured or missing in system
     const internalBin = join(_dirname, '../public/models/piper/bin/piper')
     const internalModel = join(_dirname, '../public/models/piper/es_ES-davefx-medium.onnx')
 
     const bin = services.tts_piper_bin || internalBin
-    const model = services.tts_piper_model_es_male || services.tts_piper_model_es || internalModel
+    
+    // Determine model based on lang and gender
+    let modelKey = `tts_piper_model_${lang}_${gender}`
+    let model = services[modelKey] || services[`tts_piper_model_${lang}`] || internalModel
+    
+    // Resolve relative paths
+    if (model && !model.startsWith('/') && !model.includes(':') && !model.startsWith('http')) {
+      model = join(_dirname, '../../../cobien_FrontEnd/app', model)
+    }
     
     return { bin, model }
   } catch(e) {
@@ -59,6 +65,7 @@ function getPiperConfig() {
     return { bin: internalBin, model: internalModel }
   }
 }
+
 
 function setupIPC() {
 
@@ -193,9 +200,10 @@ function setupIPC() {
     app.quit()
   })
 
-  ipcMain.handle('tts:speak', async (event, text: string) => {
-    console.log(`[TTS] Speaking: "${text}"`)
-    const { bin, model } = getPiperConfig()
+  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'male') => {
+    console.log(`[TTS] Speaking (${lang}/${gender}): "${text}"`)
+    const { bin, model } = getPiperConfig(lang, gender)
+
     console.log(`[TTS] Config: bin=${bin}, model=${model}`)
     
     if (!model) {

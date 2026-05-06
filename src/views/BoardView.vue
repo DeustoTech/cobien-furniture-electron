@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t, locale } = useI18n()
+
 const messages = ref<any[]>([])
 const currentIndex = ref(0)
 const loading = ref(true)
@@ -30,7 +32,7 @@ onUnmounted(() => {
 })
 
 const formattedDate = computed(() => {
-  return currentTime.value.toLocaleDateString('es-ES', { 
+  return currentTime.value.toLocaleDateString(locale.value === 'es' ? 'es-ES' : 'fr-FR', { 
     weekday: 'long', 
     day: 'numeric', 
     month: 'long', 
@@ -39,11 +41,13 @@ const formattedDate = computed(() => {
 })
 
 const formattedTime = computed(() => {
-  return currentTime.value.toLocaleTimeString('es-ES', { 
+  return currentTime.value.toLocaleTimeString(locale.value === 'es' ? 'es-ES' : 'fr-FR', { 
     hour: '2-digit', 
     minute: '2-digit' 
   })
 })
+
+
 
 async function loadMessages() {
   loading.value = true
@@ -95,7 +99,8 @@ async function handleReply(text: string) {
 
 async function handleDelete() {
   if (!currentMessage.value) return
-  if (confirm('¿Seguro que quieres borrar este mensaje?')) {
+  if (confirm(t('board.delete_confirm'))) {
+
     const ok = await (window as any).config.deleteBoardMessage(currentMessage.value.id)
     if (ok) {
       messages.value.splice(currentIndex.value, 1)
@@ -121,7 +126,8 @@ function goBack() {
     <!-- Header -->
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Pizarra</h1>
+        <h1 class="header-title">{{ t('board.title') }}</h1>
+
       </div>
 
       <div class="header-center">
@@ -149,12 +155,13 @@ function goBack() {
 
       <div v-if="loading" class="main-card loading glass-panel">
         <div class="spinner"></div>
-        <p>Cargando mensajes...</p>
+        <p>{{ t('common.loading') }}</p>
       </div>
 
       <div v-else-if="messages.length === 0" class="main-card empty glass-panel">
-        <p>No hay mensajes en la pizarra</p>
+        <p>{{ t('board.empty') }}</p>
       </div>
+
 
       <div v-else class="main-card message-card shadow-lg">
         <div class="card-layout">
@@ -165,9 +172,10 @@ function goBack() {
               <div v-else class="avatar-fallback">{{ currentMessage.author.charAt(0) }}</div>
               
               <div class="sender-meta">
-                <div class="author-name">De {{ currentMessage.author }}:</div>
+                <div class="author-name">{{ t('board.from', { author: currentMessage.author }) }}</div>
                 <div class="post-date">{{ currentMessage.created_at_human }}</div>
               </div>
+
             </div>
 
             <div class="message-body">
@@ -180,7 +188,8 @@ function goBack() {
                 class="reply-trigger-btn"
                 @click="showReplyModal = true"
               >
-                {{ currentMessage.quick_reply_selected ? 'Ver respuesta' : 'Contestar mensaje' }}
+                {{ currentMessage.quick_reply_selected ? t('board.view_reply') : t('board.reply') }}
+
               </button>
             </div>
           </div>
@@ -190,8 +199,9 @@ function goBack() {
             <img :src="currentMessage.image" class="full-img" />
           </div>
           <div class="image-side no-img" v-else>
-            <div class="no-img-placeholder">Sin imagen</div>
+            <div class="no-img-placeholder">{{ t('board.no_image') }}</div>
           </div>
+
         </div>
       </div>
 
@@ -210,9 +220,10 @@ function goBack() {
       <div v-if="showReplyModal && currentMessage" class="modal-overlay" @click.self="showReplyModal = false">
         <div class="reply-modal glass-panel">
           <div class="modal-header">
-            <h2>Responder a {{ currentMessage.author }}</h2>
+            <h2>{{ t('board.respond_to', { author: currentMessage.author }) }}</h2>
             <button class="close-modal" @click="showReplyModal = false">✕</button>
           </div>
+
           
           <div class="replies-grid">
             <button 
@@ -227,8 +238,9 @@ function goBack() {
           </div>
 
           <div v-if="currentMessage.quick_reply_selected" class="selection-status">
-            Has respondido: <strong>{{ currentMessage.quick_reply_selected }}</strong>
+            {{ t('board.responded_with', { text: currentMessage.quick_reply_selected }) }}
           </div>
+
         </div>
       </div>
     </Teleport>

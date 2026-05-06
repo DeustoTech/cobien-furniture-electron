@@ -1,25 +1,37 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { useSettings } from './useSettings'
+
+
+
 
 export function useVoiceAssistant() {
   const router = useRouter()
+  const { voiceGenders } = useSettings()
+  
   const isActive = ref(false)
   const message = ref('')
   const audioLevel = ref(0)
   const step = ref<'idle' | 'listening' | 'speaking'>('idle')
 
+
+
+
+
   async function speak(text: string) {
     step.value = 'speaking'
     message.value = text
     try {
-      const buffer = await (window as any).config.ttsSpeak(text)
+      const lang = locale.value
+      const gender = voiceGenders.value[lang] || 'male'
+      const buffer = await (window as any).config.ttsSpeak(text, lang, gender)
+
       if (buffer) {
         const audioCtx = new AudioContext()
         await audioCtx.resume()
 
-        // Convert Buffer/Uint8Array to ArrayBuffer
         const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-        
         const decoded = await audioCtx.decodeAudioData(arrayBuffer)
         const source = audioCtx.createBufferSource()
 
@@ -40,7 +52,6 @@ export function useVoiceAssistant() {
 
   async function listen(): Promise<string | null> {
     step.value = 'listening'
-    // Subscribe to audio levels and partial results
     const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
       audioLevel.value = lvl
     })
@@ -49,7 +60,7 @@ export function useVoiceAssistant() {
     })
 
     try {
-      const text = await (window as any).config.sttListen('es')
+      const text = await (window as any).config.sttListen(locale.value)
       stopLevel()
       stopPartial()
       audioLevel.value = 0
@@ -63,34 +74,26 @@ export function useVoiceAssistant() {
     }
   }
 
-  async function startAssistant() {
 
+  async function startAssistant() {
     if (isActive.value) return
     isActive.value = true
     
-    const greetings = [
+    const greetings = (t('assistant.greetings', { returnObjects: true }) as string[]) || [
       "Hola, ¿en qué puedo ayudarte?",
-      "Dime, ¿qué necesitas?",
-      "Hola, estoy escuchando.",
-      "¿En qué puedo asistirte hoy?",
-      "Hola, ¿qué quieres que haga?",
-      "Dime, ¿cómo te puedo ayudar?",
-      "Estoy a tu disposición, dime.",
-      "Hola, ¿necesitas algo?",
-      "Te escucho, ¿qué deseas?",
-      "Hola, ¿qué tal? ¿En qué puedo ayudarte?"
+      "Dime, ¿qué necesitas?"
     ]
     const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
     
     await speak(randomGreeting)
-    if (!isActive.value) return // Aborted
+    if (!isActive.value) return 
     
     const command = await listen()
-    if (!isActive.value) return // Aborted
+    if (!isActive.value) return 
     
     if (!command) {
-      message.value = 'No te he entendido. Inténtalo de nuevo.'
-      await speak('No he reconocido el comando.')
+      message.value = t('assistant.not_understood')
+      await speak(t('assistant.not_understood'))
       await new Promise(r => setTimeout(r, 1500))
       isActive.value = false
       step.value = 'idle'
@@ -98,63 +101,34 @@ export function useVoiceAssistant() {
     }
 
     const text = command.toLowerCase()
-    message.value = `Has dicho: "${text}"`
+    message.value = t('assistant.understood', { text })
     
-    if (text.includes('tiempo') || text.includes('clima') || text.includes('pronóstico')) {
-      await speak('Abriendo el tiempo.')
+    const keywords = {
+      weather: ['tiempo', 'clima', 'météo', 'prévisions'],
+      events: ['eventos', 'agenda', 'calendario', 'événements', 'calendrier'],
+      board: ['mensajes', 'pizarra', 'tableau', 'messages'],
+      call: ['llamar', 'llamada', 'appeler', 'appel', 'contact'],
+      home: ['inicio', 'volver', 'accueil', 'retour']
+    }
+
+    if (keywords.weather.some(k => text.includes(k))) {
+      await speak(t('assistant.opening_weather'))
       router.push('/weather')
-    } else if (text.includes('eventos') || text.includes('agenda') || text.includes('calendario')) {
-      await speak('Abriendo tu agenda.')
+    } else if (keywords.events.some(k => text.includes(k))) {
+      await speak(t('assistant.opening_events'))
       router.push('/events')
-    } else if (text.includes('mensajes') || text.includes('pizarra') || text.includes('mensaje')) {
-      await speak('Abriendo la pizarra de mensajes.')
+    } else if (keywords.board.some(k => text.includes(k))) {
+      await speak(t('assistant.opening_board'))
       router.push('/board')
-    } else if (text.includes('llamar') || text.includes('llamada') || text.includes('contacto')) {
-      await speak('Abriendo contactos para llamar.')
+    } else if (keywords.call.some(k => text.includes(k))) {
+      await speak(t('assistant.opening_contacts'))
       router.push('/call')
-    } else if (text.includes('inicio') || text.includes('comienzo') || text.includes('volver') || text.includes('principal')) {
-      await speak('Volviendo al inicio.')
+    } else if (keywords.home.some(k => text.includes(k))) {
+      await speak(t('assistant.going_home'))
       router.push('/')
-    } else if (text.includes('añadir') || text.includes('nuevo event') || text.includes('crear event')) {
-      await speak('Dime el título del evento personal.')
-      if (!isActive.value) return
-      const title = await listen()
-      if (!isActive.value) return
-      if (!title) {
-        await speak('No he entendido el título. Proceso cancelado.')
-      } else {
-        message.value = `Título: "${title}"`
-        await speak(`Dime la descripción para el evento: ${title}.`)
-        if (!isActive.value) return
-        const description = await listen()
-        if (!isActive.value) return
-        const descFinal = description || 'Sin descripción'
-        
-        message.value = `Guardando: "${title}" - ${descFinal}`
-        await speak('Guardando evento para hoy.')
-        const today = new Date()
-        const day = today.getDate().toString().padStart(2, '0')
-        const month = (today.getMonth() + 1).toString().padStart(2, '0')
-        const dateStr = `${day}-${month}-${today.getFullYear()}`
-        
-        try {
-          const ok = await (window as any).config.addPersonalEvent({
-            date: dateStr,
-            title: title.trim(),
-            description: descFinal.trim()
-          })
-          if (ok) {
-            message.value = '🎉 Evento guardado'
-            await speak('Evento añadido correctamente.')
-          } else {
-            await speak('Ha ocurrido un error al guardar el evento.')
-          }
-        } catch(e) {
-          await speak('Error de conexión con la base de datos.')
-        }
-      }
     } else {
-      await speak('Lo siento, no sé cómo ayudarte con eso.')
+      // Fallback or generic response
+      await speak(t('assistant.not_understood'))
     }
 
 
@@ -162,11 +136,11 @@ export function useVoiceAssistant() {
     isActive.value = false
     step.value = 'idle'
     
-    // Restart background wake-word listening
     try {
       await (window as any).config.restartWakeWord()
     } catch(e) {}
   }
+
 
   function cancelAssistant() {
     console.log('[ASR] Cancelling assistant flow')

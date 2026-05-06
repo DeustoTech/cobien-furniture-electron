@@ -49,7 +49,7 @@ electron.contextBridge.exposeInMainWorld("config", {
 	deleteBoardMessage: (id) => electron.ipcRenderer.invoke("board:delete", id),
 	markMessageRead: (id) => electron.ipcRenderer.invoke("board:read", id),
 	submitQuickReply: (id, text) => electron.ipcRenderer.invoke("board:reply", id, text),
-	ttsSpeak: (text) => electron.ipcRenderer.invoke("tts:speak", text),
+	ttsSpeak: (text, lang = "es", gender = "male") => electron.ipcRenderer.invoke("tts:speak", text, lang, gender),
 	sttListen: (language) => electron.ipcRenderer.invoke("stt:listen", language),
 	abortStt: () => electron.ipcRenderer.invoke("stt:abort"),
 	getSystemInfo: () => electron.ipcRenderer.invoke("config:getSystemInfo"),
