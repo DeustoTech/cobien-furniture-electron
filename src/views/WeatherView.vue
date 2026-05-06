@@ -102,71 +102,86 @@ function triggerVoiceAssistant() {
 <template>
   <div class="view-container">
     
-    <!-- Top Header Area -->
-    <div class="header-section">
-      <div class="header-left">
-        <div class="title">Tiempo</div>
-        <div class="city-nav">
-          <button v-if="activeCities.length > 1" class="nav-arrow" @click="prevCity">
-            <img src="/images/arrowback.png" alt="Anterior" />
-          </button>
+    <!-- Top Panel: Header + Hourly -->
+    <div class="top-panel glass-panel">
+      <!-- Header Area -->
+      <div class="header-section">
+        
+        <!-- Left Column: Title and City -->
+        <div class="header-left">
+          <div class="title">Tiempo</div>
           <div class="city-name">{{ cityName }}</div>
-          <button v-if="activeCities.length > 1" class="nav-arrow" @click="nextCity">
-            <img src="/images/arrowforward.png" alt="Siguiente" />
-          </button>
         </div>
-      </div>
-      
-      <div class="header-center">
-        <div v-if="isLoading" class="loading-spinner" />
-        <img v-else :src="currentIcon" alt="weather" class="main-weather-icon" />
-        <div class="main-weather-info">
-          <div class="main-temp">{{ currentTemp }}</div>
-          <div class="main-desc">{{ currentCondition }}</div>
+        
+        <!-- Center Column: Icon, Temp, Condition -->
+        <div class="header-center">
+          <div v-if="isLoading" class="loading-spinner" />
+          <template v-else>
+            <img :src="currentIcon" alt="weather" class="main-weather-icon" />
+            <div class="main-weather-info">
+              <div class="main-temp">{{ currentTemp }}</div>
+              <div class="main-desc">{{ currentCondition }}</div>
+            </div>
+          </template>
         </div>
+
+        <!-- Right Column: Min/Max -->
+        <div class="header-right">
+          <div class="min-max">
+            <div>{{ minTemp }}</div>
+            <div>{{ maxTemp }}</div>
+          </div>
+        </div>
+
+        <!-- Actions Column: Buttons -->
+        <div class="header-actions">
+          <div class="top-actions">
+            <button class="icon-button" @click="goBack">
+              <img src="/images/back.png" alt="Volver" class="icon" />
+            </button>
+            <button class="icon-button" @click="triggerVoiceAssistant">
+              <img src="/images/voice.png" alt="Voice" class="icon" />
+            </button>
+          </div>
+          <div class="nav-actions" v-if="activeCities.length > 1">
+            <button class="icon-button" @click="prevCity">
+              <img src="/images/arrowback.png" alt="Anterior" class="icon" />
+            </button>
+            <button class="icon-button" @click="nextCity">
+              <img src="/images/arrowforward.png" alt="Siguiente" class="icon" />
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      <div class="header-right">
-        <div class="min-max">
-          <div>{{ minTemp }}</div>
-          <div>{{ maxTemp }}</div>
-        </div>
-      </div>
+      <div class="divider"></div>
 
-      <div class="header-buttons">
-        <button class="icon-button" @click="goBack">
-          <img src="/images/back.png" alt="Volver" class="icon" />
-        </button>
-        <button class="icon-button" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" alt="Voice" class="icon" />
-        </button>
+      <!-- Hourly Forecast Bar -->
+      <div class="hourly-bar">
+        <div v-if="isLoading && hourlyForecast.length === 0" class="hourly-loading">
+          Cargando previsión horaria...
+        </div>
+        <div v-else class="hourly-item" v-for="(hour, idx) in hourlyForecast" :key="idx">
+          <div class="hour-time">{{ hour.time }}</div>
+          <img :src="hour.icon" class="hour-icon" alt="hour weather" />
+          <div class="hour-temp">{{ hour.temp }}</div>
+        </div>
       </div>
     </div>
 
-    <!-- Hourly Forecast Bar -->
-    <div class="hourly-bar">
-      <div v-if="isLoading && hourlyForecast.length === 0" class="hourly-loading">
-        Cargando previsión horaria...
-      </div>
-      <div v-else class="hourly-item" v-for="(hour, idx) in hourlyForecast" :key="idx">
-        <div class="hour-time">{{ hour.time }}</div>
-        <img :src="hour.icon" class="hour-icon" alt="hour weather" />
-        <div class="hour-temp">{{ hour.temp }}</div>
-      </div>
-    </div>
-
-    <!-- Daily Forecast Cards -->
-    <div class="daily-section glass-panel">
+    <!-- Bottom Panel: Daily Forecast -->
+    <div class="bottom-panel glass-panel">
       <div v-if="isLoading && dailyForecast.length === 0" class="daily-loading">
         Cargando previsión de la semana...
       </div>
       <div v-else class="daily-card" v-for="(day, idx) in dailyForecast" :key="idx">
         <div class="day-name">{{ day.name }}</div>
         <img :src="day.icon" class="day-icon" alt="daily weather" />
-        <div class="day-precip">💧 {{ day.pop }}%</div>
+        <div class="day-precip">{{ day.pop !== undefined ? day.pop : 0 }}%</div>
         <div class="day-minmax">
-          <div>{{ day.tmin }}</div>
-          <div>{{ day.tmax }}</div>
+          <div>Min {{ day.tmin }}</div>
+          <div>Max {{ day.tmax }}</div>
         </div>
       </div>
     </div>
@@ -177,125 +192,124 @@ function triggerVoiceAssistant() {
 <style scoped>
 .view-container {
   height: 100vh;
-  padding: 2.5rem 3rem;
+  padding: 1.5rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   overflow: hidden;
 }
 
-/* Header Section */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+}
+
+/* Top Panel */
+.top-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem 2.5rem;
+  flex: 1;
+}
+
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  position: relative;
   width: 100%;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .title {
   font-size: 3rem;
   font-weight: 700;
-  color: #000;
+  color: #111;
   line-height: 1;
 }
 
-.city-nav {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 0.5rem;
-}
-
-.nav-arrow {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  transition: transform 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-arrow:active {
-  transform: scale(0.9);
-}
-
-.nav-arrow img {
-  width: 2.5rem;
-  height: 2.5rem;
-  object-fit: contain;
-  opacity: 0.7;
-}
-
 .city-name {
-  font-size: 5rem;
+  font-size: 6.5rem;
   font-weight: 800;
   color: #000;
-  line-height: 1.1;
-  margin-top: 0;
+  line-height: 1;
+  margin-top: 2rem; /* Increased margin */
 }
 
 .header-center {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-left: 5rem;
-  margin-top: 2rem;
+  gap: 3.5rem; /* Increased margin */
+  flex: 1.5;
+  justify-content: center;
 }
 
 .main-weather-icon {
-  width: 6rem;
-  height: 6rem;
+  width: 10rem;
+  height: 10rem;
   object-fit: contain;
 }
 
 .main-weather-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .main-temp {
-  font-size: 4.5rem;
-  font-weight: 700;
+  font-size: 6rem;
+  font-weight: 800;
   color: #000;
   line-height: 1;
 }
 
 .main-desc {
-  font-size: 1.5rem;
+  font-size: 2.2rem;
   font-weight: 500;
   color: #222;
+  margin-top: 1rem; /* Increased margin */
 }
 
 .header-right {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  margin-top: 3.5rem;
-  font-size: 1.5rem;
-  color: #111;
-  font-weight: 500;
-  gap: 0.3rem;
+  justify-content: flex-start;
+  flex: 1;
+  margin-top: 4rem; /* Increased margin */
 }
 
-.header-buttons {
+.min-max {
   display: flex;
-  gap: 1rem;
-  position: absolute;
-  top: 0;
-  right: 0;
+  flex-direction: column;
+  font-size: 2rem;
+  font-weight: 500;
+  color: #333;
+  gap: 1.5rem; /* Increased margin */
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Increased margin */
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+
+.top-actions, .nav-actions {
+  display: flex;
+  gap: 1rem; /* Increased margin */
 }
 
 .icon-button {
-  width: 4rem;
-  height: 4rem;
+  width: 5.8rem; /* Increased 15% */
+  height: 5.8rem; /* Increased 15% */
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(0,0,0,0.2);
@@ -312,9 +326,16 @@ function triggerVoiceAssistant() {
 }
 
 .icon {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3.5rem; /* Increased 15% */
+  height: 3.5rem; /* Increased 15% */
   object-fit: contain;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.15);
+  margin: 1.5rem 0;
 }
 
 /* Hourly Bar */
@@ -322,55 +343,49 @@ function triggerVoiceAssistant() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 1.5rem 2rem;
   width: 100%;
+  padding: 0 1rem;
 }
 
 .hourly-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .hour-time {
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  color: #111;
+  color: #333;
 }
 
 .hour-icon {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 4rem;
+  height: 4rem;
   object-fit: contain;
 }
 
 .hour-temp {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #000;
 }
 
-/* Daily Section */
-.daily-section {
+/* Bottom Panel */
+.bottom-panel {
   display: flex;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 1.2rem;
   flex: 1;
-  border-radius: 20px;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.4);
 }
 
 .daily-card {
   flex: 1;
   background: white;
   border-radius: 16px;
-  padding: 2rem 1rem;
+  padding: 1.5rem 0.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -379,34 +394,34 @@ function triggerVoiceAssistant() {
 }
 
 .day-name {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 500;
   color: #111;
-  margin-bottom: 2rem;
-}
-
-.day-icon {
-  width: 6rem;
-  height: 6rem;
-  object-fit: contain;
   margin-bottom: 1.5rem;
 }
 
+.day-icon {
+  width: 7.7rem; /* Increased 10% */
+  height: 7.7rem; /* Increased 10% */
+  object-fit: contain;
+  margin-bottom: 3rem; /* Increased distance to percentage */
+}
+
 .day-precip {
-  font-size: 1.2rem;
+  font-size: 1.6rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 2rem;
+  color: #444;
+  margin-bottom: 1.5rem;
 }
 
 .day-minmax {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.1rem;
+  gap: 0.4rem;
+  font-size: 1.5rem;
   font-weight: 500;
-  color: #444;
+  color: #555;
   margin-top: auto;
 }
 

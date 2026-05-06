@@ -42,7 +42,7 @@ onMounted(async () => {
 <template>
   <router-view />
   <VoiceAssistant ref="voiceAssistantRef" />
-  <IdleOverlay :timeout-sec="idleTimeout" />
+  <!-- <IdleOverlay :timeout-sec="idleTimeout" /> -->
 </template>
 
 <style scoped>

@@ -19,7 +19,8 @@ const weatherCondition = ref('Muy nuboso')
 const weatherIcon = ref('/images/sol.png')
 const cityName = ref('Cargando...')
 
-const minMaxTemp = ref('Min 8°  Max 19°')
+const minTemp = ref('Min 8°')
+const maxTemp = ref('Max 19°')
 const nextEvent = ref('Sin eventos próximos')
 const jokeText = ref('¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter.')
 const systemMeta = ref('CoBien2 · v3.2.40')
@@ -49,7 +50,8 @@ onMounted(async () => {
       weatherTemp.value = bundle.temp
       weatherCondition.value = bundle.description
       weatherIcon.value = bundle.icon
-      minMaxTemp.value = `Min ${bundle.tempMin}  Max ${bundle.tempMax}`
+      minTemp.value = bundle.tempMin
+      maxTemp.value = bundle.tempMax
     }
 
 
@@ -133,7 +135,10 @@ async function openBrightnessPopup() {
             <div class="temp-group">
 
               <div class="current-temp">{{ weatherTemp }}</div>
-              <div class="minmax-temp">{{ minMaxTemp }}</div>
+              <div class="minmax-temp">
+                <div>{{ minTemp }}</div>
+                <div>{{ maxTemp }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -233,7 +238,7 @@ async function openBrightnessPopup() {
   background-size: cover;
   display: flex;
   flex-direction: column;
-  padding: 3rem 2.5rem 1.5rem;
+  padding: 5rem 2.5rem 1.5rem; /* Increased top padding */
 
   gap: 1.5rem;
   overflow: hidden;
@@ -266,18 +271,20 @@ async function openBrightnessPopup() {
 /* Col 1: Time & Date */
 .col-time {
   flex: 1.2;
+  align-items: center;
+  text-align: center;
 }
 
 .date-text {
-  font-size: 1.8rem;
+  font-size: 2rem; /* Matched to section-title */
   font-weight: 700;
   color: #111;
   margin-bottom: 0.5rem;
 }
 
 .time-display {
-  font-size: clamp(4rem, 8vw, 8.5rem);
-  font-weight: 800;
+  font-size: clamp(5.1rem, 12vw, 12.7rem); /* Reduced by 15% */
+  font-weight: 400; /* Removed bold */
   color: #000;
   line-height: 0.9;
   letter-spacing: -3px;
@@ -290,7 +297,7 @@ async function openBrightnessPopup() {
 }
 
 .weather-status {
-  font-size: 1.6rem;
+  font-size: 2rem; /* Matched to section-title */
   font-weight: 700;
   color: #111;
   margin-bottom: 1.2rem;
@@ -303,21 +310,24 @@ async function openBrightnessPopup() {
 }
 
 .weather-icon {
-  width: 6.5rem;
-  height: 6.5rem;
+  width: 12rem; /* Significantly increased */
+  height: 12rem;
   object-fit: contain;
 }
 
 
 .current-temp {
-  font-size: 3.5rem;
+  font-size: 7.5rem; /* Significantly increased */
   font-weight: 800;
   color: #000;
   line-height: 1;
 }
 
 .minmax-temp {
-  font-size: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 2.2rem; /* Significantly increased */
   font-weight: 600;
   color: #444;
   margin-top: 0.2rem;
@@ -331,7 +341,7 @@ async function openBrightnessPopup() {
 }
 
 .section-title {
-  font-size: 1.4rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #111;
   margin-bottom: 0.4rem;
@@ -357,7 +367,7 @@ async function openBrightnessPopup() {
 }
 
 .event-item, .joke-text {
-  font-size: 1.3rem;
+  font-size: 1.85rem;
   font-weight: 500;
   color: #333;
   line-height: 1.3;
@@ -366,19 +376,19 @@ async function openBrightnessPopup() {
 
 .top-right-actions {
   position: absolute;
-  top: 0.5rem;
+  top: 0;
   right: 0;
   display: flex;
   gap: 0.8rem;
 }
 
 .action-box {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 7.5rem;
+  height: 7.5rem;
 
   background: white;
   border: 1.8px solid #000;
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -387,43 +397,45 @@ async function openBrightnessPopup() {
 }
 
 .action-box img {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 4.8rem;
+  height: 4.8rem;
 
   object-fit: contain;
 }
 
-/* --- Nav Grid --- */
 .nav-section {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.72);
   border-radius: 32px;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  padding: 1rem 1.5rem;
-
+  padding: 1rem; /* Halved padding */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   backdrop-filter: blur(8px);
 }
 
 .nav-grid {
   width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 140px 140px; /* Forced shorter height */
   gap: 1.5rem;
+  justify-content: center;
+  align-content: center;
 }
 
 
 .nav-card {
+  display: flex;
   background: white;
   border: 2.2px solid rgba(0, 0, 0, 0.35);
   border-radius: 22px;
-  flex-direction: column;
+  flex-direction: row; /* Changed to row for left-to-right layout */
+  align-items: center;
   justify-content: center;
-  padding: 0.5rem 1rem;
-  gap: 0.5rem;
-  min-height: 250px;
+  padding: 1rem 2rem;
+  gap: 1.5rem; /* Increased gap between icon and text */
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -434,15 +446,13 @@ async function openBrightnessPopup() {
 }
 
 .nav-card-icon {
-  width: clamp(6rem, 12vw, 12rem);
-  height: clamp(6rem, 12vw, 12rem);
-
-
+  width: clamp(5.4rem, 10vw, 7.8rem);
+  height: clamp(5.4rem, 10vw, 7.8rem);
   object-fit: contain;
 }
 
 .nav-card-text {
-  font-size: clamp(2.2rem, 4.5vw, 4.5rem);
+  font-size: clamp(2.6rem, 5.5vw, 5.4rem);
   line-height: 1.1;
   text-align: center;
 
@@ -457,6 +467,7 @@ async function openBrightnessPopup() {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  margin-top: auto;
 }
 
 .footer-left {
@@ -465,12 +476,12 @@ async function openBrightnessPopup() {
 }
 
 .control-box {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 7.5rem;
+  height: 7.5rem;
 
   background: white;
   border: 1.8px solid #000;
-  border-radius: 14px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -478,8 +489,8 @@ async function openBrightnessPopup() {
 }
 
 .control-box img {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 4.8rem;
+  height: 4.8rem;
 
   object-fit: contain;
 }
