@@ -15,10 +15,12 @@ interface HourlyItem {
 
 interface DailyItem {
   name: string   // e.g. "Lunes"
+  date: string   // e.g. "11 mayo"
   icon: string
   tmin: string
   tmax: string
   pop: number    // precipitation probability 0-100
+  wind?: number  // max wind speed in km/h
 }
 
 interface WeatherBundle {
@@ -28,6 +30,8 @@ interface WeatherBundle {
   icon: string
   tempMin: string
   tempMax: string
+  todayPop: number
+  todayWind: number
   hourly: HourlyItem[]
   daily: DailyItem[]
   error?: string
@@ -132,6 +136,8 @@ export async function fetchWeatherBundle(cityName: string): Promise<WeatherBundl
     icon: '/images/nubes.png',
     tempMin: 'Min —°',
     tempMax: 'Max —°',
+    todayPop: 0,
+    todayWind: 0,
     hourly: [],
     daily: [],
   }
@@ -151,7 +157,7 @@ export async function fetchWeatherBundle(cityName: string): Promise<WeatherBundl
       `&timezone=${encodeURIComponent(tz)}`,
       `&current=temperature_2m,weathercode,is_day`,
       `&hourly=temperature_2m,weathercode`,
-      `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max`,
+      `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,wind_speed_10m_max`,
       `&forecast_days=7`,
     ].join('')
 
@@ -186,6 +192,8 @@ export async function fetchWeatherBundle(cityName: string): Promise<WeatherBundl
     const todayMax = Math.round(om.daily?.temperature_2m_max?.[0] ?? 0)
     base.tempMin = `Min ${todayMin}°`
     base.tempMax = `Max ${todayMax}°`
+    base.todayPop = om.daily?.precipitation_probability_max?.[0] ?? 0
+    base.todayWind = Math.round(om.daily?.wind_speed_10m_max?.[0] ?? 0)
 
     // ── Hourly (next 12 hours from now) ──────────────
     const nowHour = new Date().getHours()
@@ -212,15 +220,20 @@ export async function fetchWeatherBundle(cityName: string): Promise<WeatherBundl
     const dailyMinArr: number[] = om.daily?.temperature_2m_min ?? []
     const dailyCodesArr: number[] = om.daily?.weathercode ?? []
     const dailyPopArr: number[] = om.daily?.precipitation_probability_max ?? []
+    const dailyWindArr: number[] = om.daily?.wind_speed_10m_max ?? []
 
     base.daily = dailyTimes.slice(1, 7).map((t, i) => {
       const d = new Date(t)
+      const day = d.getDate()
+      const month = d.toLocaleDateString('es-ES', { month: 'long' })
       return {
         name: WEEKDAY_ES[d.getDay()],
+        date: `${day} ${month}`,
         icon: wmoIcon(dailyCodesArr[i + 1] ?? 0),
         tmin: `${Math.round(dailyMinArr[i + 1] ?? 0)}°`,
         tmax: `${Math.round(dailyMaxArr[i + 1] ?? 0)}°`,
         pop: dailyPopArr[i + 1] ?? 0,
+        wind: Math.round(dailyWindArr[i + 1] ?? 0),
       }
     })
 

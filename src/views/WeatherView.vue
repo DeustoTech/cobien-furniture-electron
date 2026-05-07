@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useVoiceAssistant } from '../composables/useVoiceAssistant'
 
 const router = useRouter()
+const { speak: ttsSpeak } = useVoiceAssistant()
 const cityName = ref('Cargando...')
 const currentTemp = ref('—°')
 const currentCondition = ref('Cargando...')
 const minTemp = ref('Min —°')
 const maxTemp = ref('Max —°')
+const todayPop = ref(0)
+const todayWind = ref(0)
 const currentIcon = ref('/images/nubes.png')
 const isLoading = ref(false)
+const fullDate = ref('')
+
+function updateFullDate() {
+  const d = new Date()
+  const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' })
+  const day = d.getDate()
+  const month = d.toLocaleDateString('es-ES', { month: 'long' })
+  // Capitalize first letter of weekday
+  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1)
+  fullDate.value = `${capitalizedWeekday}, ${day} de ${month}`
+}
 
 const activeCities = ref<string[]>([])
 const currentCityIndex = ref(0)
@@ -29,6 +44,8 @@ async function loadWeather(city: string) {
       currentCondition.value = bundle.description
       minTemp.value = bundle.tempMin
       maxTemp.value = bundle.tempMax
+      todayPop.value = bundle.todayPop || 0
+      todayWind.value = bundle.todayWind || 0
       currentIcon.value = bundle.icon
       hourlyForecast.value = bundle.hourly || []
       dailyForecast.value = bundle.daily || []
@@ -59,6 +76,7 @@ onMounted(async () => {
   }
 
   await loadWeather(cityName.value)
+  updateFullDate()
 
   // Refresh every 20 minutes like the legacy app
   refreshTimer = setInterval(() => loadWeather(cityName.value), 20 * 60 * 1000)
@@ -97,6 +115,19 @@ function goBack() {
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
+
+function readWeatherReport() {
+  const cleanMax = maxTemp.value.replace('Max ', '').replace('°', ' grados')
+  const cleanMin = minTemp.value.replace('Min ', '').replace('°', ' grados')
+  const cleanCurrent = currentTemp.value.replace('°', ' grados')
+  
+  const text = `Hola. Aquí tienes el reporte del tiempo para ${cityName.value}. ` +
+               `Actualmente tenemos ${currentCondition.value} con una temperatura de ${cleanCurrent}. ` +
+               `Para hoy esperamos una máxima de ${cleanMax} y una mínima de ${cleanMin}. ` +
+               `La probabilidad de lluvia es del ${todayPop.value} por ciento, y el viento soplará hasta los ${todayWind.value} kilómetros por hora.`
+               
+  ttsSpeak(text)
+}
 </script>
 
 <template>
@@ -111,6 +142,7 @@ function triggerVoiceAssistant() {
         <div class="header-left">
           <div class="title">Tiempo</div>
           <div class="city-name">{{ cityName }}</div>
+          <div class="full-date">{{ fullDate }}</div>
         </div>
         
         <!-- Center Column: Icon, Temp, Condition -->
@@ -122,11 +154,31 @@ function triggerVoiceAssistant() {
               <div class="main-temp">{{ currentTemp }}</div>
               <div class="main-desc">{{ currentCondition }}</div>
             </div>
+
+            <div class="header-temps-column">
+              <!-- Reusing styles from daily cards -->
+              <div class="day-temps-row">
+                <div class="temp-col">
+                  <span class="temp-val">{{ minTemp.replace('Min ', '') }}</span>
+                  <span class="temp-label">Min</span>
+                </div>
+                <div class="temp-divider"></div>
+                <div class="temp-col">
+                  <span class="temp-val">{{ maxTemp.replace('Max ', '') }}</span>
+                  <span class="temp-label">Max</span>
+                </div>
+              </div>
+
+              <div class="header-extra-info">
+                <div>Lluvia: <span class="extra-val">{{ todayPop }}%</span></div>
+                <div>Viento: <span class="extra-val">{{ todayWind }} km/h</span></div>
+              </div>
+            </div>
           </template>
         </div>
 
-        <!-- Right Column: Min/Max -->
-        <div class="header-right">
+        <!-- Right Column: Hidden or removed as we moved min-max to center -->
+        <div class="header-right" style="display: none;">
           <div class="min-max">
             <div>{{ minTemp }}</div>
             <div>{{ maxTemp }}</div>
@@ -135,15 +187,25 @@ function triggerVoiceAssistant() {
 
         <!-- Actions Column: Buttons -->
         <div class="header-actions">
-          <div class="top-actions">
+          <!-- Row 1: Back (positioned higher) -->
+          <div class="action-row back-row">
             <button class="icon-button" @click="goBack">
               <img src="/images/back.png" alt="Volver" class="icon" />
+            </button>
+          </div>
+
+          <!-- Row 2: Voice & TTS -->
+          <div class="action-row voice-row">
+            <button class="icon-button" @click="readWeatherReport" title="Leer tiempo">
+              <img src="/images/play.png" alt="Leer" class="icon" />
             </button>
             <button class="icon-button" @click="triggerVoiceAssistant">
               <img src="/images/voice.png" alt="Voice" class="icon" />
             </button>
           </div>
-          <div class="nav-actions" v-if="activeCities.length > 1">
+
+          <!-- Row 3: City Nav -->
+          <div class="action-row nav-row" v-if="activeCities.length > 1">
             <button class="icon-button" @click="prevCity">
               <img src="/images/arrowback.png" alt="Anterior" class="icon" />
             </button>
@@ -176,12 +238,27 @@ function triggerVoiceAssistant() {
         Cargando previsión de la semana...
       </div>
       <div v-else class="daily-card" v-for="(day, idx) in dailyForecast" :key="idx">
-        <div class="day-name">{{ day.name }}</div>
+        <div class="day-name-group">
+          <div class="day-name">{{ day.name }}</div>
+          <div class="day-date">{{ day.date }}</div>
+        </div>
         <img :src="day.icon" class="day-icon" alt="daily weather" />
-        <div class="day-precip">{{ day.pop !== undefined ? day.pop : 0 }}%</div>
-        <div class="day-minmax">
-          <div>Min {{ day.tmin }}</div>
-          <div>Max {{ day.tmax }}</div>
+        
+        <div class="day-temps-row">
+          <div class="temp-col">
+            <span class="temp-val">{{ day.tmin }}</span>
+            <span class="temp-label">Min</span>
+          </div>
+          <div class="temp-divider"></div>
+          <div class="temp-col">
+            <span class="temp-val">{{ day.tmax }}</span>
+            <span class="temp-label">Max</span>
+          </div>
+        </div>
+
+        <div class="day-extra-info">
+          <div>Lluvia: <span class="extra-val">{{ day.pop !== undefined ? day.pop : 0 }}%</span></div>
+          <div v-if="day.wind !== undefined">Viento: <span class="extra-val">{{ day.wind }} km/h</span></div>
         </div>
       </div>
     </div>
@@ -218,14 +295,16 @@ function triggerVoiceAssistant() {
 .header-section {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center; /* Centered vertically within the row */
   width: 100%;
+  flex: 1; /* Occupy available space to allow vertical centering */
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
   flex: 1;
+  z-index: 1;
 }
 
 .title {
@@ -240,15 +319,24 @@ function triggerVoiceAssistant() {
   font-weight: 800;
   color: #000;
   line-height: 1;
-  margin-top: 2rem; /* Increased margin */
+  margin-top: 1.5rem; 
+}
+
+.full-date {
+  font-size: 2.2rem;
+  font-weight: 500;
+  color: #333;
+  margin-top: 0.8rem;
 }
 
 .header-center {
   display: flex;
   align-items: center;
-  gap: 3.5rem; /* Increased margin */
-  flex: 1.5;
-  justify-content: center;
+  gap: 3.5rem;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 0;
 }
 
 .main-weather-icon {
@@ -280,31 +368,60 @@ function triggerVoiceAssistant() {
 .header-right {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
-  margin-top: 4rem; /* Increased margin */
+}
+
+.header-temps-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-extra-info {
+  display: flex;
+  gap: 2rem;
+  font-size: 1.6rem;
+  color: #555;
+}
+
+.header-extra-info .extra-val {
+  color: #000;
+  font-weight: 700;
+  font-size: 2rem;
 }
 
 .min-max {
-  display: flex;
-  flex-direction: column;
-  font-size: 2rem;
-  font-weight: 500;
-  color: #333;
-  gap: 1.5rem; /* Increased margin */
+  display: none;
 }
 
 .header-actions {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Increased margin */
+  gap: 1.2rem;
   align-items: flex-end;
-  flex: 0 0 auto;
+  flex: 1;
+  z-index: 1;
+}
+
+.action-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-row {
+  margin-top: 3rem; /* Alejado de los otros botones */
+  margin-bottom: -1.2rem; /* Cerca de la línea inferior */
+}
+
+.back-row {
+  margin-top: -1rem; /* Pull up towards the top padding/margin */
+  margin-bottom: 0.5rem;
 }
 
 .top-actions, .nav-actions {
-  display: flex;
-  gap: 1rem; /* Increased margin */
+  display: none;
 }
 
 .icon-button {
@@ -393,11 +510,24 @@ function triggerVoiceAssistant() {
   box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
-.day-name {
-  font-size: 1.8rem;
-  font-weight: 500;
-  color: #111;
+.day-name-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
   margin-bottom: 1.5rem;
+}
+
+.day-name {
+  font-size: 2.7rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.day-date {
+  font-size: 2rem;
+  font-weight: 500;
+  color: #666;
 }
 
 .day-icon {
@@ -407,22 +537,56 @@ function triggerVoiceAssistant() {
   margin-bottom: 3rem; /* Increased distance to percentage */
 }
 
-.day-precip {
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: #444;
-  margin-bottom: 1.5rem;
-}
-
-.day-minmax {
+.day-extra-info {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 1.5rem;
+  gap: 0.5rem;
+  font-size: 1.5rem; /* Reduced ~25% from 2rem */
   font-weight: 500;
-  color: #555;
+  color: #666;
   margin-top: auto;
+}
+
+.extra-val {
+  font-size: 2rem; /* Reduced ~25% from 2.6rem */
+  font-weight: 700;
+  color: #000;
+}
+
+.day-temps-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.temp-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.temp-val {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #111;
+  line-height: 1;
+}
+
+.temp-label {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #888;
+}
+
+.temp-divider {
+  width: 2rem;
+  height: 2px;
+  background-color: rgba(0,0,0,0.1);
+  margin-bottom: 1.4rem; /* Align with values, ignoring labels */
 }
 
 /* Loading states */
