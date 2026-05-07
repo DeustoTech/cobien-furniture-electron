@@ -517,7 +517,7 @@ function goBack() {
   padding: 1.5rem;
   background: rgba(0,0,0,0.03);
   border-radius: 14px;
-  font-size: 1.6rem;
+  font-size: 1.92rem; /* +20% from 1.6 */
   color: #444;
   border: 1px dashed #ccc;
 }

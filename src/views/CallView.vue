@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -16,16 +16,38 @@ const callStatus = ref<'idle' | 'sending' | 'sent' | 'error'>('idle')
 const callMessage = ref('')
 const callingContact = ref<Contact | null>(null)
 
+// Clock for the header
+const currentTime = ref(new Date())
+let clockTimer: any = null
+
 onMounted(async () => {
   try {
     contacts.value = await (window as any).config.getContacts()
   } catch (e) {
     console.error('[CONTACTS] Error loading:', e)
   }
+
+  clockTimer = setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+})
+
+const formattedDate = computed(() => {
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+  const str = currentTime.value.toLocaleDateString('es-ES', options)
+  return str.charAt(0).toUpperCase() + str.slice(1)
+})
+
+const formattedTime = computed(() => {
+  return currentTime.value.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 })
 
 function getImageUrl(imagePath: string): string {
-  if (!imagePath) return ''
+  if (!imagePath) return '/images/user_silhouette.png'
   return `cobien-media://${imagePath}`
 }
 
@@ -77,40 +99,50 @@ function triggerVoiceAssistant() {
   <div class="view-container">
     <!-- Header -->
     <div class="header glass-panel">
-      <button class="icon-btn" @click="router.push('/')">
-        <img src="/images/back.png" alt="Volver" class="hdr-icon" />
-      </button>
-      <h1 class="header-title">Contactos</h1>
-      <button class="icon-btn" @click="triggerVoiceAssistant">
-        <img src="/images/voice.png" alt="Voz" class="hdr-icon" />
-      </button>
+      <div class="header-left">
+        <h1 class="header-title">Contactos</h1>
+      </div>
+
+      <div class="header-center">
+        <div class="clock-wrap">
+          <div class="date-str">{{ formattedDate }}</div>
+          <div class="time-str">{{ formattedTime }}</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="square-action-btn" @click="triggerVoiceAssistant">
+          <img src="/images/voice.png" alt="Voz" />
+        </button>
+        <div class="actions-spacer"></div>
+        <button class="square-action-btn" @click="router.push('/')">
+          <img src="/images/back.png" alt="Volver" />
+        </button>
+      </div>
     </div>
 
     <!-- Contact cards scrollable row -->
-    <div class="contacts-scroll-area">
-      <div class="contacts-row" v-if="contacts.length > 0">
+    <div class="contacts-view">
+      <div class="contacts-grid" v-if="contacts.length > 0">
         <div
           v-for="contact in contacts"
           :key="contact.userName || contact.displayName"
-          class="contact-card"
+          class="contact-card shadow-lg"
           :class="{ disabled: !contact.callable, calling: callingContact?.displayName === contact.displayName }"
           @click="requestCall(contact)"
         >
-          <div class="contact-img-wrap">
+          <div class="contact-card-top">
             <img
-              v-if="contact.imagePath"
               :src="getImageUrl(contact.imagePath)"
               :alt="contact.displayName"
               class="contact-img"
-              @error="(e: any) => (e.target.style.display = 'none')"
+              @error="(e: any) => (e.target.src = '/images/user_silhouette.png')"
             />
-            <div v-else class="contact-avatar-placeholder">
-              {{ contact.displayName.charAt(0).toUpperCase() }}
-            </div>
           </div>
-          <div class="contact-name">{{ contact.displayName }}</div>
-          <div v-if="!contact.callable" class="contact-unavail">No disponible</div>
-          <div v-else class="contact-call-icon">📞</div>
+          <div class="contact-card-bottom">
+            <div class="contact-name">{{ contact.displayName }}</div>
+            <div v-if="!contact.callable" class="contact-unavail">Fuera de línea</div>
+          </div>
         </div>
       </div>
 
@@ -156,138 +188,165 @@ function triggerVoiceAssistant() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 1.2rem 2rem;
   border-radius: 20px;
 }
 
-.header-title {
-  font-size: 3rem;
-  font-weight: 800;
-  color: var(--text-primary);
+.header-left {
+  flex: 1;
 }
 
-.icon-btn {
-  width: 4.5rem;
-  height: 4.5rem;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.85);
-  border: 1.5px solid rgba(0,0,0,0.12);
+.header-title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin: 0;
+  color: #111;
+}
+
+.header-center {
+  flex: 1;
+  text-align: center;
+}
+
+.clock-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.date-str {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.time-str {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.header-actions {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.actions-spacer {
+  width: 2rem;
+}
+
+.square-action-btn {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 12px;
+  background: white;
+  border: 2px solid #000;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.15s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.icon-btn:active { transform: scale(0.92); }
-
-.hdr-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  object-fit: contain;
+.square-action-btn img {
+  width: 3rem;
+  height: 3rem;
 }
 
-/* Scroll area */
-.contacts-scroll-area {
+/* Grid area */
+.contacts-view {
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
+  padding-bottom: 2rem;
 }
 
-.contacts-row {
-  display: flex;
-  gap: 2rem;
-  padding: 1.5rem 0.5rem;
-  height: 100%;
-  align-items: center;
+.contacts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 per view as requested */
+  gap: 2.5rem;
+  padding: 0.5rem;
 }
 
 /* Contact card */
 .contact-card {
-  flex-shrink: 0;
-  width: 20rem;
-  background: rgba(255,255,255,0.88);
+  background: white;
   border-radius: 24px;
-  padding: 2.5rem 1.5rem;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
   cursor: pointer;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  aspect-ratio: 0.85; /* Portrait orientation as in reference image */
   border: 2px solid transparent;
-  height: calc(100% - 2rem);
-  justify-content: center;
 }
 
 .contact-card:hover:not(.disabled) {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(30,144,255,0.25);
-  border-color: rgba(30,144,255,0.4);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
 }
 
-.contact-card:active:not(.disabled) {
-  transform: scale(0.97);
-}
-
-.contact-card.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.contact-card.calling {
-  border-color: #1E90FF;
-  box-shadow: 0 0 0 4px rgba(30,144,255,0.3);
-  animation: callPulse 1s ease-in-out infinite;
-}
-
-@keyframes callPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(30,144,255,0.3); }
-  50% { box-shadow: 0 0 0 10px rgba(30,144,255,0.1); }
-}
-
-.contact-img-wrap {
-  width: 12rem;
-  height: 12rem;
-  border-radius: 50%;
+.contact-card-top {
+  flex: 1;
+  position: relative;
   overflow: hidden;
-  background: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  background: #f0f0f0;
 }
 
 .contact-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover; /* A sangre */
+  transition: transform 0.5s;
 }
 
-.contact-avatar-placeholder {
-  font-size: 5rem;
-  font-weight: 700;
-  color: #1E90FF;
+.contact-card:hover .contact-img {
+  transform: scale(1.05);
+}
+
+.contact-card-bottom {
+  height: 9rem;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
 
 .contact-name {
-  font-size: 1.8rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: #111;
   text-align: center;
 }
 
-.contact-call-icon {
-  font-size: 2.5rem;
+.contact-unavail {
+  font-size: 1.2rem;
+  color: #999;
+  font-weight: 600;
+  margin-top: 0.3rem;
 }
 
-.contact-unavail {
-  font-size: 1.1rem;
-  color: #999;
+.contact-card.disabled {
+  opacity: 0.5;
+  filter: grayscale(1);
+  cursor: not-allowed;
 }
+
+.contact-card.calling {
+  border-color: #1E90FF;
+  animation: cardPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cardPulse {
+  0% { box-shadow: 0 0 0 0 rgba(30,144,255,0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(30,144,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(30,144,255,0); }
+}
+
 
 /* No contacts */
 .no-contacts {
