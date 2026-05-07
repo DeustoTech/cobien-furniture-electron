@@ -419,7 +419,7 @@ async function openBrightnessPopup() {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 140px 140px; /* Forced shorter height */
+  grid-template-rows: 169px 169px; /* Increased height by another 10% */
   gap: 1.5rem;
   justify-content: center;
   align-content: center;
@@ -431,11 +431,11 @@ async function openBrightnessPopup() {
   background: white;
   border: 2.2px solid rgba(0, 0, 0, 0.35);
   border-radius: 22px;
-  flex-direction: row; /* Changed to row for left-to-right layout */
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  padding: 1rem 2rem;
-  gap: 1.5rem; /* Increased gap between icon and text */
+  justify-content: flex-start; /* Aligned to the left */
+  padding: 2.5rem 3rem; /* Increased vertical and horizontal padding */
+  gap: 2.5rem; /* More gap for the larger icon */
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -446,9 +446,10 @@ async function openBrightnessPopup() {
 }
 
 .nav-card-icon {
-  width: clamp(5.4rem, 10vw, 7.8rem);
-  height: clamp(5.4rem, 10vw, 7.8rem);
+  width: clamp(9.0rem, 17vw, 13.2rem); /* +20% larger */
+  height: clamp(9.0rem, 17vw, 13.2rem);
   object-fit: contain;
+  padding: 1.5rem; /* Increased padding as requested */
 }
 
 .nav-card-text {
