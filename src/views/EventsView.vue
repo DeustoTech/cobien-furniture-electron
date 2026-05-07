@@ -5,10 +5,24 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const currentDate = ref(new Date())
+const nowTime = ref('')
+const nowDate = ref('')
 const eventsList = ref<any[]>([])
 const selectedDate = ref<Date | null>(null)
 const selectedEvents = ref<any[]>([])
 const isModalOpen = ref(false)
+
+function updateClock() {
+  const d = new Date()
+  const optionsDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+  const optionsTime: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  
+  const dateStr = d.toLocaleDateString('es-ES', optionsDate)
+  nowDate.value = dateStr.charAt(0).toUpperCase() + dateStr.slice(1)
+  nowTime.value = d.toLocaleTimeString('es-ES', optionsTime)
+}
+
+let clockTimer: ReturnType<typeof setInterval>
 
 // ── Voice flow state ──────────────────────────────────────────────
 const voiceFlowActive = ref(false)
@@ -114,12 +128,20 @@ function cancelVoiceFlow() {
 // ──────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  updateClock()
+  clockTimer = setInterval(updateClock, 1000 * 30) // update every 30s
+  
   try {
     const data = await (window as any).config.getEvents()
     eventsList.value = data
   } catch (e) {
     console.error('Error loading events:', e)
   }
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
 })
 
 const currentMonthName = computed(() => {
@@ -141,24 +163,53 @@ const firstDayOfWeek = computed(() => {
 
 const calendarDays = computed(() => {
   const days = []
-  for (let i = 0; i < firstDayOfWeek.value; i++) {
-    days.push({ empty: true, date: 0, events: [], dateStr: '' })
-  }
   const year = currentDate.value.getFullYear()
-  const month = currentDate.value.getMonth() + 1
-  const monthStr = month.toString().padStart(2, '0')
+  const month = currentDate.value.getMonth()
+  
+  // Previous month days
+  const prevMonthLastDay = new Date(year, month, 0).getDate()
+  for (let i = firstDayOfWeek.value - 1; i >= 0; i--) {
+    days.push({ 
+      empty: false, 
+      isOtherMonth: true, 
+      date: prevMonthLastDay - i,
+      events: [] 
+    })
+  }
+
+  // Current month days
+  const monthStr = (month + 1).toString().padStart(2, '0')
+  const today = new Date()
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
+
   for (let i = 1; i <= daysInMonth.value; i++) {
     const dayStr = i.toString().padStart(2, '0')
     const dateToMatch = `${dayStr}-${monthStr}-${year}`
     const dayEvents = eventsList.value.filter(e => e.date === dateToMatch)
     days.push({ 
       empty: false, 
+      isOtherMonth: false,
+      isToday: isCurrentMonth && today.getDate() === i,
       date: i, 
       dateStr: dateToMatch,
       events: dayEvents,
       hasEvent: dayEvents.length > 0 
     })
   }
+
+  // Next month days to fill ONLY the remaining cells of the last row
+  if (days.length % 7 !== 0) {
+    const remaining = 7 - (days.length % 7)
+    for (let i = 1; i <= remaining; i++) {
+      days.push({
+        empty: false,
+        isOtherMonth: true,
+        date: i,
+        events: []
+      })
+    }
+  }
+
   return days
 })
 
@@ -212,59 +263,78 @@ function goBack() {
   <div class="view-container">
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Eventos</h1>
+        <h1 class="header-title">Calendario</h1>
+        <div class="header-v-divider"></div>
+        <div class="header-date-info">
+          <div class="header-now-date">{{ nowDate }}</div>
+          <div class="header-now-time">{{ nowTime }}</div>
+        </div>
+      </div>
+
+      <div class="header-legend">
+        <div class="legend-item">
+          <span class="dot public"></span>
+          <span>Público</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot personal"></span>
+          <span>Personal</span>
+        </div>
       </div>
 
       <div class="header-actions">
-        <button class="voice-button" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" alt="Voice" class="icon" />
-          <span>Voz</span>
-        </button>
-        <button class="back-btn" @click="goBack">
+        <button class="square-action-btn" @click="goBack">
           <img src="/images/back.png" alt="Volver" />
+        </button>
+        <button class="square-action-btn" @click="triggerVoiceAssistant">
+          <img src="/images/voice.png" alt="Voice" />
         </button>
       </div>
     </div>
 
 
-    <div class="glass-panel calendar-card">
-      <div class="calendar-header">
-        <button class="nav-arrow" @click="prevMonth">◀</button>
-        <div class="month-title">{{ currentMonthName }}</div>
-        <button class="nav-arrow" @click="nextMonth">▶</button>
-      </div>
+    <div class="calendar-container">
+      <button class="nav-arrow-side" @click="prevMonth">
+        <img src="/images/arrowback.png" alt="Prev" />
+      </button>
 
-      <div class="calendar-grid">
-        <!-- Weekdays -->
-        <div class="weekday">L</div>
-        <div class="weekday">M</div>
-        <div class="weekday">X</div>
-        <div class="weekday">J</div>
-        <div class="weekday">V</div>
-        <div class="weekday">S</div>
-        <div class="weekday">D</div>
+      <div class="glass-panel calendar-card">
+        <div class="calendar-header">
+          <div class="month-title">{{ currentMonthName }}</div>
+        </div>
 
-        <!-- Days -->
-        <div 
-          v-for="(day, index) in calendarDays" 
-          :key="index"
-          :class="['day', { empty: day.empty, active: day.hasEvent }]"
-          @click="openDayModal(day)"
-        >
-          <template v-if="!day.empty">
+        <div class="calendar-grid">
+          <!-- Weekdays -->
+          <div class="weekday">Lunes</div>
+          <div class="weekday">Martes</div>
+          <div class="weekday">Miércoles</div>
+          <div class="weekday">Jueves</div>
+          <div class="weekday">Viernes</div>
+          <div class="weekday">Sábado</div>
+          <div class="weekday">Domingo</div>
+
+          <!-- Days -->
+          <div 
+            v-for="(day, index) in calendarDays" 
+            :key="index"
+            :class="['day', { 'other-month': day.isOtherMonth, 'today': day.isToday }]"
+            @click="openDayModal(day)"
+          >
             <span class="day-num">{{ day.date }}</span>
-            <div v-if="day.hasEvent" class="dots-container">
+            <div class="dots-container">
               <span 
                 v-for="(evt, i) in day.events.slice(0,3)" 
                 :key="i" 
-                class="event-dot"
-                :style="{ backgroundColor: evt.color }"
+                :class="['event-dot', evt.audience === 'public' ? 'public' : 'personal']"
               ></span>
-              <span v-if="day.events.length > 3" class="more-dots">+</span>
             </div>
-          </template>
+          </div>
         </div>
       </div>
+
+      <button class="nav-arrow-side" @click="nextMonth">
+        <img src="/images/arrowforward.png" alt="Next" />
+      </button>
     </div>
 
     <!-- Event Detail Modal -->
@@ -374,163 +444,186 @@ function goBack() {
   color: #111;
 }
 
-.header-actions {
+.header-left {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-v-divider {
+  width: 2px;
+  height: 3rem;
+  background: rgba(0,0,0,0.15);
+}
+
+.header-date-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.header-now-date {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.header-now-time {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #666;
+}
+
+.header-legend {
+  display: flex;
+  gap: 2.5rem;
   align-items: center;
 }
 
-.back-btn {
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.dot.public { background: #007AFF; }
+.dot.personal { background: #FF3B30; }
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.square-action-btn {
   width: 4.5rem;
   height: 4.5rem;
   background: white;
   border: 2px solid #000;
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.back-btn:active { transform: scale(0.95); }
-
-.back-btn img {
-  width: 2.8rem;
-  height: 2.8rem;
+.square-action-btn img {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
-.voice-button {
+.calendar-container {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 2rem;
-  font-size: 1.3rem;
-  font-weight: 700;
-  border: none;
-  border-radius: 12px;
-  background: var(--accent-blue);
-  color: white;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
-  transition: transform 0.2s;
+  gap: 1.5rem;
 }
-
-.voice-button:active {
-  transform: scale(0.95);
-}
-
-.icon {
-  width: 2rem;
-  height: 2rem;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
 
 .calendar-card {
   flex: 1;
-  border-radius: 20px;
-  padding: 2rem;
+  border-radius: 24px;
+  padding: 3rem;
   display: flex;
   flex-direction: column;
-  position: relative;
-  z-index: 1;
 }
 
 .calendar-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 0 2rem;
+  justify-content: center;
+  margin-bottom: 3rem;
 }
 
 .month-title {
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 3rem;
+  font-weight: 800;
   text-transform: capitalize;
 }
 
-.nav-arrow {
-  font-size: 2rem;
+.nav-arrow-side {
   background: white;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 10px;
-  width: 4rem;
-  height: 4rem;
+  border: 2px solid #000;
+  border-radius: 12px;
+  width: 5rem;
+  height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+}
+
+.nav-arrow-side img {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1rem;
+  gap: 1.2rem;
   flex: 1;
 }
 
 .weekday {
   text-align: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1rem;
 }
 
 .day {
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.05);
+  background: white;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.15);
+  aspect-ratio: 1.4 / 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: 1rem;
+  justify-content: center;
   cursor: pointer;
   position: relative;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .day-num {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 600;
 }
 
-.day:not(.empty):hover {
-  background: white;
-  box-shadow: var(--shadow-sm);
+.day.other-month {
+  background: rgba(255, 255, 255, 0.3);
+  color: #999;
+  border-color: rgba(0,0,0,0.05);
 }
 
-.day.empty {
-  background: transparent;
-  border: none;
-  cursor: default;
-}
-
-.day.active {
-  background: white;
-  border: 2px solid var(--accent-blue);
-  box-shadow: var(--shadow-md);
+.day.today {
+  background: #000;
+  color: white;
+  border-color: #000;
 }
 
 .dots-container {
   display: flex;
-  gap: 4px;
-  margin-top: 0.5rem;
+  gap: 6px;
+  margin-top: 0.8rem;
 }
 
 .event-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
 }
 
-.more-dots {
-  font-size: 10px;
-  line-height: 10px;
-  color: var(--text-secondary);
-  font-weight: bold;
-}
+.event-dot.public { background: #007AFF; }
+.event-dot.personal { background: #FF3B30; }
 
 /* Modal Styles */
 .modal-overlay {
