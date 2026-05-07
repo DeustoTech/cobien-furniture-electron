@@ -1,251 +1,297 @@
-import e from "dotenv";
-import { BrowserWindow as t, app as n, ipcMain as r, net as i, protocol as a } from "electron";
-import { dirname as o, join as s } from "node:path";
-import { fileURLToPath as c } from "node:url";
-import { exec as l, execFile as u, spawn as d } from "node:child_process";
-import * as f from "node:fs";
-import { createWriteStream as p, promises as m } from "node:fs";
-import * as ee from "node:os";
-import { MongoClient as h, ObjectId as g } from "mongodb";
-import _ from "mqtt";
-import { promisify as te } from "node:util";
+import dotenv from "dotenv";
+import { BrowserWindow, app, ipcMain, net, protocol } from "electron";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { exec, execFile, spawn } from "node:child_process";
+import * as fsSync from "node:fs";
+import { createWriteStream, promises } from "node:fs";
+import * as os from "node:os";
+import { MongoClient, ObjectId } from "mongodb";
+import mqtt from "mqtt";
+import { promisify } from "node:util";
 //#region electron/services/backendSync.ts
-var v = "home";
-async function ne(e, t, n) {
-	r.handle("app:route-changed", (e, t) => {
-		v = t;
-	}), setInterval(() => b(t, n), 6e4), setInterval(() => re(e, t, n), 5e3), b(t, n), re(e, t, n);
+var currentScreen = "home";
+async function startBackendSync(mainWindow, configPath, localConfigPath) {
+	ipcMain.handle("app:route-changed", (event, routeName) => {
+		currentScreen = routeName;
+	});
+	setInterval(() => sendHeartbeat(configPath, localConfigPath), 6e4);
+	setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), 5e3);
+	sendHeartbeat(configPath, localConfigPath);
+	pollNotifications(mainWindow, configPath, localConfigPath);
 }
-async function y(e, t) {
+async function getConfig(configPath, localConfigPath) {
 	try {
-		let n = JSON.parse(await m.readFile(e, "utf-8")), r = {};
+		const defaultData = JSON.parse(await promises.readFile(configPath, "utf-8"));
+		let localData = {};
 		try {
-			r = JSON.parse(await m.readFile(t, "utf-8"));
-		} catch {}
+			localData = JSON.parse(await promises.readFile(localConfigPath, "utf-8"));
+		} catch (e) {}
 		return {
-			...n.services,
-			...r.services
+			...defaultData.services,
+			...localData.services
 		};
-	} catch {
+	} catch (e) {
 		return {};
 	}
 }
-async function b(e, t) {
-	let n = await y(e, t), r = n.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/", i = process.env.NOTIFY_API_KEY || n.notify_api_key || "";
+async function sendHeartbeat(configPath, localConfigPath) {
+	const services = await getConfig(configPath, localConfigPath);
+	const url = services.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/";
+	const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || "";
 	try {
-		let e = await fetch(r, {
+		const res = await fetch(url, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"X-API-KEY": i
+				"X-API-KEY": apiKey
 			},
 			body: JSON.stringify({
 				device_id: "CoBien6",
-				screen: v,
+				screen: currentScreen,
 				sent_at: (/* @__PURE__ */ new Date()).toISOString(),
 				software_version: "Electron-v1.0"
 			})
 		});
-		e.ok ? console.log(`[HEARTBEAT] Sent (Screen: ${v})`) : console.warn(`[HEARTBEAT] Failed with status: ${e.status}`);
-	} catch {
-		console.error("[HEARTBEAT] Network error");
+		if (!res.ok) console.warn(`[HEARTBEAT] Failed with status: ${res.status}`);
+		else console.log(`[HEARTBEAT] Sent (Screen: ${currentScreen})`);
+	} catch (e) {
+		console.error(`[HEARTBEAT] Network error`);
 	}
 }
-async function re(e, t, n) {
-	let r = await y(t, n), i = r.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/", a = process.env.NOTIFY_API_KEY || r.notify_api_key || "";
+async function pollNotifications(mainWindow, configPath, localConfigPath) {
+	const services = await getConfig(configPath, localConfigPath);
+	const url = services.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/";
+	const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || "";
 	try {
-		let t = await fetch(`${i}?device_id=CoBien6`, {
+		const res = await fetch(`${url}?device_id=CoBien6`, {
 			method: "GET",
-			headers: { "X-API-KEY": a }
+			headers: { "X-API-KEY": apiKey }
 		});
-		if (t.ok) {
-			let n = (await t.json()).notifications || [];
-			n.length > 0 && (console.log(`[POLL] Received ${n.length} notifications`), n.forEach((t) => {
-				e.webContents.send("backend:notification", t);
-			}));
+		if (res.ok) {
+			const notifications = (await res.json()).notifications || [];
+			if (notifications.length > 0) {
+				console.log(`[POLL] Received ${notifications.length} notifications`);
+				notifications.forEach((notif) => {
+					mainWindow.webContents.send("backend:notification", notif);
+				});
+			}
 		}
-	} catch {}
+	} catch (e) {}
 }
 //#endregion
 //#region electron/services/eventsMongo.ts
-var x = null;
-async function S() {
-	if (x) return x;
-	let e = process.env.MONGO_URI || "";
-	if (!e) throw Error("MONGO_URI is missing");
-	return x = new h(e), await x.connect(), x;
+var cachedClient = null;
+async function getClient() {
+	if (cachedClient) return cachedClient;
+	const uri = process.env.MONGO_URI || "";
+	if (!uri) throw new Error("MONGO_URI is missing");
+	cachedClient = new MongoClient(uri);
+	await cachedClient.connect();
+	return cachedClient;
 }
-async function ie(e) {
+async function getEvents(configPath) {
 	try {
-		let t = JSON.parse(await m.readFile(e, "utf-8")).settings?.device_location || "Bilbao", n = await (await S()).db("LabasAppDB").collection("eventos").find({ $or: [{ $or: [
+		const locationName = JSON.parse(await promises.readFile(configPath, "utf-8")).settings?.device_location || "Bilbao";
+		const rawEvents = await (await getClient()).db("LabasAppDB").collection("eventos").find({ $or: [{ $or: [
 			{ audience: "all" },
-			{ audience: { $exists: !1 } },
+			{ audience: { $exists: false } },
 			{ audience: null }
 		] }, {
 			audience: "device",
 			$or: [{ target_device: "CoBien6" }, { target_devices: "CoBien6" }]
-		}] }).toArray(), r = t.trim().toLowerCase();
-		return n.map((e) => {
-			let n = e.audience || "all";
-			n = typeof n == "string" && n.toLowerCase() === "device" ? "device" : "all";
-			let i = n === "device" ? "#FF3B30" : "#1E90FF";
-			e.color && (i = e.color);
-			let a = (e.location || "").trim();
-			if (n === "all" && a && a.toLowerCase() !== r) return null;
-			let o = e.date || e.fecha_inicio || "";
-			if (o instanceof Date) {
-				let e = o;
-				o = `${e.getDate().toString().padStart(2, "0")}-${(e.getMonth() + 1).toString().padStart(2, "0")}-${e.getFullYear()}`;
+		}] }).toArray();
+		const normalizedLocation = locationName.trim().toLowerCase();
+		return rawEvents.map((event) => {
+			let audience = event.audience || "all";
+			if (typeof audience === "string" && audience.toLowerCase() === "device") audience = "device";
+			else audience = "all";
+			let color = audience === "device" ? "#FF3B30" : "#1E90FF";
+			if (event.color) color = event.color;
+			let loc = (event.location || "").trim();
+			if (audience === "all" && loc && loc.toLowerCase() !== normalizedLocation) return null;
+			let dateStr = event.date || event.fecha_inicio || "";
+			if (dateStr instanceof Date) {
+				const d = dateStr;
+				dateStr = `${d.getDate().toString().padStart(2, "0")}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getFullYear()}`;
 			}
 			return {
-				id: e._id.toString(),
-				date: o,
-				title: e.title || e.titulo || "Sin título",
-				description: e.description || e.descripcion || "Sin descripción",
-				location: a || t,
-				audience: n,
-				color: i,
-				target_device: e.target_device || "",
-				created_by: e.created_by || "",
-				all_day: e.all_day !== !1,
-				start_time: e.start_time || "",
-				end_time: e.end_time || ""
+				id: event._id.toString(),
+				date: dateStr,
+				title: event.title || event.titulo || "Sin título",
+				description: event.description || event.descripcion || "Sin descripción",
+				location: loc || locationName,
+				audience,
+				color,
+				target_device: event.target_device || "",
+				created_by: event.created_by || "",
+				all_day: event.all_day !== false,
+				start_time: event.start_time || "",
+				end_time: event.end_time || ""
 			};
 		}).filter((e) => e !== null);
 	} catch (e) {
-		return console.error("[EVENTS] Error fetching from MongoDB:", e), [];
+		console.error("[EVENTS] Error fetching from MongoDB:", e);
+		return [];
 	}
 }
-async function ae(e) {
+async function addPersonalEvent(payload) {
 	try {
-		let t = (await S()).db("LabasAppDB").collection("eventos"), [n, r, i] = e.date.split("-").map(Number), a = new Date(i, r - 1, n), o = {
-			_id: new g(),
-			title: e.title,
-			description: e.description,
-			date: e.date,
-			fecha_inicio: a,
+		const collection = (await getClient()).db("LabasAppDB").collection("eventos");
+		const [day, month, year] = payload.date.split("-").map(Number);
+		const dateObj = new Date(year, month - 1, day);
+		const doc = {
+			_id: new ObjectId(),
+			title: payload.title,
+			description: payload.description,
+			date: payload.date,
+			fecha_inicio: dateObj,
 			audience: "device",
-			target_device: e.deviceId,
-			location: e.location,
-			all_day: !0,
-			created_by: e.deviceId,
+			target_device: payload.deviceId,
+			location: payload.location,
+			all_day: true,
+			created_by: payload.deviceId,
 			created_at: /* @__PURE__ */ new Date()
 		};
-		return await t.insertOne(o), console.log(`[EVENTS] Personal event added: ${e.title} on ${e.date}`), !0;
+		await collection.insertOne(doc);
+		console.log(`[EVENTS] Personal event added: ${payload.title} on ${payload.date}`);
+		return true;
 	} catch (e) {
-		return console.error("[EVENTS] Error adding personal event:", e), !1;
+		console.error("[EVENTS] Error adding personal event:", e);
+		return false;
 	}
 }
-async function oe(e) {
+async function deleteEvent(id) {
 	try {
-		return (await (await S()).db("LabasAppDB").collection("eventos").deleteOne({ _id: new g(e) })).deletedCount > 0;
+		return (await (await getClient()).db("LabasAppDB").collection("eventos").deleteOne({ _id: new ObjectId(id) })).deletedCount > 0;
 	} catch (e) {
-		return console.error("[EVENTS] Error deleting event:", e), !1;
+		console.error("[EVENTS] Error deleting event:", e);
+		return false;
 	}
 }
 //#endregion
 //#region electron/services/boardService.ts
-var se = "board_cache";
-async function ce() {
-	let e = s(n.getPath("userData"), se);
+var CACHE_DIR_NAME = "board_cache";
+async function getCacheDir() {
+	const dir = join(app.getPath("userData"), CACHE_DIR_NAME);
 	try {
-		await m.access(e);
+		await promises.access(dir);
 	} catch {
-		await m.mkdir(e, { recursive: !0 });
+		await promises.mkdir(dir, { recursive: true });
 	}
-	return e;
+	return dir;
 }
-async function le(e, t, n) {
-	if (!e) return "";
+async function downloadAndCacheImage(url, prefix, id) {
+	if (!url) return "";
 	try {
-		let r = await ce(), i = ".png";
-		(e.includes(".jpg") || e.includes(".jpeg")) && (i = ".jpg");
-		let a = s(r, `${t}_${n}${i}`);
+		const dir = await getCacheDir();
+		let ext = ".png";
+		if (url.includes(".jpg") || url.includes(".jpeg")) ext = ".jpg";
+		const targetPath = join(dir, `${prefix}_${id}${ext}`);
 		try {
-			return await m.access(a), `cobien-media://${a}`;
+			await promises.access(targetPath);
+			return `cobien-media://${targetPath}`;
 		} catch {}
-		let o = {};
-		process.env.COBIEN_NOTIFY_API_KEY && (o["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
-		let c = await fetch(e, { headers: o });
-		if (!c.ok) throw Error(`Failed to fetch image: ${c.statusText}`);
-		if (p(a), c.body) {
-			let e = await c.arrayBuffer(), t = Buffer.from(e);
-			return await m.writeFile(a, t), `cobien-media://${a}`;
+		const headers = {};
+		if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
+		const res = await fetch(url, { headers });
+		if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
+		createWriteStream(targetPath);
+		if (res.body) {
+			const arrayBuffer = await res.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+			await promises.writeFile(targetPath, buffer);
+			return `cobien-media://${targetPath}`;
 		}
 		return "";
-	} catch (t) {
-		return console.error(`[BOARD] Failed to cache image ${e}:`, t), "";
+	} catch (e) {
+		console.error(`[BOARD] Failed to cache image ${url}:`, e);
+		return "";
 	}
 }
-async function ue() {
-	let e = process.env.COBIEN_DEVICE_ID || "CoBien6", t = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/?recipient=${e}`, n = {};
-	process.env.COBIEN_NOTIFY_API_KEY && (n["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
+async function fetchMessages() {
+	const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+	const url = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/?recipient=${deviceId}`;
+	const headers = {};
+	if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
 	try {
-		let e = await fetch(t, { headers: n });
-		if (!e.ok) throw Error(`API returned ${e.statusText}`);
-		let r = (await e.json()).messages || [];
-		return await Promise.all(r.map(async (e) => {
-			let t = "", n = "";
-			return (e.image || e.image_url) && (t = await le(e.image || e.image_url, "img", e.id)), e.author_avatar_url && (n = await le(e.author_avatar_url, "avatar", e.id)), {
-				id: e.id,
-				author: e.author_name || e.author || "—",
-				author_avatar: n,
-				text: e.text || "",
-				image: t,
-				created_at_human: e.created_at_human || "",
-				read_by: (e.read_by || []).map((e) => e.device_id),
-				quick_replies: e.quick_replies || [],
-				quick_reply_selected: e.quick_reply_selected || null
+		const res = await fetch(url, { headers });
+		if (!res.ok) throw new Error(`API returned ${res.statusText}`);
+		const messages = (await res.json()).messages || [];
+		return await Promise.all(messages.map(async (msg) => {
+			let imagePath = "";
+			let avatarPath = "";
+			if (msg.image || msg.image_url) imagePath = await downloadAndCacheImage(msg.image || msg.image_url, "img", msg.id);
+			if (msg.author_avatar_url) avatarPath = await downloadAndCacheImage(msg.author_avatar_url, "avatar", msg.id);
+			return {
+				id: msg.id,
+				author: msg.author_name || msg.author || "—",
+				author_avatar: avatarPath,
+				text: msg.text || "",
+				image: imagePath,
+				created_at_human: msg.created_at_human || "",
+				read_by: (msg.read_by || []).map((r) => r.device_id),
+				quick_replies: msg.quick_replies || [],
+				quick_reply_selected: msg.quick_reply_selected || null
 			};
 		}));
 	} catch (e) {
-		return console.error("[BOARD] Failed to fetch messages:", e), [];
+		console.error("[BOARD] Failed to fetch messages:", e);
+		return [];
 	}
 }
-async function de(e) {
-	let t = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/delete/`, n = {};
-	process.env.COBIEN_NOTIFY_API_KEY && (n["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
+async function deleteMessage(id) {
+	const url = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${id}/delete/`;
+	const headers = {};
+	if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
 	try {
-		return (await fetch(t, {
+		return (await fetch(url, {
 			method: "POST",
-			headers: n
+			headers
 		})).ok;
 	} catch (e) {
-		return console.error("[BOARD] Failed to delete message:", e), !1;
+		console.error("[BOARD] Failed to delete message:", e);
+		return false;
 	}
 }
-async function fe(e) {
-	let t = process.env.COBIEN_DEVICE_ID || "CoBien6", n = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/read/`, r = { "Content-Type": "application/json" };
-	process.env.COBIEN_NOTIFY_API_KEY && (r["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
+async function markMessageRead(id) {
+	const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+	const url = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${id}/read/`;
+	const headers = { "Content-Type": "application/json" };
+	if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
 	try {
-		return (await fetch(n, {
+		return (await fetch(url, {
 			method: "POST",
-			headers: r,
-			body: JSON.stringify({ device_id: t })
+			headers,
+			body: JSON.stringify({ device_id: deviceId })
 		})).ok;
 	} catch (e) {
-		return console.error("[BOARD] Failed to mark message read:", e), !1;
+		console.error("[BOARD] Failed to mark message read:", e);
+		return false;
 	}
 }
-async function pe(e, t) {
-	let n = process.env.COBIEN_DEVICE_ID || "CoBien6", r = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/reply/`, i = { "Content-Type": "application/json" };
-	process.env.COBIEN_NOTIFY_API_KEY && (i["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
+async function submitQuickReply(id, replyText) {
+	const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+	const url = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${id}/reply/`;
+	const headers = { "Content-Type": "application/json" };
+	if (process.env.COBIEN_NOTIFY_API_KEY) headers["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY;
 	try {
-		return (await fetch(r, {
+		return (await fetch(url, {
 			method: "POST",
-			headers: i,
+			headers,
 			body: JSON.stringify({
-				device_id: n,
-				reply_text: t
+				device_id: deviceId,
+				reply_text: replyText
 			})
 		})).ok;
 	} catch (e) {
-		return console.error("[BOARD] Failed to submit reply:", e), !1;
+		console.error("[BOARD] Failed to submit reply:", e);
+		return false;
 	}
 }
 //#endregion
 //#region electron/services/weatherService.ts
-var me = {
+var WMO_ICON_MAP = {
 	0: "/images/sol.png",
 	1: "/images/parcial.png",
 	2: "/images/parcial.png",
@@ -274,7 +320,8 @@ var me = {
 	95: "/images/tormenta.png",
 	96: "/images/tormenta.png",
 	99: "/images/tormenta.png"
-}, he = {
+};
+var WMO_DESC_ES = {
 	0: "Cielo despejado",
 	1: "Mayormente despejado",
 	2: "Parcialmente nublado",
@@ -296,7 +343,8 @@ var me = {
 	95: "Tormenta",
 	96: "Tormenta con granizo",
 	99: "Tormenta con granizo fuerte"
-}, ge = [
+};
+var WEEKDAY_ES = [
 	"Domingo",
 	"Lunes",
 	"Martes",
@@ -305,120 +353,180 @@ var me = {
 	"Viernes",
 	"Sábado"
 ];
-function C(e, t = !0) {
-	return !t && e <= 1 ? "/images/noche.png" : me[e] ?? "/images/nubes.png";
+function wmoIcon(code, isDay = true) {
+	if (!isDay && code <= 1) return "/images/noche.png";
+	return WMO_ICON_MAP[code] ?? "/images/nubes.png";
 }
-function w(e) {
-	return he[e] ?? "Condición desconocida";
+function wmoDesc(code) {
+	return WMO_DESC_ES[code] ?? "Condición desconocida";
 }
-function _e(e) {
-	let t = new Date(e).getHours(), n = t < 12 ? "a.m." : "p.m.";
-	return `${t % 12 || 12} ${n}`;
+function amPmLabel(isoHour) {
+	const h = new Date(isoHour).getHours();
+	const label = h < 12 ? "a.m." : "p.m.";
+	return `${h % 12 || 12} ${label}`;
 }
-async function ve(e) {
+async function geocodeCity(cityName) {
 	try {
-		let t = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(e)}`, n = await (await fetch(t, { headers: { "User-Agent": "CoBien6-Furniture" } })).json();
-		if (!n.length) return null;
-		let r = parseFloat(n[0].lat), i = parseFloat(n[0].lon);
+		const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`;
+		const data = await (await fetch(url, { headers: { "User-Agent": "CoBien6-Furniture" } })).json();
+		if (!data.length) return null;
+		const lat = parseFloat(data[0].lat);
+		const lon = parseFloat(data[0].lon);
 		return {
-			lat: r,
-			lon: i,
-			tz: (await (await fetch(`https://api.open-meteo.com/v1/timezone?latitude=${r}&longitude=${i}`)).json()).timezone ?? "Europe/Madrid"
+			lat,
+			lon,
+			tz: (await (await fetch(`https://api.open-meteo.com/v1/timezone?latitude=${lat}&longitude=${lon}`)).json()).timezone ?? "Europe/Madrid"
 		};
 	} catch (e) {
-		return console.error("[WEATHER] Geocode error:", e), null;
+		console.error("[WEATHER] Geocode error:", e);
+		return null;
 	}
 }
-async function ye(e) {
-	let t = {
-		city: e,
+async function fetchWeatherBundle(cityName) {
+	const base = {
+		city: cityName,
 		temp: "—°",
 		description: "No disponible",
 		icon: "/images/nubes.png",
 		tempMin: "Min —°",
 		tempMax: "Max —°",
+		todayPop: 0,
+		todayWind: 0,
 		hourly: [],
 		daily: []
 	};
 	try {
-		let n = await ve(e);
-		if (!n) return t.error = "Ciudad no encontrada", t;
-		let { lat: r, lon: i, tz: a } = n, o = [
-			`https://api.open-meteo.com/v1/forecast?latitude=${r}&longitude=${i}`,
-			`&timezone=${encodeURIComponent(a)}`,
-			"&current=temperature_2m,weathercode,is_day",
-			"&hourly=temperature_2m,weathercode",
-			"&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max",
-			"&forecast_days=7"
-		].join(""), s = await (await fetch(o)).json(), c = s.current?.weathercode ?? 0, l = (s.current?.is_day ?? 1) === 1;
-		t.temp = `${Math.round(s.current?.temperature_2m ?? 0)}°`, t.icon = C(c, l);
-		let u = process.env.OWM_API_KEY ?? "";
-		if (u) try {
-			let e = `https://api.openweathermap.org/data/2.5/weather?lat=${r}&lon=${i}&appid=${u}&units=metric&lang=es`;
-			t.description = (await (await fetch(e)).json()).weather?.[0]?.description ?? w(c), t.description = t.description.charAt(0).toUpperCase() + t.description.slice(1);
-		} catch {
-			t.description = w(c);
+		const geo = await geocodeCity(cityName);
+		if (!geo) {
+			base.error = "Ciudad no encontrada";
+			return base;
 		}
-		else t.description = w(c);
-		let d = Math.round(s.daily?.temperature_2m_min?.[0] ?? 0), f = Math.round(s.daily?.temperature_2m_max?.[0] ?? 0);
-		t.tempMin = `Min ${d}°`, t.tempMax = `Max ${f}°`;
-		let p = (/* @__PURE__ */ new Date()).getHours(), m = s.hourly?.time ?? [], ee = s.hourly?.temperature_2m ?? [], h = s.hourly?.weathercode ?? [], g = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), _ = m.findIndex((e) => e.startsWith(g) && new Date(e).getHours() >= p);
-		_ < 0 && (_ = 0), t.hourly = m.slice(_, _ + 12).map((e, t) => {
-			let n = new Date(e).getHours();
+		const { lat, lon, tz } = geo;
+		const omUrl = [
+			`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`,
+			`&timezone=${encodeURIComponent(tz)}`,
+			`&current=temperature_2m,weathercode,is_day`,
+			`&hourly=temperature_2m,weathercode`,
+			`&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,wind_speed_10m_max`,
+			`&forecast_days=7`
+		].join("");
+		const om = await (await fetch(omUrl)).json();
+		const currentCode = om.current?.weathercode ?? 0;
+		const isDay = (om.current?.is_day ?? 1) === 1;
+		base.temp = `${Math.round(om.current?.temperature_2m ?? 0)}°`;
+		base.icon = wmoIcon(currentCode, isDay);
+		const owmKey = process.env.OWM_API_KEY ?? "";
+		if (owmKey) try {
+			const owmUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=es`;
+			base.description = (await (await fetch(owmUrl)).json()).weather?.[0]?.description ?? wmoDesc(currentCode);
+			base.description = base.description.charAt(0).toUpperCase() + base.description.slice(1);
+		} catch {
+			base.description = wmoDesc(currentCode);
+		}
+		else base.description = wmoDesc(currentCode);
+		const todayMin = Math.round(om.daily?.temperature_2m_min?.[0] ?? 0);
+		const todayMax = Math.round(om.daily?.temperature_2m_max?.[0] ?? 0);
+		base.tempMin = `Min ${todayMin}°`;
+		base.tempMax = `Max ${todayMax}°`;
+		base.todayPop = om.daily?.precipitation_probability_max?.[0] ?? 0;
+		base.todayWind = Math.round(om.daily?.wind_speed_10m_max?.[0] ?? 0);
+		const nowHour = (/* @__PURE__ */ new Date()).getHours();
+		const hourlyTimes = om.hourly?.time ?? [];
+		const hourlyTemps = om.hourly?.temperature_2m ?? [];
+		const hourlyCodes = om.hourly?.weathercode ?? [];
+		const todayStr = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+		let startIdx = hourlyTimes.findIndex((t) => t.startsWith(todayStr) && new Date(t).getHours() >= nowHour);
+		if (startIdx < 0) startIdx = 0;
+		base.hourly = hourlyTimes.slice(startIdx, startIdx + 12).map((t, i) => {
+			const h = new Date(t).getHours();
 			return {
-				time: _e(e),
-				icon: C(h[_ + t] ?? 0, n >= 6 && n < 20),
-				temp: `${Math.round(ee[_ + t] ?? 0)}°`
+				time: amPmLabel(t),
+				icon: wmoIcon(hourlyCodes[startIdx + i] ?? 0, h >= 6 && h < 20),
+				temp: `${Math.round(hourlyTemps[startIdx + i] ?? 0)}°`
 			};
 		});
-		let te = s.daily?.time ?? [], v = s.daily?.temperature_2m_max ?? [], ne = s.daily?.temperature_2m_min ?? [], y = s.daily?.weathercode ?? [], b = s.daily?.precipitation_probability_max ?? [];
-		return t.daily = te.slice(1, 7).map((e, t) => ({
-			name: ge[new Date(e).getDay()],
-			icon: C(y[t + 1] ?? 0),
-			tmin: `${Math.round(ne[t + 1] ?? 0)}°`,
-			tmax: `${Math.round(v[t + 1] ?? 0)}°`,
-			pop: b[t + 1] ?? 0
-		})), t;
+		const dailyTimes = om.daily?.time ?? [];
+		const dailyMaxArr = om.daily?.temperature_2m_max ?? [];
+		const dailyMinArr = om.daily?.temperature_2m_min ?? [];
+		const dailyCodesArr = om.daily?.weathercode ?? [];
+		const dailyPopArr = om.daily?.precipitation_probability_max ?? [];
+		const dailyWindArr = om.daily?.wind_speed_10m_max ?? [];
+		base.daily = dailyTimes.slice(1, 7).map((t, i) => {
+			const d = new Date(t);
+			const day = d.getDate();
+			const month = d.toLocaleDateString("es-ES", { month: "long" });
+			return {
+				name: WEEKDAY_ES[d.getDay()],
+				date: `${day} ${month}`,
+				icon: wmoIcon(dailyCodesArr[i + 1] ?? 0),
+				tmin: `${Math.round(dailyMinArr[i + 1] ?? 0)}°`,
+				tmax: `${Math.round(dailyMaxArr[i + 1] ?? 0)}°`,
+				pop: dailyPopArr[i + 1] ?? 0,
+				wind: Math.round(dailyWindArr[i + 1] ?? 0)
+			};
+		});
+		return base;
 	} catch (e) {
-		return console.error("[WEATHER] fetchWeatherBundle error:", e), t.error = String(e), t;
+		console.error("[WEATHER] fetchWeatherBundle error:", e);
+		base.error = String(e);
+		return base;
 	}
 }
 //#endregion
 //#region electron/services/jokesService.ts
-var be = s(typeof __dirname < "u" ? __dirname : o(c(import.meta.url)), "../../../cobien_FrontEnd/app/data/jokes"), T = [], E = "";
-async function xe(e = "es") {
+/**
+* jokesService.ts — Load and serve random jokes from legacy cobien_FrontEnd dataset
+*/
+var JOKES_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../cobien_FrontEnd/app/data/jokes");
+var cachedJokes = [];
+var lastJoke = "";
+async function loadJokes(lang = "es") {
 	try {
-		let t = e === "fr" ? "jokes_fr.json" : "jokes_es.json", n = await m.readFile(s(be, t), "utf-8"), r = JSON.parse(n), i = [];
-		for (let e of Object.values(r)) if (Array.isArray(e)) {
-			for (let t of e) if (typeof t == "string" && t.trim()) i.push(t.trim());
-			else if (typeof t == "object" && t) {
-				let e = t;
-				e.text ? i.push(String(e.text).trim()) : e.setup && e.punchline && i.push(`${e.setup.trim()} — ${e.punchline.trim()}`);
+		const file = lang === "fr" ? "jokes_fr.json" : "jokes_es.json";
+		const raw = await promises.readFile(join(JOKES_DIR, file), "utf-8");
+		const data = JSON.parse(raw);
+		const jokes = [];
+		for (const catJokes of Object.values(data)) if (Array.isArray(catJokes)) {
+			for (const joke of catJokes) if (typeof joke === "string" && joke.trim()) jokes.push(joke.trim());
+			else if (typeof joke === "object" && joke !== null) {
+				const j = joke;
+				if (j.text) jokes.push(String(j.text).trim());
+				else if (j.setup && j.punchline) jokes.push(`${j.setup.trim()} — ${j.punchline.trim()}`);
 			}
 		}
-		return i.filter(Boolean);
+		return jokes.filter(Boolean);
 	} catch (e) {
-		return console.error("[JOKES] Error loading jokes:", e), [
+		console.error("[JOKES] Error loading jokes:", e);
+		return [
 			"¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.",
 			"¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter.",
 			"¿Cuál es el colmo de un electricista? Que su mujer se llame Luz."
 		];
 	}
 }
-async function Se(e = "es") {
-	if (T.length === 0 && (T = await xe(e)), T.length === 0) return "No hay chistes disponibles.";
-	let t = T.length > 1 ? T.filter((e) => e !== E) : T, n = t[Math.floor(Math.random() * t.length)];
-	return E = n, n;
+async function getRandomJoke(lang = "es") {
+	if (cachedJokes.length === 0) cachedJokes = await loadJokes(lang);
+	if (cachedJokes.length === 0) return "No hay chistes disponibles.";
+	const available = cachedJokes.length > 1 ? cachedJokes.filter((j) => j !== lastJoke) : cachedJokes;
+	const joke = available[Math.floor(Math.random() * available.length)];
+	lastJoke = joke;
+	return joke;
 }
 //#endregion
 //#region electron/services/contactsService.ts
-var D = s(typeof __dirname < "u" ? __dirname : o(c(import.meta.url)), "../../../cobien_FrontEnd/app/contacts"), O = s(D, "list_contacts.txt"), Ce = s(D, "default_user.png");
-function we(e) {
-	return e.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+/**
+* contactsService.ts — Load contacts from legacy list_contacts.txt
+* and send videocall notifications via portal API.
+*/
+var CONTACTS_DIR = join(typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url)), "../../../cobien_FrontEnd/app/contacts");
+var CONTACTS_FILE = join(CONTACTS_DIR, "list_contacts.txt");
+var DEFAULT_IMG = join(CONTACTS_DIR, "default_user.png");
+function normalizeName(name) {
+	return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
-function Te(e) {
-	let t = we(e);
-	for (let e of [
+function findContactImage(displayName) {
+	const base = normalizeName(displayName);
+	for (const ext of [
 		".png",
 		".jpg",
 		".jpeg",
@@ -426,134 +534,158 @@ function Te(e) {
 		".JPG",
 		".JPEG"
 	]) {
-		let n = s(D, t + e);
-		if (f.existsSync(n)) return n;
+		const p = join(CONTACTS_DIR, base + ext);
+		if (fsSync.existsSync(p)) return p;
 	}
-	return Ce;
+	return DEFAULT_IMG;
 }
-async function Ee() {
-	let e = [];
+async function loadContacts() {
+	const contacts = [];
 	try {
-		let t = await m.readFile(O, "utf-8");
-		for (let n of t.split("\n")) {
-			if (!n.includes("=")) continue;
-			let [t, r] = n.split("=", 2).map((e) => e.trim());
-			if (!t) continue;
-			let i = /^[A-Za-z0-9_.-]+$/.test(r ?? ""), a = Te(t);
-			e.push({
-				displayName: t,
-				userName: r ?? "",
-				imagePath: a,
-				callable: i
+		const raw = await promises.readFile(CONTACTS_FILE, "utf-8");
+		for (const line of raw.split("\n")) {
+			if (!line.includes("=")) continue;
+			const [displayName, userName] = line.split("=", 2).map((s) => s.trim());
+			if (!displayName) continue;
+			const callable = /^[A-Za-z0-9_.-]+$/.test(userName ?? "");
+			const imagePath = findContactImage(displayName);
+			contacts.push({
+				displayName,
+				userName: userName ?? "",
+				imagePath,
+				callable
 			});
 		}
 	} catch (e) {
 		console.error("[CONTACTS] Error loading contacts:", e);
 	}
-	return e;
+	return contacts;
 }
-async function De(e, t, n) {
+async function downloadImage(url, baseName, apiKey) {
 	try {
-		let r = await fetch(e, {
-			headers: { "X-Api-Key": n },
+		const res = await fetch(url, {
+			headers: { "X-Api-Key": apiKey },
 			signal: AbortSignal.timeout(15e3)
 		});
-		if (!r.ok) return null;
-		let i = r.headers.get("Content-Type") || "", a = ".jpg";
-		i.includes("png") ? a = ".png" : i.includes("webp") ? a = ".webp" : i.includes("gif") && (a = ".gif");
-		let o = t + a, c = s(D, o), l = await r.arrayBuffer();
-		return await m.writeFile(c, Buffer.from(l)), o;
-	} catch (t) {
-		return console.error(`[CONTACTS] Failed to download image ${e}:`, t), null;
+		if (!res.ok) return null;
+		const contentType = res.headers.get("Content-Type") || "";
+		let ext = ".jpg";
+		if (contentType.includes("png")) ext = ".png";
+		else if (contentType.includes("webp")) ext = ".webp";
+		else if (contentType.includes("gif")) ext = ".gif";
+		const fileName = baseName + ext;
+		const filePath = join(CONTACTS_DIR, fileName);
+		const buffer = await res.arrayBuffer();
+		await promises.writeFile(filePath, Buffer.from(buffer));
+		return fileName;
+	} catch (e) {
+		console.error(`[CONTACTS] Failed to download image ${url}:`, e);
+		return null;
 	}
 }
-async function Oe(e, t, n) {
+async function syncContacts(deviceId, apiKey, baseUrl) {
 	try {
-		f.existsSync(D) || f.mkdirSync(D, { recursive: !0 });
-		let r = `${k(n, "/")}/pizarra/api/contacts/?device_id=${e}`, i = await fetch(r, {
-			headers: { "X-Api-Key": t },
+		if (!fsSync.existsSync(CONTACTS_DIR)) fsSync.mkdirSync(CONTACTS_DIR, { recursive: true });
+		const url = `${rstrip(baseUrl, "/")}/pizarra/api/contacts/?device_id=${deviceId}`;
+		const res = await fetch(url, {
+			headers: { "X-Api-Key": apiKey },
 			signal: AbortSignal.timeout(1e4)
 		});
-		if (!i.ok) throw Error(`API returned ${i.status}`);
-		let a = await i.json(), o = Array.isArray(a) ? a : a.contacts || [], s = [], c = 0;
-		for (let e of o) {
-			let r = (e.display_name || e.name || "").trim(), i = (e.user_name || e.username || "").trim(), a = (e.image_url || e.image || "").trim();
-			if (!(!r || !i) && (s.push({
-				display: r,
-				user: i
-			}), a)) {
-				let e = a;
-				a.startsWith("/") && (e = k(n, "/") + "/" + ke(a, "/")), await De(e, we(r), t) && c++;
+		if (!res.ok) throw new Error(`API returned ${res.status}`);
+		const data = await res.json();
+		const rawContacts = Array.isArray(data) ? data : data.contacts || [];
+		const mapped = [];
+		let imagesDownloaded = 0;
+		for (const raw of rawContacts) {
+			const displayName = (raw.display_name || raw.name || "").trim();
+			const userName = (raw.user_name || raw.username || "").trim();
+			const imageUrl = (raw.image_url || raw.image || "").trim();
+			if (!displayName || !userName) continue;
+			mapped.push({
+				display: displayName,
+				user: userName
+			});
+			if (imageUrl) {
+				let fullUrl = imageUrl;
+				if (imageUrl.startsWith("/")) fullUrl = rstrip(baseUrl, "/") + "/" + lstrip(imageUrl, "/");
+				if (await downloadImage(fullUrl, normalizeName(displayName), apiKey)) imagesDownloaded++;
 			}
 		}
-		let l = s.map((e) => `${e.display}=${e.user}`).join("\n") + "\n";
-		return await m.writeFile(O, l), console.log(`[CONTACTS] Sync complete. ${s.length} contacts, ${c} images.`), {
-			count: s.length,
-			images: c
+		const content = mapped.map((c) => `${c.display}=${c.user}`).join("\n") + "\n";
+		await promises.writeFile(CONTACTS_FILE, content);
+		console.log(`[CONTACTS] Sync complete. ${mapped.length} contacts, ${imagesDownloaded} images.`);
+		return {
+			count: mapped.length,
+			images: imagesDownloaded
 		};
 	} catch (e) {
-		return console.error("[CONTACTS] Sync failed:", e), {
+		console.error("[CONTACTS] Sync failed:", e);
+		return {
 			count: 0,
 			images: 0
 		};
 	}
 }
-function k(e, t) {
-	let n = e;
-	for (; n.endsWith(t);) n = n.slice(0, -t.length);
-	return n;
+function rstrip(str, chars) {
+	let res = str;
+	while (res.endsWith(chars)) res = res.slice(0, -chars.length);
+	return res;
 }
-function ke(e, t) {
-	let n = e;
-	for (; n.startsWith(t);) n = n.slice(t.length);
-	return n;
+function lstrip(str, chars) {
+	let res = str;
+	while (res.startsWith(chars)) res = res.slice(chars.length);
+	return res;
 }
-async function Ae(e, t, n, r) {
-	if (!e || !/^[A-Za-z0-9_.-]+$/.test(e)) return {
-		ok: !1,
+async function requestCall(userName, deviceId, apiKey, baseUrl) {
+	if (!userName || !/^[A-Za-z0-9_.-]+$/.test(userName)) return {
+		ok: false,
 		code: "VC-USER",
 		detail: "Nombre de usuario inválido"
 	};
-	if (!n) return {
-		ok: !1,
+	if (!apiKey) return {
+		ok: false,
 		code: "VC-CONFIG",
 		detail: "API key no configurada"
 	};
-	if (!t) return {
-		ok: !1,
+	if (!deviceId) return {
+		ok: false,
 		code: "VC-DEVICE",
 		detail: "Device ID no configurado"
 	};
 	try {
-		let i = `${k(r, "/")}/pizarra/api/notify/`, a = await fetch(i, {
+		const url = `${rstrip(baseUrl, "/")}/pizarra/api/notify/`;
+		const res = await fetch(url, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"X-Api-Key": n
+				"X-Api-Key": apiKey
 			},
 			body: JSON.stringify({
 				type: "videollamada",
-				destination: e,
-				origin: t
+				destination: userName,
+				origin: deviceId
 			}),
 			signal: AbortSignal.timeout(1e4)
 		});
-		return a.ok ? { ok: !0 } : {
-			ok: !1,
-			code: `VC-${a.status}`,
-			detail: await a.text()
+		if (!res.ok) return {
+			ok: false,
+			code: `VC-${res.status}`,
+			detail: await res.text()
 		};
+		return { ok: true };
 	} catch (e) {
-		return e?.name === "TimeoutError" ? {
-			ok: !1,
+		if (e?.name === "TimeoutError") return {
+			ok: false,
 			code: "VC-TIMEOUT",
 			detail: "Tiempo de espera agotado"
-		} : e?.code === "ECONNREFUSED" ? {
-			ok: !1,
+		};
+		if (e?.code === "ECONNREFUSED") return {
+			ok: false,
 			code: "VC-NET",
 			detail: "No hay conexión"
-		} : {
-			ok: !1,
+		};
+		return {
+			ok: false,
 			code: "VC-UNK",
 			detail: String(e)
 		};
@@ -561,64 +693,112 @@ async function Ae(e, t, n, r) {
 }
 //#endregion
 //#region electron/services/remindersService.ts
-var je = null, A = /* @__PURE__ */ new Map(), j = null;
-function M() {
-	return je ||= s(n.getPath("userData"), "reminders.json"), je;
+/**
+* remindersService.ts — Persistent reminder scheduling
+* Mirrors cobien_FrontEnd/app/reminders/reminders.py
+*/
+var _dataPath = null;
+var timers = /* @__PURE__ */ new Map();
+var notifyCallback = null;
+function getDataPath() {
+	if (!_dataPath) _dataPath = join(app.getPath("userData"), "reminders.json");
+	return _dataPath;
 }
-async function N() {
+async function readAll() {
 	try {
-		let e = await m.readFile(M(), "utf-8");
-		return JSON.parse(e);
+		const raw = await promises.readFile(getDataPath(), "utf-8");
+		return JSON.parse(raw);
 	} catch {
 		return [];
 	}
 }
-async function P(e) {
-	await m.writeFile(M(), JSON.stringify(e, null, 2), "utf-8");
+async function writeAll(reminders) {
+	await promises.writeFile(getDataPath(), JSON.stringify(reminders, null, 2), "utf-8");
 }
-function F(e) {
-	let t = new Date(e.datetime).getTime() - Date.now();
-	if (t <= 0) return;
-	let n = setTimeout(async () => {
-		A.delete(e.id), j?.(e), await P((await N()).filter((t) => t.id !== e.id));
-	}, t);
-	A.set(e.id, n);
+function schedule(reminder) {
+	const ms = new Date(reminder.datetime).getTime() - Date.now();
+	if (ms <= 0) return;
+	const t = setTimeout(async () => {
+		timers.delete(reminder.id);
+		notifyCallback?.(reminder);
+		await writeAll((await readAll()).filter((r) => r.id !== reminder.id));
+	}, ms);
+	timers.set(reminder.id, t);
 }
-async function Me(e) {
-	j = e;
-	let t = await N(), n = /* @__PURE__ */ new Date(), r = [];
-	for (let e of t) new Date(e.datetime) > n && (F(e), r.push(e));
-	await P(r), console.log(`[REMINDERS] ${r.length} reminders scheduled`);
+async function loadPendingReminders(onFire) {
+	notifyCallback = onFire;
+	const all = await readAll();
+	const now = /* @__PURE__ */ new Date();
+	const pending = [];
+	for (const r of all) if (new Date(r.datetime) > now) {
+		schedule(r);
+		pending.push(r);
+	}
+	await writeAll(pending);
+	console.log(`[REMINDERS] ${pending.length} reminders scheduled`);
 }
-async function Ne(e, t) {
-	let n = {
+async function addReminder(message, isoDatetime) {
+	const reminder = {
 		id: `rem_${Date.now()}`,
-		message: e,
-		datetime: t
-	}, r = await N();
-	return r.push(n), await P(r), F(n), n;
+		message,
+		datetime: isoDatetime
+	};
+	const all = await readAll();
+	all.push(reminder);
+	await writeAll(all);
+	schedule(reminder);
+	return reminder;
 }
-async function Pe() {
-	let e = await N(), t = /* @__PURE__ */ new Date();
-	return e.filter((e) => new Date(e.datetime) > t);
+async function listReminders() {
+	const all = await readAll();
+	const now = /* @__PURE__ */ new Date();
+	return all.filter((r) => new Date(r.datetime) > now);
 }
-async function Fe(e) {
-	let t = await N(), n = t.filter((t) => t.id !== e);
-	if (n.length === t.length) return !1;
-	await P(n);
-	let r = A.get(e);
-	return r && (clearTimeout(r), A.delete(e)), !0;
+async function deleteReminder(id) {
+	const all = await readAll();
+	const filtered = all.filter((r) => r.id !== id);
+	if (filtered.length === all.length) return false;
+	await writeAll(filtered);
+	const t = timers.get(id);
+	if (t) {
+		clearTimeout(t);
+		timers.delete(id);
+	}
+	return true;
 }
 //#endregion
 //#region electron/services/mqttService.ts
-var I = "rfid/read", L = "sensors/update", R = "app/nav", z = "events/reload", B = "board/reload", V = "weather/reload", Ie = [
-	I,
-	L,
-	R,
-	z,
-	B,
-	V
-], Le = {
+/**
+* mqttService.ts — MQTT sensor bridge for CoBien furniture
+*
+* Mirrors cobien_FrontEnd/app/mqtt_publisher.py logic:
+*
+* Topics subscribed (from hardware/broker):
+*   rfid/read       → RFID card tap → navigate/videocall/weather
+*   sensors/update  → Capacitive buttons (PIC id) → navigate to screen
+*   app/nav         → Already processed nav commands (from legacy Python bridge)
+*   events/reload   → Force events screen refresh
+*   board/reload    → Force board screen refresh
+*   weather/reload  → Force weather refresh
+*
+* All events are forwarded to the renderer via IPC: 'mqtt:event'
+* Payload shape: { topic: string, type: string, target: string, extra?: any }
+*/
+var TOPIC_RFID = "rfid/read";
+var TOPIC_SENSORS = "sensors/update";
+var TOPIC_APP_NAV = "app/nav";
+var TOPIC_EVENTS_RELOAD = "events/reload";
+var TOPIC_BOARD_RELOAD = "board/reload";
+var TOPIC_WEATHER_RELOAD = "weather/reload";
+var SUBSCRIBED_TOPICS = [
+	TOPIC_RFID,
+	TOPIC_SENSORS,
+	TOPIC_APP_NAV,
+	TOPIC_EVENTS_RELOAD,
+	TOPIC_BOARD_RELOAD,
+	TOPIC_WEATHER_RELOAD
+];
+var BUTTON_ACTIONS = {
 	1: {
 		target: "main",
 		source: "home_button"
@@ -627,434 +807,613 @@ var I = "rfid/read", L = "sensors/update", R = "app/nav", z = "events/reload", B
 		target: "voice_cmd",
 		source: "vocal_assistant"
 	}
-}, H = {}, Re = 5e3, ze = null, Be = 0, U = null, W = null;
-function G(e) {
-	!W || W.isDestroyed() || W.webContents.send("mqtt:event", e);
+};
+var rfidActions = {};
+var RFID_DEBOUNCE_MS = 5e3;
+var lastRfidId = null;
+var lastRfidAt = 0;
+var client = null;
+var mainWindowRef = null;
+function send(payload) {
+	if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+	mainWindowRef.webContents.send("mqtt:event", payload);
 }
-function Ve(e) {
-	let t;
+function handleRfid(raw) {
+	let cardId;
 	try {
-		t = e?.data?.id === void 0 ? parseInt(e.id ?? 0) : parseInt(e.data.id);
+		cardId = raw?.data?.id !== void 0 ? parseInt(raw.data.id) : parseInt(raw.id ?? 0);
 	} catch {
-		t = 0;
+		cardId = 0;
 	}
-	if (!t) return;
-	let n = Date.now();
-	if (t === ze && n - Be < Re) {
-		console.log(`[MQTT] RFID debounce ignored: ${t}`);
+	if (!cardId) return;
+	const now = Date.now();
+	if (cardId === lastRfidId && now - lastRfidAt < RFID_DEBOUNCE_MS) {
+		console.log(`[MQTT] RFID debounce ignored: ${cardId}`);
 		return;
 	}
-	ze = t, Be = n, console.log(`[MQTT] RFID card: ${t}`);
-	let r = H[t];
-	G(r ? {
-		topic: R,
+	lastRfidId = cardId;
+	lastRfidAt = now;
+	console.log(`[MQTT] RFID card: ${cardId}`);
+	const action = rfidActions[cardId];
+	if (action) send({
+		topic: TOPIC_APP_NAV,
 		type: "nav",
 		source: "rfid",
-		...r
-	} : {
-		topic: I,
+		...action
+	});
+	else send({
+		topic: TOPIC_RFID,
 		type: "rfid",
-		cardId: t
+		cardId
 	});
 }
-function He(e) {
-	let t;
+function handleSensors(raw) {
+	let picId;
 	try {
-		t = e?.data?.PIC === void 0 ? parseInt(e.PIC ?? 0) : parseInt(e.data.PIC);
+		picId = raw?.data?.PIC !== void 0 ? parseInt(raw.data.PIC) : parseInt(raw.PIC ?? 0);
 	} catch {
-		t = 0;
+		picId = 0;
 	}
-	if (!t) return;
-	let n = Le[t];
-	n ? (console.log(`[MQTT] Button PIC=${t} → ${n.target}`), G({
-		topic: L,
-		type: "nav",
-		target: n.target,
-		source: n.source
-	})) : console.warn(`[MQTT] Unknown button PIC: ${t}`);
+	if (!picId) return;
+	const action = BUTTON_ACTIONS[picId];
+	if (action) {
+		console.log(`[MQTT] Button PIC=${picId} → ${action.target}`);
+		send({
+			topic: TOPIC_SENSORS,
+			type: "nav",
+			target: action.target,
+			source: action.source
+		});
+	} else console.warn(`[MQTT] Unknown button PIC: ${picId}`);
 }
-function Ue(e) {
-	G({
-		topic: R,
-		...e
+function handleAppNav(raw) {
+	send({
+		topic: TOPIC_APP_NAV,
+		...raw
 	});
 }
-async function We() {
-	let { promises: e } = await import("node:fs"), { join: t, dirname: n } = await import("node:path"), { app: r } = await import("electron"), i = t(r.getPath("userData"), "config.local.json");
+async function loadRfidActions() {
+	const { promises: fs } = await import("node:fs");
+	const { join, dirname } = await import("node:path");
+	const { app } = await import("electron");
+	const configPath = join(app.getPath("userData"), "config.local.json");
 	try {
-		let t = JSON.parse(await e.readFile(i, "utf-8")).settings?.rfid_actions || {}, n = {};
-		for (let [e, r] of Object.entries(t)) {
-			let t = parseInt(e);
-			if (isNaN(t)) continue;
-			let i = r, a = i?.action || "day_events", o = i?.extra || "";
-			a === "weather" ? n[t] = {
+		const mappings = JSON.parse(await fs.readFile(configPath, "utf-8")).settings?.rfid_actions || {};
+		const newActions = {};
+		for (const [idStr, payload] of Object.entries(mappings)) {
+			const id = parseInt(idStr);
+			if (isNaN(id)) continue;
+			const p = payload;
+			const action = p?.action || "day_events";
+			const extra = p?.extra || "";
+			if (action === "weather") newActions[id] = {
 				target: "weather",
-				extra: { name: o }
-			} : a === "videocall" ? n[t] = {
+				extra: { name: extra }
+			};
+			else if (action === "videocall") newActions[id] = {
 				target: "videocall",
-				extra: { to_user: o }
-			} : n[t] = { target: "day_events" };
+				extra: { to_user: extra }
+			};
+			else newActions[id] = { target: "day_events" };
 		}
-		H = n, console.log(`[MQTT] Loaded ${Object.keys(H).length} RFID actions`);
+		rfidActions = newActions;
+		console.log(`[MQTT] Loaded ${Object.keys(rfidActions).length} RFID actions`);
 	} catch (e) {
 		console.error("[MQTT] Failed to load RFID config:", e);
 	}
 }
-function Ge(e) {
-	W = e, We();
-	let t = `mqtt://${process.env.COBIEN_MQTT_LOCAL_BROKER || "localhost"}:${parseInt(process.env.COBIEN_MQTT_LOCAL_PORT || "1883", 10)}`;
-	console.log(`[MQTT] Connecting to ${t}`), U = _.connect(t, {
+function startMqtt(win) {
+	mainWindowRef = win;
+	loadRfidActions();
+	const url = `mqtt://${process.env.COBIEN_MQTT_LOCAL_BROKER || "localhost"}:${parseInt(process.env.COBIEN_MQTT_LOCAL_PORT || "1883", 10)}`;
+	console.log(`[MQTT] Connecting to ${url}`);
+	client = mqtt.connect(url, {
 		clientId: `cobien-electron-${Date.now()}`,
 		connectTimeout: 5e3,
 		reconnectPeriod: 1e4,
-		clean: !0
-	}), U.on("connect", () => {
+		clean: true
+	});
+	client.on("connect", () => {
 		console.log("[MQTT] Connected");
-		for (let e of Ie) U.subscribe(e, { qos: 0 }, (t) => {
-			t ? console.error(`[MQTT] Subscribe error on ${e}:`, t) : console.log(`[MQTT] Subscribed: ${e}`);
+		for (const topic of SUBSCRIBED_TOPICS) client.subscribe(topic, { qos: 0 }, (err) => {
+			if (err) console.error(`[MQTT] Subscribe error on ${topic}:`, err);
+			else console.log(`[MQTT] Subscribed: ${topic}`);
 		});
-		G({
+		send({
 			topic: "mqtt/status",
 			type: "status",
-			connected: !0
+			connected: true
 		});
-	}), U.on("message", (e, t) => {
-		let n = {};
+	});
+	client.on("message", (topic, message) => {
+		let payload = {};
 		try {
-			n = JSON.parse(t.toString());
+			payload = JSON.parse(message.toString());
 		} catch {
-			n = {};
+			payload = {};
 		}
-		switch (e) {
-			case I:
-				Ve(n);
+		switch (topic) {
+			case TOPIC_RFID:
+				handleRfid(payload);
 				break;
-			case L:
-				He(n);
+			case TOPIC_SENSORS:
+				handleSensors(payload);
 				break;
-			case R:
-				Ue(n);
+			case TOPIC_APP_NAV:
+				handleAppNav(payload);
 				break;
-			case z:
-				G({
-					topic: e,
+			case TOPIC_EVENTS_RELOAD:
+				send({
+					topic,
 					type: "reload",
 					target: "events"
 				});
 				break;
-			case B:
-				G({
-					topic: e,
+			case TOPIC_BOARD_RELOAD:
+				send({
+					topic,
 					type: "reload",
 					target: "board"
 				});
 				break;
-			case V:
-				G({
-					topic: e,
+			case TOPIC_WEATHER_RELOAD:
+				send({
+					topic,
 					type: "reload",
 					target: "weather"
 				});
 				break;
 			case "rfid/actions_reload":
-				We();
+				loadRfidActions();
 				break;
-			default: console.log(`[MQTT] Unhandled topic: ${e}`);
+			default: console.log(`[MQTT] Unhandled topic: ${topic}`);
 		}
-	}), U.on("error", (e) => {
-		console.warn("[MQTT] Error:", e.message), G({
+	});
+	client.on("error", (err) => {
+		console.warn("[MQTT] Error:", err.message);
+		send({
 			topic: "mqtt/status",
 			type: "status",
-			connected: !1,
-			error: e.message
+			connected: false,
+			error: err.message
 		});
-	}), U.on("offline", () => {
-		console.warn("[MQTT] Offline — will retry"), G({
+	});
+	client.on("offline", () => {
+		console.warn("[MQTT] Offline — will retry");
+		send({
 			topic: "mqtt/status",
 			type: "status",
-			connected: !1
+			connected: false
 		});
-	}), U.on("reconnect", () => {
+	});
+	client.on("reconnect", () => {
 		console.log("[MQTT] Reconnecting...");
 	});
 }
-function Ke() {
-	U && (U.end(!0), U = null, console.log("[MQTT] Disconnected"));
+function stopMqtt() {
+	if (client) {
+		client.end(true);
+		client = null;
+		console.log("[MQTT] Disconnected");
+	}
 }
 //#endregion
 //#region electron/services/asrService.ts
-var K = typeof __dirname < "u" ? __dirname : o(c(import.meta.url)), q = null;
-function qe() {
-	q &&= (console.log("[ASR] Aborting current STT process"), q.kill(), null);
+var _dirname$1 = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+var currentPythonProcess = null;
+function abortStt() {
+	if (currentPythonProcess) {
+		console.log("[ASR] Aborting current STT process");
+		currentPythonProcess.kill();
+		currentPythonProcess = null;
+	}
 }
-function Je(e = "es", t, n) {
-	qe();
-	let r = s(K, "../public/python/asr_bridge.py"), i = e === "es" ? s(K, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : s(K, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
-	return new Promise((e) => {
-		let a = s(K, "../../../cobien_FrontEnd/app/.venv/bin/python3");
-		console.log(`[ASR] Spawning bridge: ${a} ${r} ${i}`), q = d(a, [r, i]);
-		let o = q, c = "";
-		o.stdout.on("data", (e) => {
-			let r = e.toString();
-			c += r;
-			let i = r.split("\n");
-			for (let e of i) {
-				let r = e.trim();
-				if (r.includes("\"level\":")) try {
-					let e = JSON.parse(r);
-					typeof e.level == "number" && t && t(e.level);
-				} catch {}
-				else if (r.includes("\"partial\":")) try {
-					let e = JSON.parse(r);
-					typeof e.partial == "string" && n && n(e.partial);
-				} catch {}
+function listenWithVosk(language = "es", onLevel, onPartial) {
+	abortStt();
+	const bridgePath = join(_dirname$1, "../public/python/asr_bridge.py");
+	const modelPath = language === "es" ? join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42") : join(_dirname$1, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-fr-0.22");
+	return new Promise((resolve) => {
+		const pythonBin = join(_dirname$1, "../../../cobien_FrontEnd/app/.venv/bin/python3");
+		console.log(`[ASR] Spawning bridge: ${pythonBin} ${bridgePath} ${modelPath}`);
+		currentPythonProcess = spawn(pythonBin, [bridgePath, modelPath]);
+		const python = currentPythonProcess;
+		let result = "";
+		python.stdout.on("data", (data) => {
+			const chunk = data.toString();
+			result += chunk;
+			const lines = chunk.split("\n");
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (trimmed.includes("\"level\":")) try {
+					const parsed = JSON.parse(trimmed);
+					if (typeof parsed.level === "number" && onLevel) onLevel(parsed.level);
+				} catch (e) {}
+				else if (trimmed.includes("\"partial\":")) try {
+					const parsed = JSON.parse(trimmed);
+					if (typeof parsed.partial === "string" && onPartial) onPartial(parsed.partial);
+				} catch (e) {}
 			}
-		}), o.stderr.on("data", (e) => {
-			console.error(`[ASR] Bridge Error: ${e}`);
-		}), o.on("close", (t) => {
-			console.log(`[ASR] Bridge closed with code ${t}`);
+		});
+		python.stderr.on("data", (data) => {
+			console.error(`[ASR] Bridge Error: ${data}`);
+		});
+		python.on("close", (code) => {
+			console.log(`[ASR] Bridge closed with code ${code}`);
 			try {
-				let t = c.trim().split("\n"), n = "";
-				for (let e = t.length - 1; e >= 0; e--) {
-					let r = t[e].trim();
-					if (r.startsWith("{") && r.endsWith("}") && r.includes("\"text\":")) {
-						n = r;
+				const lines = result.trim().split("\n");
+				let lastJson = "";
+				for (let i = lines.length - 1; i >= 0; i--) {
+					const line = lines[i].trim();
+					if (line.startsWith("{") && line.endsWith("}") && line.includes("\"text\":")) {
+						lastJson = line;
 						break;
 					}
 				}
-				if (!n) {
-					console.error("ASR Bridge: No text JSON found in output", c), e(null);
+				if (!lastJson) {
+					console.error("ASR Bridge: No text JSON found in output", result);
+					resolve(null);
 					return;
 				}
-				e(JSON.parse(n).text || null);
-			} catch (t) {
-				console.error("ASR Bridge parse error:", t, c), e(null);
+				resolve(JSON.parse(lastJson).text || null);
+			} catch (e) {
+				console.error("ASR Bridge parse error:", e, result);
+				resolve(null);
 			}
 		});
 	});
 }
 //#endregion
 //#region electron/services/hardwareService.ts
-var J = te(l);
-async function Ye(e, t = !1) {
+var execAsync = promisify(exec);
+async function adjustVolume(value, isAbsolute = false) {
 	try {
-		return t ? await J(`pactl set-sink-volume @DEFAULT_SINK@ ${e}%`) : await J(`pactl set-sink-volume @DEFAULT_SINK@ ${`${e >= 0 ? "+" : ""}${e}%`}`), !0;
+		if (isAbsolute) await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${value}%`);
+		else await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${`${value >= 0 ? "+" : ""}${value}%`}`);
+		return true;
 	} catch (e) {
-		return console.error("Failed to adjust volume:", e), !1;
+		console.error("Failed to adjust volume:", e);
+		return false;
 	}
 }
-async function Xe() {
+async function getVolume() {
 	try {
-		let { stdout: e } = await J("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1");
-		return parseInt(e.trim()) || 0;
+		const { stdout } = await execAsync("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1");
+		return parseInt(stdout.trim()) || 0;
 	} catch (e) {
-		return console.error("Failed to get volume:", e), 50;
+		console.error("Failed to get volume:", e);
+		return 50;
 	}
 }
-async function Ze(e) {
+async function adjustBrightness(value) {
 	try {
-		let { stdout: t } = await J("xrandr --query | grep ' connected' | cut -d' ' -f1"), n = t.trim().split("\n");
-		if (n.length === 0) return !1;
-		for (let t of n) {
-			let n = .4;
-			if (e !== void 0) n = e;
+		const { stdout } = await execAsync("xrandr --query | grep ' connected' | cut -d' ' -f1");
+		const outputs = stdout.trim().split("\n");
+		if (outputs.length === 0) return false;
+		for (const output of outputs) {
+			let next = .4;
+			if (value !== void 0) next = value;
 			else {
-				let { stdout: e } = await J(`xrandr --verbose --output ${t} | grep -i brightness`), r = parseFloat(e.split(":")[1].trim());
-				n = r < .6 ? .7 : r < .9 ? 1 : .4;
+				const { stdout: verbose } = await execAsync(`xrandr --verbose --output ${output} | grep -i brightness`);
+				const current = parseFloat(verbose.split(":")[1].trim());
+				if (current < .6) next = .7;
+				else if (current < .9) next = 1;
+				else next = .4;
 			}
-			await J(`xrandr --output ${t} --brightness ${n.toFixed(2)}`);
+			await execAsync(`xrandr --output ${output} --brightness ${next.toFixed(2)}`);
 		}
-		return !0;
+		return true;
 	} catch (e) {
-		return console.error("Failed to adjust brightness:", e), !1;
+		console.error("Failed to adjust brightness:", e);
+		return false;
 	}
 }
 //#endregion
 //#region electron/services/wakeWordService.ts
-var Y = null, X = !1;
-function Qe(e, t) {
-	if (X) return;
-	X = !0;
-	let n = s(t, "../../../cobien_FrontEnd/app/.venv/bin/python3"), r = s(t, "../public/python/asr_bridge.py"), i = s(t, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42");
-	console.log("[WAKE] Starting detection for \"cobien\"..."), Y = d(n, [
-		r,
-		i,
+var wakeWordProcess = null;
+var isListening = false;
+function startWakeWordDetection(mainWindow, _dirname) {
+	if (isListening) return;
+	isListening = true;
+	const pythonBin = join(_dirname, "../../../cobien_FrontEnd/app/.venv/bin/python3");
+	const bridgePath = join(_dirname, "../public/python/asr_bridge.py");
+	const modelPath = join(_dirname, "../../../cobien_FrontEnd/app/virtual_assistant/vosk_models/vosk-model-small-es-0.42");
+	console.log(`[WAKE] Starting detection for "cobien"...`);
+	wakeWordProcess = spawn(pythonBin, [
+		bridgePath,
+		modelPath,
 		"--wake-word",
 		"cobien"
-	]), Y.stdout?.on("data", (t) => {
-		let n = t.toString().split("\n");
-		for (let t of n) if (t.includes("\"wake_word_detected\":")) {
-			console.log("[WAKE] Keyword detected!"), e.webContents.send("asr:wake-word-detected"), $e();
+	]);
+	wakeWordProcess.stdout?.on("data", (data) => {
+		const lines = data.toString().split("\n");
+		for (const line of lines) if (line.includes("\"wake_word_detected\":")) {
+			console.log("[WAKE] Keyword detected!");
+			mainWindow.webContents.send("asr:wake-word-detected");
+			stopWakeWordDetection();
 			break;
 		}
-	}), Y.stderr?.on("data", (e) => {
-		console.error(`[WAKE] Bridge Error: ${e}`);
-	}), Y.on("close", (e) => {
-		console.log(`[WAKE] Bridge closed with code ${e}`), X = !1, Y = null;
+	});
+	wakeWordProcess.stderr?.on("data", (data) => {
+		console.error(`[WAKE] Bridge Error: ${data}`);
+	});
+	wakeWordProcess.on("close", (code) => {
+		console.log(`[WAKE] Bridge closed with code ${code}`);
+		isListening = false;
+		wakeWordProcess = null;
 	});
 }
-function $e() {
-	Y &&= (Y.kill(), null), X = !1;
+function stopWakeWordDetection() {
+	if (wakeWordProcess) {
+		wakeWordProcess.kill();
+		wakeWordProcess = null;
+	}
+	isListening = false;
 }
 //#endregion
 //#region electron/main.ts
-e.config();
-var Z = typeof __dirname < "u" ? __dirname : o(c(import.meta.url)), Q = null, $ = s(Z, "../../../cobien_FrontEnd/app/config/config.default.json");
-function et(e = "es", t = "male") {
+dotenv.config();
+var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+var mainWindow = null;
+var configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+function getPiperConfig(lang = "es", gender = "male") {
 	try {
-		let n = s(Z, "../../../cobien_FrontEnd/app/config/config.default.json"), r = s(Z, "../../../cobien_FrontEnd/app/config/config.local.json"), i = JSON.parse(f.readFileSync(n, "utf-8")), a = {};
+		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
+		const defaultData = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+		let localData = {};
 		try {
-			a = JSON.parse(f.readFileSync(r, "utf-8"));
-		} catch {}
-		let o = {
-			...i.services,
-			...a.services
-		}, c = s(Z, "../public/models/piper/bin/piper"), l = s(Z, "../public/models/piper/es_ES-davefx-medium.onnx"), u = o.tts_piper_bin || c, d = o[`tts_piper_model_${e}_${t}`] || o[`tts_piper_model_${e}`], p = "";
-		if (d) if (d.startsWith("/") || d.includes(":") || d.startsWith("http")) p = d;
+			localData = JSON.parse(fsSync.readFileSync(localPath, "utf-8"));
+		} catch (e) {}
+		const services = {
+			...defaultData.services,
+			...localData.services
+		};
+		const internalBin = join(_dirname, "../public/models/piper/bin/piper");
+		const defaultModel = join(_dirname, "../public/models/piper/es_ES-davefx-medium.onnx");
+		const bin = services.tts_piper_bin || internalBin;
+		let modelName = services[`tts_piper_model_${lang}_${gender}`] || services[`tts_piper_model_${lang}`];
+		let model = "";
+		if (modelName) if (modelName.startsWith("/") || modelName.includes(":") || modelName.startsWith("http")) model = modelName;
 		else {
-			let e = s(Z, "../../../cobien_FrontEnd/app", d), t = s(Z, "../public/models/piper", d);
-			p = f.existsSync(e) ? e : f.existsSync(t) ? t : e;
+			const fePath = join(_dirname, "../../../cobien_FrontEnd/app", modelName);
+			const elPath = join(_dirname, "../public/models/piper", modelName);
+			if (fsSync.existsSync(fePath)) model = fePath;
+			else if (fsSync.existsSync(elPath)) model = elPath;
+			else model = fePath;
 		}
-		else p = e === "fr" ? s(Z, "../public/models/piper/fr_FR-siwis-medium.onnx") : l;
+		else if (lang === "fr") model = join(_dirname, "../public/models/piper/fr_FR-siwis-medium.onnx");
+		else model = defaultModel;
 		return {
-			bin: u,
-			model: p
+			bin,
+			model
 		};
 	} catch (e) {
-		return console.error("Error reading piper config:", e), {
-			bin: s(Z, "../public/models/piper/bin/piper"),
-			model: s(Z, "../public/models/piper/es_ES-davefx-medium.onnx")
+		console.error("Error reading piper config:", e);
+		return {
+			bin: join(_dirname, "../public/models/piper/bin/piper"),
+			model: join(_dirname, "../public/models/piper/es_ES-davefx-medium.onnx")
 		};
 	}
 }
-function tt() {
-	r.handle("config:getWeather", async () => {
+function setupIPC() {
+	ipcMain.handle("config:getWeather", async () => {
 		try {
-			let e = JSON.parse(await m.readFile($, "utf-8"));
+			const data = JSON.parse(await promises.readFile(configPath, "utf-8"));
 			return {
-				catalog: e.settings.weather_city_catalog || [],
-				active: e.settings.weather_cities || [],
-				primary: e.settings.weather_primary_city || ""
+				catalog: data.settings.weather_city_catalog || [],
+				active: data.settings.weather_cities || [],
+				primary: data.settings.weather_primary_city || ""
 			};
 		} catch (e) {
-			return console.error("Error reading config:", e), {
+			console.error("Error reading config:", e);
+			return {
 				catalog: [],
 				active: [],
 				primary: ""
 			};
 		}
-	}), r.handle("config:getSettings", async () => {
+	});
+	ipcMain.handle("config:getSettings", async () => {
 		try {
-			return JSON.parse(await m.readFile($, "utf-8")).settings || {};
-		} catch {
+			return JSON.parse(await promises.readFile(configPath, "utf-8")).settings || {};
+		} catch (e) {
 			return {};
 		}
-	}), r.handle("config:saveWeather", async (e, t) => {
+	});
+	ipcMain.handle("config:saveWeather", async (event, payload) => {
 		try {
-			let e = JSON.parse(await m.readFile($, "utf-8"));
-			return e.settings.weather_city_catalog = t.catalog, e.settings.weather_cities = t.active, e.settings.weather_primary_city = t.primary, await m.writeFile($, JSON.stringify(e, null, 4)), !0;
+			const data = JSON.parse(await promises.readFile(configPath, "utf-8"));
+			data.settings.weather_city_catalog = payload.catalog;
+			data.settings.weather_cities = payload.active;
+			data.settings.weather_primary_city = payload.primary;
+			await promises.writeFile(configPath, JSON.stringify(data, null, 4));
+			return true;
 		} catch (e) {
-			return console.error("Error saving config:", e), !1;
+			console.error("Error saving config:", e);
+			return false;
 		}
-	}), r.handle("events:get", async () => await ie($)), r.handle("weather:fetch", async (e, t) => await ye(t)), r.handle("jokes:getRandom", async () => await Se("es")), r.handle("contacts:list", async () => await Ee()), r.handle("contacts:sync", async () => {
-		let e = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await Oe(process.env.COBIEN_DEVICE_ID || "CoBien6", e, (JSON.parse(await m.readFile($, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
-	}), r.handle("contacts:requestCall", async (e, t) => {
-		let n = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await Ae(t, process.env.COBIEN_DEVICE_ID || "CoBien6", n, (JSON.parse(await m.readFile($, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
-	}), r.handle("contacts:openCall", async (e, t) => {
-		let n = process.env.COBIEN_DEVICE_ID || "CoBien6", r = `${(JSON.parse(await m.readFile($, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, "")}/videocall/?room=${encodeURIComponent(t)}&device=${encodeURIComponent(n)}`, { BrowserWindow: i } = await import("electron");
-		return new i({
+	});
+	ipcMain.handle("events:get", async () => {
+		return await getEvents(configPath);
+	});
+	ipcMain.handle("weather:fetch", async (_, cityName) => {
+		return await fetchWeatherBundle(cityName);
+	});
+	ipcMain.handle("jokes:getRandom", async () => {
+		return await getRandomJoke("es");
+	});
+	ipcMain.handle("contacts:list", async () => {
+		return await loadContacts();
+	});
+	ipcMain.handle("contacts:sync", async () => {
+		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
+		return await syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+	});
+	ipcMain.handle("contacts:requestCall", async (_, userName) => {
+		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
+		return await requestCall(userName, process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+	});
+	ipcMain.handle("contacts:openCall", async (_, userName) => {
+		const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+		const url = `${(JSON.parse(await promises.readFile(configPath, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, "")}/videocall/?room=${encodeURIComponent(userName)}&device=${encodeURIComponent(deviceId)}`;
+		const { BrowserWindow: BW } = await import("electron");
+		new BW({
 			width: 1024,
 			height: 768,
-			fullscreen: !0,
+			fullscreen: true,
 			webPreferences: {
-				nodeIntegration: !1,
-				contextIsolation: !0
+				nodeIntegration: false,
+				contextIsolation: true
 			}
-		}).loadURL(r), !0;
-	}), r.handle("reminders:add", async (e, t, n) => await Ne(t, n)), r.handle("reminders:list", async () => await Pe()), r.handle("reminders:delete", async (e, t) => await Fe(t)), r.handle("events:addPersonal", async (e, t) => {
-		let n = JSON.parse(await m.readFile($, "utf-8")).settings?.device_location || "Bilbao", r = process.env.COBIEN_DEVICE_ID || "CoBien6";
-		return await ae({
-			...t,
-			location: n,
-			deviceId: r
-		});
-	}), r.handle("events:delete", async (e, t) => await oe(t)), r.handle("board:fetch", async () => await ue()), r.handle("board:delete", async (e, t) => await de(t)), r.handle("board:read", async (e, t) => await fe(t)), r.handle("board:reply", async (e, t, n) => await pe(t, n)), r.handle("config:getSystemInfo", () => ({
-		version: n.getVersion(),
-		deviceId: process.env.COBIEN_DEVICE_ID || "CoBienX"
-	})), r.handle("app:restart", () => {
-		n.relaunch(), n.exit();
-	}), r.handle("app:exit", () => {
-		n.quit();
+		}).loadURL(url);
+		return true;
 	});
-	let e = null;
-	r.handle("tts:speak", async (t, n, r = "es", i = "male", a = "piper") => {
-		if (console.log(`[TTS] Speaking (${r}/${i}) via ${a}: "${n}"`), e) {
+	ipcMain.handle("reminders:add", async (_, message, isoDatetime) => {
+		return await addReminder(message, isoDatetime);
+	});
+	ipcMain.handle("reminders:list", async () => {
+		return await listReminders();
+	});
+	ipcMain.handle("reminders:delete", async (_, id) => {
+		return await deleteReminder(id);
+	});
+	ipcMain.handle("events:addPersonal", async (_, payload) => {
+		const location = JSON.parse(await promises.readFile(configPath, "utf-8")).settings?.device_location || "Bilbao";
+		const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+		return await addPersonalEvent({
+			...payload,
+			location,
+			deviceId
+		});
+	});
+	ipcMain.handle("events:delete", async (_, id) => {
+		return await deleteEvent(id);
+	});
+	ipcMain.handle("board:fetch", async () => await fetchMessages());
+	ipcMain.handle("board:delete", async (_, id) => await deleteMessage(id));
+	ipcMain.handle("board:read", async (_, id) => await markMessageRead(id));
+	ipcMain.handle("board:reply", async (_, id, text) => await submitQuickReply(id, text));
+	ipcMain.handle("config:getSystemInfo", () => {
+		return {
+			version: app.getVersion(),
+			deviceId: process.env.COBIEN_DEVICE_ID || "CoBienX"
+		};
+	});
+	ipcMain.handle("app:restart", () => {
+		app.relaunch();
+		app.exit();
+	});
+	ipcMain.handle("app:exit", () => {
+		app.quit();
+	});
+	let currentTtsProcess = null;
+	ipcMain.handle("tts:speak", async (event, text, lang = "es", gender = "male", engine = "piper") => {
+		console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`);
+		if (currentTtsProcess) {
 			try {
-				e.kill();
-			} catch {}
-			e = null;
+				currentTtsProcess.kill();
+			} catch (e) {}
+			currentTtsProcess = null;
 		}
-		let o = s(ee.tmpdir(), `tts_${Date.now()}.wav`), { bin: c, model: l } = et(r, i);
-		return console.log(`[TTS] Piper Config: bin=${c}, model=${l}`), l ? new Promise((e) => {
-			let t = u(c, [
+		const tempWav = join(os.tmpdir(), `tts_${Date.now()}.wav`);
+		const { bin, model } = getPiperConfig(lang, gender);
+		console.log(`[TTS] Piper Config: bin=${bin}, model=${model}`);
+		if (!model) {
+			console.error("TTS: No Piper model configured.");
+			return null;
+		}
+		return new Promise((resolve) => {
+			const child = execFile(bin, [
 				"--model",
-				l,
+				model,
 				"--output_file",
-				o
-			], async (t, n, r) => {
-				if (t) {
-					console.error("[TTS] Piper exec error:", t, r), e(null);
+				tempWav
+			], async (error, stdout, stderr) => {
+				if (error) {
+					console.error("[TTS] Piper exec error:", error, stderr);
+					resolve(null);
 					return;
 				}
 				try {
-					let t = await m.readFile(o);
-					await m.unlink(o), console.log(`[TTS] Generated WAV: ${t.length} bytes`), e(t);
-				} catch (t) {
-					console.error("[TTS] Error reading temp wav:", t), e(null);
+					const buffer = await promises.readFile(tempWav);
+					await promises.unlink(tempWav);
+					console.log(`[TTS] Generated WAV: ${buffer.length} bytes`);
+					resolve(buffer);
+				} catch (e) {
+					console.error("[TTS] Error reading temp wav:", e);
+					resolve(null);
 				}
 			});
-			t.stdin?.write(n), t.stdin?.end();
-		}) : (console.error("TTS: No Piper model configured."), null);
-	}), r.handle("stt:listen", async (e, t) => await Je(t, (t) => {
-		e.sender.send("asr:level", t);
-	}, (t) => {
-		e.sender.send("asr:partial", t);
-	})), r.handle("hardware:adjustVolume", async (e, t, n = !1) => await Ye(t, n)), r.handle("hardware:adjustBrightness", async (e, t) => await Ze(t)), r.handle("hardware:getVolume", async () => await Xe()), r.handle("stt:abort", () => {
-		qe();
-	}), r.handle("asr:restartWakeWord", () => {
-		Q && Qe(Q, Z);
+			child.stdin?.write(text);
+			child.stdin?.end();
+		});
+	});
+	ipcMain.handle("stt:listen", async (event, language) => {
+		return await listenWithVosk(language, (level) => {
+			event.sender.send("asr:level", level);
+		}, (partial) => {
+			event.sender.send("asr:partial", partial);
+		});
+	});
+	ipcMain.handle("hardware:adjustVolume", async (_, value, isAbsolute = false) => {
+		return await adjustVolume(value, isAbsolute);
+	});
+	ipcMain.handle("hardware:adjustBrightness", async (_, value) => {
+		return await adjustBrightness(value);
+	});
+	ipcMain.handle("hardware:getVolume", async () => {
+		return await getVolume();
+	});
+	ipcMain.handle("stt:abort", () => {
+		abortStt();
+	});
+	ipcMain.handle("asr:restartWakeWord", () => {
+		if (mainWindow) startWakeWordDetection(mainWindow, _dirname);
 	});
 }
-function nt() {
-	Q = new t({
+function createWindow() {
+	mainWindow = new BrowserWindow({
 		width: 1024,
 		height: 768,
-		fullscreen: !1,
+		fullscreen: false,
 		webPreferences: {
-			preload: s(Z, "preload.mjs"),
-			nodeIntegration: !1,
-			contextIsolation: !0
+			preload: join(_dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true
 		}
-	}), Q.setBackgroundColor("#ffffff"), process.env.VITE_DEV_SERVER_URL ? (Q.loadURL(process.env.VITE_DEV_SERVER_URL), Q.webContents.openDevTools()) : Q.loadFile(s(Z, "../dist/index.html"));
-}
-n.whenReady().then(() => {
-	a.handle("cobien-media", (e) => {
-		let t = e.url.replace("cobien-media://", "");
-		return i.fetch("file://" + t);
-	}), tt();
-	let e = (JSON.parse(f.readFileSync($, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), r = process.env.COBIEN_NOTIFY_API_KEY || "";
-	if (Oe(process.env.COBIEN_DEVICE_ID || "CoBien6", r, e).catch(console.error), nt(), Me((e) => {
-		Q && Q.webContents.send("reminder:fire", e);
-	}), Q) {
-		let e = s(Z, "../../../cobien_FrontEnd/app/config/config.default.json"), t = s(Z, "../../../cobien_FrontEnd/app/config/config.local.json");
-		ne(Q, e, t), Ge(Q), Qe(Q, Z);
-	}
-	n.on("activate", () => {
-		t.getAllWindows().length === 0 && nt();
 	});
-}), n.on("window-all-closed", () => {
-	Ke(), process.platform !== "darwin" && n.quit();
+	mainWindow.setBackgroundColor("#ffffff");
+	if (process.env.VITE_DEV_SERVER_URL) {
+		mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+		mainWindow.webContents.openDevTools();
+	} else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
+}
+app.whenReady().then(() => {
+	protocol.handle("cobien-media", (request) => {
+		const url = request.url.replace("cobien-media://", "");
+		return net.fetch("file://" + url);
+	});
+	setupIPC();
+	const baseUrl = (JSON.parse(fsSync.readFileSync(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, "");
+	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
+	syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, baseUrl).catch(console.error);
+	createWindow();
+	loadPendingReminders((reminder) => {
+		if (mainWindow) mainWindow.webContents.send("reminder:fire", reminder);
+	});
+	if (mainWindow) {
+		const configPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.default.json");
+		const localPath = join(_dirname, "../../../cobien_FrontEnd/app/config/config.local.json");
+		startBackendSync(mainWindow, configPath, localPath);
+		startMqtt(mainWindow);
+		startWakeWordDetection(mainWindow, _dirname);
+	}
+	app.on("activate", () => {
+		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+	});
+});
+app.on("window-all-closed", () => {
+	stopMqtt();
+	if (process.platform !== "darwin") app.quit();
 });
 //#endregion

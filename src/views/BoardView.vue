@@ -10,6 +10,7 @@ const messages = ref<any[]>([])
 const currentIndex = ref(0)
 const loading = ref(true)
 const showReplyModal = ref(false)
+const showFullscreenImage = ref(false)
 
 const currentMessage = computed(() => {
   if (messages.value.length === 0) return null
@@ -111,6 +112,39 @@ async function handleDelete() {
   }
 }
 
+async function speak(text: string) {
+  try {
+    const buffer = await (window as any).config.ttsSpeak(text)
+    if (buffer) {
+      const audioCtx = new AudioContext()
+      await audioCtx.resume()
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
+      const source = audioCtx.createBufferSource()
+      source.buffer = decoded
+      source.connect(audioCtx.destination)
+      await new Promise<void>(resolve => {
+        source.onended = () => resolve()
+        source.start()
+      })
+    }
+  } catch(e) {
+    console.error('TTS Error:', e)
+  }
+}
+
+async function readCurrentMessage() {
+  if (!currentMessage.value) return
+  
+  const msg = currentMessage.value
+  // Piper respects punctuation. We can add slight pauses by ensuring dots and commas are clear.
+  const intro = `Mensaje de ${msg.author}, recibido el ${msg.created_at_human}. `
+  // Replace multiple line breaks or punctuation with slightly emphasized versions if needed
+  const body = msg.text.replace(/\./g, '. ... ').replace(/,/g, ', ... ')
+  
+  await speak(intro + body)
+}
+
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
@@ -138,11 +172,14 @@ function goBack() {
       </div>
 
       <div class="header-actions">
-        <button class="back-btn" @click="goBack">
-          <img src="/images/back.png" alt="Volver" />
+        <button class="audio-btn" @click="readCurrentMessage" v-if="messages.length > 0">
+          <img src="/images/play.png" alt="Leer" />
         </button>
         <button class="voice-button-small" @click="triggerVoiceAssistant">
           <img src="/images/voice.png" alt="Voz" />
+        </button>
+        <button class="back-btn" @click="goBack" style="margin-left: 2rem;">
+          <img src="/images/back.png" alt="Volver" />
         </button>
       </div>
     </div>
@@ -184,18 +221,20 @@ function goBack() {
 
             <div class="message-actions">
               <button 
-                v-if="currentMessage.quick_replies && currentMessage.quick_replies.length > 0"
+                v-if="currentMessage.quick_replies && currentMessage.quick_replies.length > 0 && !currentMessage.quick_reply_selected"
                 class="reply-trigger-btn"
                 @click="showReplyModal = true"
               >
-                {{ currentMessage.quick_reply_selected ? t('board.view_reply') : t('board.reply') }}
-
+                Responder
               </button>
+              <div v-else-if="currentMessage.quick_reply_selected" class="replied-status">
+                <strong>Respondiste:</strong> {{ typeof currentMessage.quick_reply_selected === 'object' ? currentMessage.quick_reply_selected.text : currentMessage.quick_reply_selected }}
+              </div>
             </div>
           </div>
 
           <!-- Right Image -->
-          <div class="image-side" v-if="currentMessage.image">
+          <div class="image-side" v-if="currentMessage.image" @click="showFullscreenImage = true">
             <img :src="currentMessage.image" class="full-img" />
           </div>
           <div class="image-side no-img" v-else>
@@ -225,7 +264,7 @@ function goBack() {
           </div>
 
           
-          <div class="replies-grid">
+          <div class="replies-list">
             <button 
               v-for="rep in currentMessage.quick_replies" 
               :key="rep" 
@@ -237,11 +276,15 @@ function goBack() {
             </button>
           </div>
 
-          <div v-if="currentMessage.quick_reply_selected" class="selection-status">
-            {{ t('board.responded_with', { text: currentMessage.quick_reply_selected }) }}
-          </div>
-
         </div>
+      </div>
+    </Teleport>
+    
+    <!-- Fullscreen Image Modal -->
+    <Teleport to="body">
+      <div v-if="showFullscreenImage && currentMessage?.image" class="fullscreen-image-overlay" @click="showFullscreenImage = false">
+        <button class="close-fullscreen-btn" @click="showFullscreenImage = false">✕</button>
+        <img :src="currentMessage.image" class="fullscreen-img" />
       </div>
     </Teleport>
   </div>
@@ -285,24 +328,30 @@ function goBack() {
 }
 
 .date-str {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #333;
+  font-size: 2.8rem; /* Doubled */
+  font-weight: 800;
+  color: #111;
   text-transform: capitalize;
 }
 
 .time-str {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #666;
+  font-size: 2.2rem; /* Doubled */
+  font-weight: 700;
+  color: #444;
 }
 
 .header-actions {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
+  align-items: center;
 }
 
-.back-btn, .voice-button-small {
+.actions-spacer {
+  width: 2rem;
+}
+
+
+.back-btn, .voice-button-small, .audio-btn {
   width: 5.5rem;
   height: 5.5rem;
 
@@ -315,10 +364,13 @@ function goBack() {
   cursor: pointer;
 }
 
-.back-btn img, .voice-button-small img {
+.back-btn img, .voice-button-small img, .audio-btn img {
   width: 3.5rem;
   height: 3.5rem;
+}
 
+.audio-btn {
+  background: #f0f0f0;
 }
 
 /* Board Wrapper & Navigation */
@@ -395,35 +447,35 @@ function goBack() {
 }
 
 .author-avatar {
-  width: 65px;
-  height: 65px;
-  border-radius: 50%;
+  width: 78px; /* +20% from 65 */
+  height: 78px;
+  border-radius: 14px; /* Square with slight rounding */
   object-fit: cover;
   border: 3px solid white;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
 .avatar-fallback {
-  width: 65px;
-  height: 65px;
-  border-radius: 50%;
-  background: var(--accent-blue);
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  background: #2196F3;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 800;
 }
 
 .author-name {
-  font-size: 1.8rem;
+  font-size: 2.2rem; /* +20% from 1.8 */
   font-weight: 800;
   color: #111;
 }
 
 .post-date {
-  font-size: 1.1rem;
+  font-size: 1.3rem; /* +20% from 1.1 */
   font-weight: 600;
   color: #888;
 }
@@ -435,9 +487,9 @@ function goBack() {
 }
 
 .message-text {
-  font-size: 1.7rem;
-  line-height: 1.4;
-  color: #333;
+  font-size: 2.1rem; /* +20% from 1.7 */
+  line-height: 1.5;
+  color: #111;
   white-space: pre-wrap;
 }
 
@@ -447,19 +499,32 @@ function goBack() {
 
 .reply-trigger-btn {
   width: 100%;
-  padding: 1.2rem;
-  background: #2196F3;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.4rem;
-  font-weight: 700;
+  padding: 1.6rem; /* +30% from 1.2 */
+  background: white;
+  color: black;
+  border: 2px solid #000;
+  border-radius: 14px;
+  font-size: 1.6rem;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 6px 15px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   transition: transform 0.2s;
 }
 
 .reply-trigger-btn:active { transform: scale(0.97); }
+
+.replied-status {
+  padding: 1.5rem;
+  background: rgba(0,0,0,0.03);
+  border-radius: 14px;
+  font-size: 1.6rem;
+  color: #444;
+  border: 1px dashed #ccc;
+}
+
+.replied-status strong {
+  color: #000;
+}
 
 /* Right Image Side */
 .image-side {
@@ -469,12 +534,16 @@ function goBack() {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: relative;
+  cursor: zoom-in;
 }
+
 
 .full-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* Don't crop */
+  padding: 1rem;
 }
 
 .no-img-placeholder {
@@ -557,33 +626,35 @@ function goBack() {
   cursor: pointer;
 }
 
-.replies-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
+.replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
 }
 
 .reply-option {
-  padding: 1.5rem;
+  width: 100%;
+  padding: 1.8rem;
   background: #f8f9fa;
-  border: 2px solid transparent;
-  border-radius: 16px;
-  font-size: 1.4rem;
+  border: 2px solid #eee;
+  border-radius: 18px;
+  font-size: 1.6rem;
   font-weight: 700;
+  text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .reply-option:hover {
   background: white;
-  border-color: #2196F3;
-  transform: translateY(-3px);
+  border-color: #000;
+  transform: scale(1.02);
 }
 
 .reply-option.selected {
-  background: #e3f2fd;
-  border-color: #2196F3;
-  color: #1976D2;
+  background: #000;
+  border-color: #000;
+  color: white;
 }
 
 .selection-status {
@@ -593,5 +664,54 @@ function goBack() {
   padding-top: 1rem;
   border-top: 1px solid #eee;
 }
+
+/* Fullscreen Image */
+.fullscreen-image-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  cursor: zoom-out;
+}
+
+.fullscreen-img {
+  max-width: 98%;
+  max-height: 98%;
+  object-fit: contain;
+  box-shadow: 0 0 80px rgba(0,0,0,0.8);
+  animation: imgZoom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes imgZoom {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.close-fullscreen-btn {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #000;
+  color: black;
+  font-size: 3.5rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+  z-index: 3001;
+  transition: transform 0.2s;
+}
+
+.close-fullscreen-btn:active { transform: scale(0.9); }
+
 
 </style>
