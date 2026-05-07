@@ -145,7 +145,9 @@ onUnmounted(() => {
 })
 
 const currentMonthName = computed(() => {
-  return currentDate.value.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+  const month = currentDate.value.toLocaleDateString('es-ES', { month: 'long' })
+  const year = currentDate.value.getFullYear()
+  return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`
 })
 
 const daysInMonth = computed(() => {
@@ -212,6 +214,8 @@ const calendarDays = computed(() => {
 
   return days
 })
+
+const rowCount = computed(() => Math.ceil(calendarDays.value.length / 7))
 
 function prevMonth() {
   const newDate = new Date(currentDate.value)
@@ -303,7 +307,7 @@ function goBack() {
           <div class="month-title">{{ currentMonthName }}</div>
         </div>
 
-        <div class="calendar-grid">
+        <div class="calendar-grid" :class="{ 'six-rows': rowCount === 6 }">
           <!-- Weekdays -->
           <div class="weekday">Lunes</div>
           <div class="weekday">Martes</div>
@@ -463,34 +467,34 @@ function goBack() {
 }
 
 .header-now-date {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #111;
 }
 
 .header-now-time {
-  font-size: 1.2rem;
-  font-weight: 500;
-  color: #666;
+  font-size: 2.0rem;
+  font-weight: 600;
+  color: #444;
 }
 
 .header-legend {
   display: flex;
-  gap: 2.5rem;
+  gap: 4rem;
   align-items: center;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  font-size: 1.3rem;
-  font-weight: 600;
+  gap: 1.2rem;
+  font-size: 2.2rem;
+  font-weight: 700;
 }
 
 .dot {
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
 }
 
@@ -582,7 +586,7 @@ function goBack() {
 .day {
   background: white;
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 2px solid #000;
   aspect-ratio: 1.4 / 1;
   display: flex;
   flex-direction: column;
@@ -593,15 +597,19 @@ function goBack() {
   transition: all 0.2s;
 }
 
+.six-rows .day {
+  aspect-ratio: 1.75 / 1; /* ~20% less tall than 1.4 */
+}
+
 .day-num {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: 2.2rem;
+  font-weight: 700;
 }
 
 .day.other-month {
   background: rgba(255, 255, 255, 0.3);
-  color: #999;
-  border-color: rgba(0,0,0,0.05);
+  color: #666;
+  border-color: rgba(0,0,0,0.3);
 }
 
 .day.today {
@@ -612,14 +620,15 @@ function goBack() {
 
 .dots-container {
   display: flex;
-  gap: 6px;
-  margin-top: 0.8rem;
+  gap: 8px;
+  margin-top: 1rem;
 }
 
 .event-dot {
-  width: 12px;
-  height: 12px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 .event-dot.public { background: #007AFF; }
