@@ -33,7 +33,7 @@ onUnmounted(() => {
 })
 
 const formattedDate = computed(() => {
-  return currentTime.value.toLocaleDateString(locale.value === 'es' ? 'es-ES' : 'fr-FR', { 
+  return currentTime.value.toLocaleDateString(locale.value, { 
     weekday: 'long', 
     day: 'numeric', 
     month: 'long', 
@@ -42,7 +42,7 @@ const formattedDate = computed(() => {
 })
 
 const formattedTime = computed(() => {
-  return currentTime.value.toLocaleTimeString(locale.value === 'es' ? 'es-ES' : 'fr-FR', { 
+  return currentTime.value.toLocaleTimeString(locale.value, { 
     hour: '2-digit', 
     minute: '2-digit' 
   })
@@ -137,9 +137,8 @@ async function readCurrentMessage() {
   if (!currentMessage.value) return
   
   const msg = currentMessage.value
-  // Piper respects punctuation. We can add slight pauses by ensuring dots and commas are clear.
-  const intro = `Mensaje de ${msg.author}, recibido el ${msg.created_at_human}. `
-  // Replace multiple line breaks or punctuation with slightly emphasized versions if needed
+  // Piper respects punctuation. Slight pauses added via punctuation.
+  const intro = t('board.narration_intro', { author: msg.author, date: msg.created_at_human })
   const body = msg.text.replace(/\./g, '. ... ').replace(/,/g, ', ... ')
   
   await speak(intro + body)
@@ -173,13 +172,13 @@ function goBack() {
 
       <div class="header-actions">
         <button class="audio-btn" @click="readCurrentMessage" v-if="messages.length > 0">
-          <img src="/images/play.png" alt="Leer" />
+          <img src="/images/play.png" :alt="t('board.read')" />
         </button>
         <button class="voice-button-small" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" alt="Voz" />
+          <img src="/images/voice.png" :alt="t('board.voice')" />
         </button>
         <button class="back-btn" @click="goBack" style="margin-left: 2rem;">
-          <img src="/images/back.png" alt="Volver" />
+          <img src="/images/back.png" :alt="t('board.back')" />
         </button>
       </div>
     </div>
@@ -225,10 +224,10 @@ function goBack() {
                 class="reply-trigger-btn"
                 @click="showReplyModal = true"
               >
-                Responder
+                {{ t('board.respond_btn') }}
               </button>
               <div v-else-if="currentMessage.quick_reply_selected" class="replied-status">
-                <strong>Respondiste:</strong> {{ typeof currentMessage.quick_reply_selected === 'object' ? currentMessage.quick_reply_selected.text : currentMessage.quick_reply_selected }}
+                <strong>{{ t('board.responded_label') }}</strong> {{ typeof currentMessage.quick_reply_selected === 'object' ? currentMessage.quick_reply_selected.text : currentMessage.quick_reply_selected }}
               </div>
             </div>
           </div>
@@ -251,7 +250,7 @@ function goBack() {
 
     <!-- Global Trash Button -->
     <button class="global-delete-btn" @click="handleDelete" v-if="messages.length > 0">
-      <img src="/images/trash.png" alt="Borrar" />
+      <img src="/images/trash.png" :alt="t('board.delete_btn')" />
     </button>
 
     <!-- Reply Modal -->
@@ -328,14 +327,14 @@ function goBack() {
 }
 
 .date-str {
-  font-size: 2.8rem; /* Doubled */
+  font-size: 2.8rem;
   font-weight: 800;
   color: #111;
   text-transform: capitalize;
 }
 
 .time-str {
-  font-size: 2.2rem; /* Doubled */
+  font-size: 2.2rem;
   font-weight: 700;
   color: #444;
 }
@@ -447,9 +446,9 @@ function goBack() {
 }
 
 .author-avatar {
-  width: 78px; /* +20% from 65 */
+  width: 78px;
   height: 78px;
-  border-radius: 14px; /* Square with slight rounding */
+  border-radius: 14px;
   object-fit: cover;
   border: 3px solid white;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -469,13 +468,13 @@ function goBack() {
 }
 
 .author-name {
-  font-size: 2.2rem; /* +20% from 1.8 */
+  font-size: 2.2rem;
   font-weight: 800;
   color: #111;
 }
 
 .post-date {
-  font-size: 1.3rem; /* +20% from 1.1 */
+  font-size: 1.3rem;
   font-weight: 600;
   color: #888;
 }
@@ -487,7 +486,7 @@ function goBack() {
 }
 
 .message-text {
-  font-size: 2.1rem; /* +20% from 1.7 */
+  font-size: 2.1rem;
   line-height: 1.5;
   color: #111;
   white-space: pre-wrap;
@@ -499,7 +498,7 @@ function goBack() {
 
 .reply-trigger-btn {
   width: 100%;
-  padding: 1.6rem; /* +30% from 1.2 */
+  padding: 1.6rem;
   background: white;
   color: black;
   border: 2px solid #000;
@@ -517,7 +516,7 @@ function goBack() {
   padding: 1.5rem;
   background: rgba(0,0,0,0.03);
   border-radius: 14px;
-  font-size: 1.92rem; /* +20% from 1.6 */
+  font-size: 1.92rem;
   color: #444;
   border: 1px dashed #ccc;
 }
@@ -542,7 +541,7 @@ function goBack() {
 .full-img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* Don't crop */
+  object-fit: contain;
   padding: 1rem;
 }
 
@@ -712,6 +711,5 @@ function goBack() {
 }
 
 .close-fullscreen-btn:active { transform: scale(0.9); }
-
 
 </style>

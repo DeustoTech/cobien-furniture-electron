@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 
 const currentDate = ref(new Date())
 const nowTime = ref('')
@@ -26,9 +28,9 @@ function updateClock() {
   const optionsDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   const optionsTime: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
   
-  const dateStr = d.toLocaleDateString('es-ES', optionsDate)
+  const dateStr = d.toLocaleDateString(locale.value, optionsDate)
   nowDate.value = dateStr.charAt(0).toUpperCase() + dateStr.slice(1)
-  nowTime.value = d.toLocaleTimeString('es-ES', optionsTime)
+  nowTime.value = d.toLocaleTimeString(locale.value, optionsTime)
 }
 
 let clockTimer: ReturnType<typeof setInterval>
@@ -48,7 +50,6 @@ async function speak(text: string) {
       const audioCtx = new AudioContext()
       await audioCtx.resume()
       
-      // Handle potential Buffer/Uint8Array to ArrayBuffer conversion
       const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
       const decoded = await audioCtx.decodeAudioData(arrayBuffer)
       const source = audioCtx.createBufferSource()
@@ -57,7 +58,6 @@ async function speak(text: string) {
       
       await new Promise<void>(resolve => {
         source.onended = () => {
-          // Give 300ms buffer after speech ends
           setTimeout(resolve, 300)
         }
         source.start()
@@ -71,7 +71,7 @@ async function speak(text: string) {
   }
 }
 
-async function listenWithVosk(language: string = 'es'): Promise<string | null> {
+async function listenWithVosk(language: string = locale.value.split('-')[0]): Promise<string | null> {
   voiceFlowStep.value = 'listening'
   try {
     const text = await (window as any).config.sttListen(language)
@@ -88,44 +88,45 @@ async function startVoiceAddFlow(dateStr: string) {
   voiceFlowStep.value = 'speaking'
 
   // Step 1: Ask for title
-  await speak('Dime el título del evento personal')
-  voiceFlowMessage.value = '🎤 Di el título del evento...'
+  await speak(t('events.voice_flow.ask_title'))
+  voiceFlowMessage.value = t('events.voice_flow.listening_title')
   const titleRaw = await listenWithVosk()
   if (!titleRaw) {
-    voiceFlowMessage.value = '❌ No he entendido el título.'
-    await speak('No he entendido el título.')
+    voiceFlowMessage.value = t('events.voice_flow.not_understood_title')
+    await speak(t('events.voice_flow.not_understood_title'))
     await new Promise(r => setTimeout(r, 1500))
     voiceFlowActive.value = false; return
   }
   const title = titleRaw.trim().charAt(0).toUpperCase() + titleRaw.trim().slice(1)
 
   // Step 2: Confirm and Ask for description
-  voiceFlowMessage.value = `✅ Título: "${title}"`
-  await speak(`Título detectado: ${title}. Ahora dime la descripción del evento.`)
-  voiceFlowMessage.value = '🎤 Di la descripción...'
+  voiceFlowMessage.value = `✅ Title: "${title}"`
+  await speak(t('events.voice_flow.ask_description', { title }))
+  voiceFlowMessage.value = t('events.voice_flow.listening_description')
   const descriptionRaw = await listenWithVosk()
-  const description = descriptionRaw?.trim() || 'Sin descripción'
+  const description = descriptionRaw?.trim() || (locale.value === 'es' ? 'Sin descripción' : 'No description')
 
   // Step 3: Confirm both and Ask for location
-  voiceFlowMessage.value = `✅ Título: "${title}"\n✅ Desc: "${description}"`
-  await speak(`Título: ${title}. Descripción: ${description}. ¿Quieres añadir una localización al evento?`)
+  voiceFlowMessage.value = `✅ Title: "${title}"\n✅ Desc: "${description}"`
+  await speak(t('events.voice_flow.ask_location_bool', { title, description }))
   
-  voiceFlowMessage.value = '🎤 ¿Añadir localización? (Sí/No)'
+  voiceFlowMessage.value = t('events.voice_flow.listening_location_bool')
   const wantLocation = await listenWithVosk()
   let location = ''
   
-  if (wantLocation?.toLowerCase().includes('sí') || wantLocation?.toLowerCase().includes('si')) {
-    await speak('Dime la localización.')
-    voiceFlowMessage.value = '🎤 Di la localización...'
+  const yesWords = ['sí', 'si', 'yes', 'yeah', 'oui']
+  if (yesWords.some(w => wantLocation?.toLowerCase().includes(w))) {
+    await speak(t('events.voice_flow.ask_location'))
+    voiceFlowMessage.value = t('events.voice_flow.listening_location')
     const locRaw = await listenWithVosk()
     location = locRaw?.trim() || ''
     if (location) voiceFlowMessage.value += `\n📍 Loc: "${location}"`
   } else {
-    await speak('De acuerdo.')
+    await speak(locale.value === 'es' ? 'De acuerdo.' : 'Understood.')
   }
 
   // Step 4: Save
-  voiceFlowMessage.value = `💾 Guardando: "${title}"...`
+  voiceFlowMessage.value = t('events.voice_flow.saving', { title })
   try {
     const ok = await (window as any).config.addPersonalEvent({
       date: dateStr,
@@ -134,16 +135,16 @@ async function startVoiceAddFlow(dateStr: string) {
       location
     })
     if (ok) {
-      voiceFlowMessage.value = `🎉 Evento "${title}" guardado.`
-      await speak(`De acuerdo, evento personal ${title} guardado.`)
+      voiceFlowMessage.value = `🎉 Event "${title}" saved.`
+      await speak(t('events.voice_flow.saved_success', { title }))
       const data = await (window as any).config.getEvents()
       eventsList.value = data
     } else {
-      voiceFlowMessage.value = '❌ Error al guardar.'
-      await speak('Ha ocurrido un error al añadir el evento.')
+      voiceFlowMessage.value = t('events.voice_flow.error_saving')
+      await speak(t('events.voice_flow.error_saving'))
     }
   } catch(e) {
-    voiceFlowMessage.value = '❌ Error de base de datos.'
+    voiceFlowMessage.value = t('events.voice_flow.error_db')
   }
 
   await new Promise(r => setTimeout(r, 2000))
@@ -155,7 +156,6 @@ function cancelVoiceFlow() {
   voiceFlowActive.value = false
   voiceFlowStep.value = 'idle'
 }
-// ──────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
   updateClock()
@@ -169,15 +169,19 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+})
+
 const currentMonthName = computed(() => {
-  const month = currentDate.value.toLocaleDateString('es-ES', { month: 'long' })
+  const month = currentDate.value.toLocaleDateString(locale.value, { month: 'long' })
   const year = currentDate.value.getFullYear()
   return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`
 })
 
 const selectedDateName = computed(() => {
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-  const str = selectedDate.value.toLocaleDateString('es-ES', options)
+  const str = selectedDate.value.toLocaleDateString(locale.value, options)
   return str.charAt(0).toUpperCase() + str.slice(1)
 })
 
@@ -264,7 +268,7 @@ function openDayDetail(day: any) {
   let y = year
 
   if (day.isOtherMonth) {
-    if (d > 20) m--; else m++; // Simple logic for other month
+    if (d > 20) m--; else m++;
   }
   
   selectedDate.value = new Date(y, m, d)
@@ -275,16 +279,12 @@ function closeDetail() {
   viewMode.value = 'calendar'
 }
 
-import { onUnmounted } from 'vue'
-onUnmounted(() => {
-  if (clockTimer) clearInterval(clockTimer)
-})
 async function startVoiceEditFlow(event: any) {
   voiceFlowActive.value = true
   voiceFlowStep.value = 'speaking'
 
-  await speak('¿Qué quieres editar: el título, la descripción, la localización o todo?')
-  voiceFlowMessage.value = '🎤 ¿Qué quieres editar?'
+  await speak(t('events.voice_flow.ask_edit_field'))
+  voiceFlowMessage.value = t('events.voice_flow.listening_edit_field')
   const choice = await listenWithVosk()
   const text = choice?.toLowerCase() || ''
 
@@ -292,30 +292,30 @@ async function startVoiceEditFlow(event: any) {
   let newDescription = event.description
   let newLocation = event.location
 
-  const editAll = text.includes('todo')
+  const editAll = text.includes('todo') || text.includes('everything') || text.includes('all')
   
-  if (editAll || text.includes('título') || text.includes('titulo')) {
-    await speak('Dime el nuevo título.')
-    voiceFlowMessage.value = '🎤 Di el nuevo título...'
-    const t = await listenWithVosk()
-    if (t) newTitle = t.trim().charAt(0).toUpperCase() + t.trim().slice(1)
+  if (editAll || text.includes('título') || text.includes('titulo') || text.includes('title')) {
+    await speak(t('events.voice_flow.ask_new_title'))
+    voiceFlowMessage.value = t('events.voice_flow.listening_new_title')
+    const tStr = await listenWithVosk()
+    if (tStr) newTitle = tStr.trim().charAt(0).toUpperCase() + tStr.trim().slice(1)
   }
 
-  if (editAll || text.includes('descripción') || text.includes('descripcion')) {
-    await speak('Dime la nueva descripción.')
-    voiceFlowMessage.value = '🎤 Di la nueva descripción...'
+  if (editAll || text.includes('descripción') || text.includes('descripcion') || text.includes('description')) {
+    await speak(t('events.voice_flow.ask_new_description'))
+    voiceFlowMessage.value = t('events.voice_flow.listening_new_description')
     const d = await listenWithVosk()
     if (d) newDescription = d.trim()
   }
 
-  if (editAll || text.includes('localización') || text.includes('localizacion') || text.includes('lugar')) {
-    await speak('Dime la nueva localización.')
-    voiceFlowMessage.value = '🎤 Di la nueva localización...'
+  if (editAll || text.includes('localización') || text.includes('localizacion') || text.includes('location') || text.includes('place')) {
+    await speak(t('events.voice_flow.ask_new_location'))
+    voiceFlowMessage.value = t('events.voice_flow.listening_new_location')
     const l = await listenWithVosk()
     if (l) newLocation = l.trim()
   }
 
-  voiceFlowMessage.value = '💾 Actualizando evento...'
+  voiceFlowMessage.value = t('events.voice_flow.updating')
   try {
     const ok = await (window as any).config.updatePersonalEvent({
       id: event.id,
@@ -324,15 +324,15 @@ async function startVoiceEditFlow(event: any) {
       location: newLocation
     })
     if (ok) {
-      voiceFlowMessage.value = '✅ Evento actualizado.'
-      await speak('Evento actualizado correctamente.')
+      voiceFlowMessage.value = `✅ ${t('events.voice_flow.updated_success')}`
+      await speak(t('events.voice_flow.updated_success'))
       const data = await (window as any).config.getEvents()
       eventsList.value = data
     } else {
-      await speak('Error al actualizar.')
+      await speak(t('events.voice_flow.error_updating'))
     }
   } catch(e) {
-    voiceFlowMessage.value = '❌ Error de base de datos.'
+    voiceFlowMessage.value = t('events.voice_flow.error_db')
   }
 
   await new Promise(r => setTimeout(r, 2000))
@@ -360,15 +360,6 @@ async function confirmDelete() {
   }
 }
 
-async function deleteEvent(id: string) {
-  // Keeping this for compatibility if needed elsewhere
-  const ok = await (window as any).config.deleteEvent(id)
-  if (ok) {
-    const data = await (window as any).config.getEvents()
-    eventsList.value = data
-  }
-}
-
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
@@ -386,7 +377,7 @@ function goBack() {
   <div class="view-container">
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Calendario</h1>
+        <h1 class="header-title">{{ t('events.title') }}</h1>
         <div class="header-v-divider" v-if="viewMode === 'calendar'"></div>
         <div class="header-date-info" v-if="viewMode === 'calendar'">
           <div class="header-now-date">{{ nowDate }}</div>
@@ -397,21 +388,21 @@ function goBack() {
       <div class="header-legend">
         <div class="legend-item">
           <span class="dot public"></span>
-          <span>Público</span>
+          <span>{{ t('events.public') }}</span>
         </div>
         <div class="legend-item">
           <span class="dot personal"></span>
-          <span>Personal</span>
+          <span>{{ t('events.personal') }}</span>
         </div>
       </div>
 
       <div class="header-actions">
         <button class="square-action-btn" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" alt="Voice" />
+          <img src="/images/voice.png" :alt="t('events.voice')" />
         </button>
         <div class="actions-spacer"></div>
         <button class="square-action-btn" @click="goBack">
-          <img src="/images/back.png" alt="Volver" />
+          <img src="/images/back.png" :alt="t('events.back')" />
         </button>
       </div>
     </div>
@@ -429,13 +420,13 @@ function goBack() {
 
         <div class="calendar-grid" :class="{ 'six-rows': rowCount === 6 }">
           <!-- Weekdays -->
-          <div class="weekday">Lunes</div>
-          <div class="weekday">Martes</div>
-          <div class="weekday">Miércoles</div>
-          <div class="weekday">Jueves</div>
-          <div class="weekday">Viernes</div>
-          <div class="weekday">Sábado</div>
-          <div class="weekday">Domingo</div>
+          <div class="weekday">{{ t('events.monday') }}</div>
+          <div class="weekday">{{ t('events.tuesday') }}</div>
+          <div class="weekday">{{ t('events.wednesday') }}</div>
+          <div class="weekday">{{ t('events.thursday') }}</div>
+          <div class="weekday">{{ t('events.friday') }}</div>
+          <div class="weekday">{{ t('events.saturday') }}</div>
+          <div class="weekday">{{ t('events.sunday') }}</div>
 
           <!-- Days -->
           <div 
@@ -476,7 +467,7 @@ function goBack() {
           <div class="detail-actions">
             <button class="voice-add-btn-large" @click="startVoiceAddFlow((() => { const d = selectedDate!; const day = d.getDate().toString().padStart(2,'0'); const m = (d.getMonth()+1).toString().padStart(2,'0'); return `${day}-${m}-${d.getFullYear()}` })())">
               <img src="/images/plus.png" alt="+" />
-              <span>Añadir evento personal (voz)</span>
+              <span>{{ t('events.add_event_btn') }}</span>
             </button>
           </div>
 
@@ -493,13 +484,13 @@ function goBack() {
                   <span class="e-loc" v-if="evt.location && evt.location.trim().length > 0">📍 {{ evt.location }}</span>
                   <span class="e-loc" v-else></span> <!-- Spacer -->
                   <div class="e-badges">
-                    <span class="badge" :class="evt.audience">{{ evt.audience === 'device' ? 'Personal' : 'Público' }}</span>
+                    <span class="badge" :class="evt.audience">{{ evt.audience === 'device' ? t('events.personal') : t('events.public') }}</span>
                     <div class="e-actions-row" v-if="evt.audience === 'device'">
                       <button class="action-btn edit" @click="startVoiceEditFlow(evt)">
-                        <img src="/images/edit.png" alt="Editar" />
+                        <img src="/images/edit.png" alt="Edit" />
                       </button>
                       <button class="action-btn delete" @click="openDeleteModal(evt)">
-                        <img src="/images/trash.png" alt="Borrar" />
+                        <img src="/images/trash.png" alt="Delete" />
                       </button>
                     </div>
                   </div>
@@ -507,7 +498,7 @@ function goBack() {
               </div>
             </div>
             <div v-if="selectedEvents.length === 0" class="empty-state">
-              No hay eventos para este día
+              {{ t('events.no_events') }}
             </div>
           </div>
         </div>
@@ -524,12 +515,12 @@ function goBack() {
         <div class="delete-modal-card glass-panel">
           <div class="delete-header">
             <img src="/images/trash.png" alt="!" class="delete-icon" />
-            <h2>¿Eliminar evento?</h2>
+            <h2>{{ t('events.delete_confirm_title') }}</h2>
           </div>
-          <p class="delete-message">¿Estás seguro de que quieres eliminar el evento "<strong>{{ eventToDelete?.title }}</strong>"? Esta acción no se puede deshacer.</p>
+          <p class="delete-message">{{ t('events.delete_confirm_msg', { title: eventToDelete?.title }) }}</p>
           <div class="delete-footer">
-            <button class="modal-btn cancel" @click="closeDeleteModal">Cancelar</button>
-            <button class="modal-btn confirm-delete" @click="confirmDelete">Eliminar</button>
+            <button class="modal-btn cancel" @click="closeDeleteModal">{{ t('events.cancel_btn') }}</button>
+            <button class="modal-btn confirm-delete" @click="confirmDelete">{{ t('events.delete_btn') }}</button>
           </div>
         </div>
       </div>
@@ -542,8 +533,8 @@ function goBack() {
       <div v-if="voiceFlowActive" class="voice-modal-overlay">
         <div class="voice-modal-card">
           <div class="voice-modal-header">
-            <img src="/images/voice.png" alt="voz" class="voice-icon-large" />
-            <h2>Asistente de Voz</h2>
+            <img src="/images/voice.png" alt="voice" class="voice-icon-large" />
+            <h2>{{ t('events.voice_assistant_title') }}</h2>
           </div>
 
           <div class="voice-modal-body">
@@ -555,7 +546,7 @@ function goBack() {
           </div>
 
           <div class="voice-modal-footer">
-            <button class="cancel-voice-btn" @click="cancelVoiceFlow">Cancelar</button>
+            <button class="cancel-voice-btn" @click="cancelVoiceFlow">{{ t('events.cancel_btn') }}</button>
           </div>
         </div>
       </div>
@@ -672,9 +663,9 @@ function goBack() {
 .calendar-container {
   flex: 1;
   display: flex;
-  align-items: stretch; /* Stretch children (the card) to fill height */
+  align-items: stretch;
   gap: 1.5rem;
-  min-height: 0; /* Allow shrinking if needed */
+  min-height: 0;
 }
 
 .calendar-card {
@@ -694,11 +685,10 @@ function goBack() {
 .month-title {
   font-size: 3rem;
   font-weight: 800;
-  /* Removed capitalize to avoid "De Mayo" */
 }
 
 .nav-arrow-side {
-  align-self: center; /* Keep arrows centered vertically while card stretches */
+  align-self: center;
   background: white;
   border: 2px solid #000;
   border-radius: 12px;
@@ -745,7 +735,7 @@ function goBack() {
 }
 
 .six-rows .day {
-  aspect-ratio: 1.75 / 1; /* ~20% less tall than 1.4 */
+  aspect-ratio: 1.75 / 1;
 }
 
 .day-num {
@@ -784,7 +774,7 @@ function goBack() {
 /* Detail View Styles */
 .detail-view .calendar-card {
   padding: 3.5rem;
-  flex: 1; /* Ensure it fills the container height */
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -804,25 +794,35 @@ function goBack() {
 }
 
 .voice-add-btn-large {
+  background: #000;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 2.5rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: white;
-  border: 2px solid #000;
-  border-radius: 16px;
-  font-size: 1.6rem;
-  font-weight: 700;
+  gap: 1.5rem;
   cursor: pointer;
   transition: transform 0.2s;
 }
 
-.voice-add-btn-large:active { transform: scale(0.98); }
+.voice-add-btn-large:active {
+  transform: scale(0.96);
+}
 
 .voice-add-btn-large img {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 6rem;
+  height: 6rem;
+  filter: invert(1);
+}
+
+.voice-add-btn-large span {
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .detail-events-list {
@@ -834,333 +834,262 @@ function goBack() {
   padding-right: 1rem;
 }
 
+.detail-events-list::-webkit-scrollbar {
+  width: 6px;
+}
+.detail-events-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
+}
+
 .event-card-horizontal {
   background: white;
-  border-radius: 18px;
+  border-radius: 20px;
+  border: 2px solid #000;
   display: flex;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-  border: 1px solid rgba(0,0,0,0.05);
+  min-height: 14rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .event-bar {
-  width: 10px;
+  width: 14px;
 }
-.event-bar.public { background: #007AFF; }
-.event-bar.device, .event-bar.personal { background: #FF3B30; }
+.event-bar.public, .badge.public { background: #007AFF; }
+.event-bar.device, .badge.device, .event-bar.personal, .badge.personal { background: #FF3B30; }
 
 .event-content {
   flex: 1;
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
+.event-time-row {
+  margin-bottom: 0.5rem;
+}
 .e-time {
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: #666;
 }
 
 .e-title {
-  font-size: 2.1rem; /* +15% from 1.8 */
-  font-weight: 800;
-  margin: 0;
-  color: #111;
+  font-size: 2.2rem;
+  font-weight: 900;
+  margin: 0 0 0.5rem 0;
+  color: #000;
 }
 
 .e-desc {
-  font-size: 1.8rem; /* +40% from 1.3 */
-  color: #333;
-  margin: 0.5rem 0;
+  font-size: 1.6rem;
+  color: #444;
+  margin: 0;
   line-height: 1.4;
+  flex: 1;
 }
 
 .e-footer {
-  margin-top: 1rem;
+  margin-top: 1.2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .e-loc {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  color: #666;
+  color: #555;
 }
 
 .e-badges {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .badge {
-  padding: 0.4rem 1.2rem;
-  border-radius: 20px;
-  font-size: 1rem;
-  font-weight: 800;
   color: white;
+  padding: 0.4rem 1.2rem;
+  border-radius: 100px;
+  font-size: 1.3rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
-.badge.public { background: #007AFF; }
-.badge.device, .badge.personal { background: #FF3B30; }
-
 .e-actions-row {
   display: flex;
-  gap: 1.5rem;
-  align-items: center;
+  gap: 0.8rem;
 }
 
 .action-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.6rem;
+  width: 4rem;
+  height: 4rem;
   border-radius: 10px;
+  border: 1.5px solid #000;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
-
-.action-btn.edit {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.action-btn.delete {
-  background: rgba(255, 59, 48, 0.1);
-  border: 2px solid #FF3B30;
-}
-
-.action-btn img {
-  width: 2.8rem;
-  height: 2.8rem;
-}
-
-.action-btn.delete img {
-  filter: invert(27%) sepia(91%) saturate(7325%) hue-rotate(352deg) brightness(98%) contrast(106%);
-}
+.action-btn:active { transform: scale(0.9); }
+.action-btn img { width: 2rem; height: 2rem; }
 
 .empty-state {
-  text-align: center;
-  padding: 5rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.8rem;
+  font-weight: 700;
   color: #999;
-  font-weight: 600;
-}
-
-/* Scrollbar refinement */
-.detail-events-list::-webkit-scrollbar {
-  width: 8px;
-}
-.detail-events-list::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.05);
-  border-radius: 4px;
-}
-.detail-events-list::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
-  border-radius: 4px;
 }
 
 /* Delete Modal */
 .delete-modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10000;
 }
 
 .delete-modal-card {
-  width: 500px;
-  padding: 3rem;
-  border-radius: 28px;
+  width: 550px;
   background: white;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+  border-radius: 32px;
+  padding: 3rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  text-align: center;
-  animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 3px solid #000;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.3);
 }
 
 .delete-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.delete-icon { width: 4rem; height: 4rem; }
+.delete-header h2 { font-size: 2.2rem; font-weight: 900; margin: 0; }
+
+.delete-message {
+  font-size: 1.6rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.delete-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.modal-btn {
+  padding: 1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: 2px solid #000;
+}
+.modal-btn.cancel { background: white; color: #000; }
+.modal-btn.confirm-delete { background: #FF3B30; color: white; border-color: #FF3B30; }
+
+/* Voice Modal */
+.voice-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  backdrop-filter: blur(8px);
+}
+
+.voice-modal-card {
+  width: 500px;
+  background: white;
+  border-radius: 35px;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  border: 4px solid #000;
+}
+
+.voice-modal-header {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
 }
-
-.delete-icon {
-  width: 80px;
-  height: 80px;
-  filter: invert(27%) sepia(91%) saturate(7325%) hue-rotate(352deg) brightness(98%) contrast(106%);
-}
-
-.delete-header h2 {
-  font-size: 2.2rem;
-  margin: 0;
-  color: #111;
-}
-
-.delete-message {
-  font-size: 1.5rem;
-  color: #444;
-  line-height: 1.5;
-}
-
-.delete-footer {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-}
-
-.modal-btn {
-  flex: 1;
-  padding: 1.2rem;
-  border-radius: 16px;
-  font-size: 1.4rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  transition: transform 0.2s;
-}
-
-.modal-btn:active { transform: scale(0.96); }
-
-.modal-btn.cancel {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.modal-btn.confirm-delete {
-  background: #FF3B30;
-  color: white;
-}
-
-/* ── Voice Flow Modal ─────────────────────────────────────────────── */
-.voice-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-}
-
-.voice-modal-card {
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 28px;
-  padding: 3rem 3.5rem;
-  width: min(650px, 90vw);
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
-  animation: voiceModalIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes voiceModalIn {
-  from { transform: scale(0.85) translateY(30px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.voice-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-  padding-bottom: 1.5rem;
-}
-
-.voice-modal-header h2 {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #111;
-  margin: 0;
-}
-
-.voice-icon-large {
-  width: 3.5rem;
-  height: 3.5rem;
-  object-fit: contain;
-}
+.voice-icon-large { width: 7rem; height: 7rem; }
+.voice-modal-header h2 { font-size: 2.2rem; font-weight: 900; margin: 0; }
 
 .voice-modal-body {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  min-height: 120px;
+  gap: 2rem;
 }
 
 .voice-status-indicator {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.wave-icon {
-  font-size: 3rem;
-  animation: wavePulse 1s ease-in-out infinite alternate;
-}
+.voice-status-indicator.listening { background: #E3F2FD; }
+.voice-status-indicator.speaking { background: #F3E5F5; }
 
-@keyframes wavePulse {
-  from { transform: scale(1); }
-  to { transform: scale(1.3); }
-}
-
-/* Listening pulse ring */
 .pulse-ring {
-  width: 60px;
-  height: 60px;
-  border: 5px solid #1E90FF;
+  position: absolute;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  animation: pulseRing 1s ease-out infinite;
+  border: 4px solid #1E90FF;
+  animation: pulse 1.5s infinite;
 }
 
-@keyframes pulseRing {
-  0% { transform: scale(0.8); opacity: 1; }
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
   100% { transform: scale(1.5); opacity: 0; }
 }
 
-.voice-message {
-  font-size: 1.5rem;
-  color: #222;
-  text-align: center;
-  line-height: 1.6;
-  white-space: pre-line;
-  font-weight: 500;
-  margin: 0;
-}
+.wave-icon { font-size: 3rem; }
 
-.voice-modal-footer {
-  display: flex;
-  justify-content: center;
+.voice-message {
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  color: #333;
+  min-height: 5rem;
 }
 
 .cancel-voice-btn {
-  background: rgba(0,0,0,0.07);
+  background: #eee;
+  color: #000;
   border: none;
-  border-radius: 14px;
+  border-radius: 15px;
   padding: 0.8rem 2.5rem;
   font-size: 1.2rem;
-  font-weight: 600;
-  color: #555;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.2s;
-}
-
-.cancel-voice-btn:hover {
-  background: rgba(255, 59, 48, 0.15);
-  color: #FF3B30;
 }
 </style>

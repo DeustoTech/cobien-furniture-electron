@@ -15,14 +15,14 @@ const { t } = useI18n()
 const currentDate = ref('')
 const currentTime = ref('')
 const weatherTemp = ref('17°')
-const weatherCondition = ref('Muy nuboso')
+const weatherCondition = ref('Cloudy')
 const weatherIcon = ref('/images/sol.png')
-const cityName = ref('Cargando...')
+const cityName = ref('Loading...')
 
 const minTemp = ref('Min 8°')
 const maxTemp = ref('Max 19°')
-const nextEvent = ref('Sin eventos próximos')
-const jokeText = ref('¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter.')
+const nextEvent = ref('No upcoming events')
+const jokeText = ref('Why do birds not use Facebook? Because they already have Twitter.')
 const systemMeta = ref('CoBien2 · v3.2.40')
 
 // Reminder notification
@@ -68,7 +68,7 @@ onMounted(async () => {
     (window as any).config.onReminderFire((reminder: any) => {
       reminderMessage.value = reminder.message
       reminderActive.value = true
-      ;(window as any).config.ttsSpeak(`Recordatorio: ${reminder.message}`)
+      ;(window as any).config.ttsSpeak(`Reminder: ${reminder.message}`)
     })
   } catch(e) {}
 
@@ -84,9 +84,8 @@ onUnmounted(() => {
 
 function updateTime() {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  currentDate.value = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    .replace(/^\w/, (c) => c.toUpperCase())
+  currentTime.value = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function handleNavigation(route: string) {
@@ -174,22 +173,22 @@ async function openBrightnessPopup() {
     <div class="nav-section">
       <div class="nav-grid">
         <button class="nav-card" @click="handleNavigation('/weather')">
-          <img src="/images/parcial.png" class="nav-card-icon" alt="Tiempo" />
+          <img src="/images/parcial.png" class="nav-card-icon" alt="Weather" />
           <span class="nav-card-text">{{ t('home.weather') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/events')">
-          <img src="/images/eventos.png" class="nav-card-icon" alt="Eventos" />
+          <img src="/images/eventos.png" class="nav-card-icon" alt="Events" />
           <span class="nav-card-text">{{ t('home.events') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/board')">
-          <img src="/images/pizarra.png" class="nav-card-icon" alt="Pizarra" />
+          <img src="/images/pizarra.png" class="nav-card-icon" alt="Board" />
           <span class="nav-card-text">{{ t('home.board') }}</span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/call')">
-          <img src="/images/videollamada.png" class="nav-card-icon" alt="Llámame" />
+          <img src="/images/videollamada.png" class="nav-card-icon" alt="Call Me" />
           <span class="nav-card-text">{{ t('home.call_me') }}</span>
         </button>
       </div>
@@ -222,9 +221,9 @@ async function openBrightnessPopup() {
       <div v-if="reminderActive" class="reminder-overlay">
         <div class="reminder-card">
           <div class="reminder-icon">⏰</div>
-          <h2 class="reminder-title">Recordatorio</h2>
+          <h2 class="reminder-title">Reminder</h2>
           <p class="reminder-msg">{{ reminderMessage }}</p>
-          <button class="reminder-dismiss" @click="reminderActive = false">Entendido</button>
+          <button class="reminder-dismiss" @click="reminderActive = false">Got it</button>
         </div>
       </div>
     </Teleport>

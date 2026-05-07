@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
-const currentJoke = ref('Cargando frase...')
+const { t } = useI18n()
+
+const currentJoke = ref(t('jokes.loading'))
 const isLoading = ref(false)
 
 async function fetchJoke() {
@@ -11,7 +14,7 @@ async function fetchJoke() {
   try {
     currentJoke.value = await (window as any).config.getRandomJoke()
   } catch (e) {
-    currentJoke.value = '¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.'
+    currentJoke.value = t('jokes.fallback')
   } finally {
     isLoading.value = false
   }
@@ -31,11 +34,11 @@ onMounted(fetchJoke)
     <!-- Header -->
     <div class="header">
       <button class="icon-btn" @click="router.push('/')">
-        <img src="/images/back.png" alt="Volver" class="hdr-icon" />
+        <img src="/images/back.png" :alt="t('jokes.back')" class="hdr-icon" />
       </button>
-      <h1 class="header-title">Frase del Día</h1>
+      <h1 class="header-title">{{ t('jokes.title') }}</h1>
       <button class="icon-btn" @click="triggerVoiceAssistant">
-        <img src="/images/voice.png" alt="Escuchar" class="hdr-icon" />
+        <img src="/images/voice.png" :alt="t('jokes.listen')" class="hdr-icon" />
       </button>
     </div>
 
@@ -52,7 +55,7 @@ onMounted(fetchJoke)
     <div class="btn-row">
       <button class="next-btn" @click="fetchJoke" :disabled="isLoading">
         <span v-if="isLoading" class="mini-spinner" />
-        <span v-else>😄 Otra frase</span>
+        <span v-else>{{ t('jokes.another') }}</span>
       </button>
     </div>
   </div>

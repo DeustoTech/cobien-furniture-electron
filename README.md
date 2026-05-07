@@ -2,62 +2,62 @@
 
 ![CoBien Logo](/public/images/logo.png)
 
-## 🌟 Descripción
+## 🌟 Description
 
-**CoBien Furniture Interface** es la interfaz de control de próxima generación para el sistema de mobiliario inteligente CoBien. Diseñada con un enfoque **glassmorphic** de alta fidelidad, esta aplicación ofrece una experiencia de usuario premium, fluida y altamente ergonómica, optimizada específicamente para pantallas táctiles integradas en mobiliario.
+**CoBien Furniture Interface** is the next-generation control interface for the CoBien smart furniture system. Designed with a high-fidelity **glassmorphic** aesthetic, this application provides a premium, fluid, and highly ergonomic user experience specifically optimized for touchscreens integrated into furniture.
 
-Esta versión (**v1.0.0-1**) representa la culminación del rediseño visual y funcional, priorizando la accesibilidad mediante voz y la navegación táctil intuitiva.
+This version (**v1.0.0-1**) represents the culmination of the visual and functional redesign, prioritizing voice accessibility and intuitive touch navigation.
 
-## 🚀 Características Principales
+## 🚀 Key Features
 
-- **🖼️ Pizarra (Board View)**: Sistema de mensajería inmersivo con visualización de imágenes a pantalla completa y narración por voz natural (Piper TTS) con pausas inteligentes.
-- **📞 Llamame (Call View)**: Carrusel horizontal táctil con efectos de difuminado y fondos de paisajes dinámicos generados por IA para contactos sin foto. Incluye sistema de gestión de llamadas perdidas.
-- **📅 Eventos (Events View)**: Calendario interactivo integrado con gestión de recordatorios y visualización de agenda diaria.
-- **☁️ Tiempo (Weather View)**: Información meteorológica detallada con iconos dinámicos y previsión para varios días.
-- **🎙️ Asistente de Voz**: Integración completa con Piper para la lectura de mensajes y notificaciones, mejorando la autonomía del usuario.
-- **🎨 Diseño Premium**: Estética glassmorphic, tipografía escalada para máxima legibilidad y micro-animaciones en toda la interfaz.
+- **🖼️ Board View**: An immersive messaging system with full-screen image viewing and natural voice narration (Piper TTS) featuring intelligent punctuation pauses.
+- **📞 Call Me View**: A horizontal touch carousel with fading edge effects and dynamic AI-generated landscape backgrounds for contacts without photos. Includes a missed call management system.
+- **📅 Events View**: Integrated interactive calendar with reminder management and daily agenda visualization.
+- **☁️ Weather View**: Detailed weather information with dynamic icons and multi-day forecasts.
+- **🎙️ Voice Assistant**: Full integration with Piper TTS for reading messages and notifications, enhancing user autonomy.
+- **🎨 Premium Design**: Glassmorphic aesthetic, scaled typography for maximum readability, and micro-animations throughout the interface.
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Tech Stack
 
 - **Framework**: [Vue 3](https://vuejs.org/) (Composition API + TypeScript)
 - **Runtime**: [Electron](https://www.electronjs.org/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
-- **Voz (TTS)**: [Piper TTS](https://github.com/rhasspy/piper) (Modelos locales de alta calidad)
-- **Estilos**: CSS3 Moderno con variables y filtros de desenfoque.
+- **Voice (TTS)**: [Piper TTS](https://github.com/rhasspy/piper) (High-quality local models)
+- **Styling**: Modern CSS3 with variables and backdrop-blur filters.
 
-## 📦 Instalación y Desarrollo
+## 📦 Installation and Development
 
-### Requisitos Previos
+### Prerequisites
 
-- Node.js (v18 o superior)
-- npm o yarn
+- Node.js (v18 or higher)
+- npm or yarn
 
-### Pasos para el despliegue
+### Deployment Steps
 
-1. **Clonar el repositorio**:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/DeustoTech/cobien-furniture-electron.git
    cd cobien-furniture-electron
    ```
 
-2. **Instalar dependencias**:
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Ejecutar en modo desarrollo**:
+3. **Run in development mode**:
    ```bash
    npm run dev
    ```
 
-4. **Construir para producción**:
+4. **Build for production**:
    ```bash
    npm run build
    ```
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está bajo la Licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for more details.
 
 ---
-Desarrollado con ❤️ por **DeustoTech** para el proyecto CoBien.
+Developed with ❤️ by **DeustoTech** for the CoBien project.

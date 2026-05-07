@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t, locale } = useI18n()
+
 const isTtsTesting = ref(false)
 const isSttTesting = ref(false)
 const sttText = ref('')
@@ -16,15 +19,13 @@ async function testSpeaker() {
   if (isTtsTesting.value) return
   isTtsTesting.value = true
   try {
-    const text = "Esto es una prueba de sonido para el mueble CoBien."
+    const text = t('audio.test_phrase')
     const buffer = await (window as any).config.ttsSpeak(text)
     if (buffer) {
       const audioCtx = new AudioContext()
       await audioCtx.resume()
       
-      // Convert Buffer/Uint8Array to ArrayBuffer
       const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      
       const decoded = await audioCtx.decodeAudioData(arrayBuffer)
       const source = audioCtx.createBufferSource()
 
@@ -45,7 +46,7 @@ async function testSpeaker() {
 async function testMicrophone() {
   if (isSttTesting.value) return
   isSttTesting.value = true
-  sttText.value = 'Escuchando...'
+  sttText.value = t('audio.listening')
   audioLevel.value = 0
 
   const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
@@ -56,11 +57,11 @@ async function testMicrophone() {
   })
 
   try {
-    const text = await (window as any).config.sttListen('es')
-    sttText.value = text || 'No se ha detectado voz'
+    const text = await (window as any).config.sttListen(locale.value.split('-')[0])
+    sttText.value = text || t('audio.no_voice')
   } catch (e) {
     console.error('STT Test failed:', e)
-    sttText.value = 'Error al usar el micrófono'
+    sttText.value = t('audio.mic_error')
   } finally {
     stopLevel()
     stopPartial()
@@ -75,10 +76,10 @@ async function testMicrophone() {
     <!-- Header -->
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Prueba de Audio</h1>
+        <h1 class="header-title">{{ t('audio.title') }}</h1>
       </div>
       <button class="back-btn" @click="goBack">
-        <img src="/images/back.png" alt="Volver" />
+        <img src="/images/back.png" :alt="t('audio.back')" />
       </button>
     </div>
 
@@ -86,12 +87,12 @@ async function testMicrophone() {
       <!-- Speaker Test -->
       <div class="test-section">
         <div class="section-info">
-          <h2>Altavoz (TTS)</h2>
-          <p>Prueba si el sistema puede hablar correctamente.</p>
+          <h2>{{ t('audio.speaker_title') }}</h2>
+          <p>{{ t('audio.speaker_desc') }}</p>
         </div>
         <button class="test-btn" :disabled="isTtsTesting" @click="testSpeaker">
-          <span v-if="!isTtsTesting">Probar Altavoz</span>
-          <span v-else>Hablando...</span>
+          <span v-if="!isTtsTesting">{{ t('audio.test_speaker') }}</span>
+          <span v-else>{{ t('audio.speaking') }}</span>
         </button>
       </div>
 
@@ -100,8 +101,8 @@ async function testMicrophone() {
       <!-- Mic Test -->
       <div class="test-section">
         <div class="section-info">
-          <h2>Micrófono (ASR)</h2>
-          <p>Prueba si el sistema puede escucharte.</p>
+          <h2>{{ t('audio.mic_title') }}</h2>
+          <p>{{ t('audio.mic_desc') }}</p>
         </div>
         
         <div class="mic-visualizer" v-if="isSttTesting">
@@ -113,8 +114,8 @@ async function testMicrophone() {
         </div>
 
         <button class="test-btn mic" :disabled="isSttTesting" @click="testMicrophone">
-          <span v-if="!isSttTesting">Probar Micrófono</span>
-          <span v-else>Escuchando...</span>
+          <span v-if="!isSttTesting">{{ t('audio.test_mic') }}</span>
+          <span v-else>{{ t('audio.listening') }}</span>
         </button>
       </div>
     </div>
@@ -195,7 +196,7 @@ async function testMicrophone() {
   padding: 1.2rem 3rem;
   border-radius: 15px;
   border: none;
-  background: var(--accent-blue);
+  background: #007AFF;
   color: white;
   font-size: 1.5rem;
   font-weight: 700;

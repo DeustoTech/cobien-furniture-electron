@@ -2,12 +2,15 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useVoiceAssistant } from '../composables/useVoiceAssistant'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 const { speak: ttsSpeak } = useVoiceAssistant()
-const cityName = ref('Cargando...')
+
+const cityName = ref(t('weather.loading'))
 const currentTemp = ref('—°')
-const currentCondition = ref('Cargando...')
+const currentCondition = ref(t('weather.loading'))
 const minTemp = ref('Min —°')
 const maxTemp = ref('Max —°')
 const todayPop = ref(0)
@@ -18,12 +21,9 @@ const fullDate = ref('')
 
 function updateFullDate() {
   const d = new Date()
-  const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' })
-  const day = d.getDate()
-  const month = d.toLocaleDateString('es-ES', { month: 'long' })
-  // Capitalize first letter of weekday
-  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1)
-  fullDate.value = `${capitalizedWeekday}, ${day} de ${month}`
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' }
+  const str = d.toLocaleDateString(locale.value, options)
+  fullDate.value = str.charAt(0).toUpperCase() + str.slice(1)
 }
 
 const activeCities = ref<string[]>([])
@@ -35,7 +35,7 @@ const dailyForecast = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadWeather(city: string) {
-  if (!city || city === 'Sin Ciudad') return
+  if (!city || city === 'Sin Ciudad' || city === 'No City') return
   isLoading.value = true
   try {
     const bundle = await (window as any).config.fetchWeather(city)
@@ -69,10 +69,10 @@ onMounted(async () => {
       cityName.value = config.primary
       activeCities.value = [config.primary]
     } else {
-      cityName.value = 'Sin Ciudad'
+      cityName.value = locale.value === 'es' ? 'Sin Ciudad' : 'No City'
     }
   } catch (e) {
-    cityName.value = 'Desconocida'
+    cityName.value = locale.value === 'es' ? 'Desconocida' : 'Unknown'
   }
 
   await loadWeather(cityName.value)
@@ -90,7 +90,7 @@ async function switchCity(idx: number) {
   currentCityIndex.value = idx
   cityName.value = activeCities.value[idx]
   currentTemp.value = '—°'
-  currentCondition.value = 'Cargando...'
+  currentCondition.value = t('weather.loading')
   hourlyForecast.value = []
   dailyForecast.value = []
   await loadWeather(cityName.value)
@@ -117,14 +117,15 @@ function triggerVoiceAssistant() {
 }
 
 function readWeatherReport() {
-  const cleanMax = maxTemp.value.replace('Max ', '').replace('°', ' grados')
-  const cleanMin = minTemp.value.replace('Min ', '').replace('°', ' grados')
-  const cleanCurrent = currentTemp.value.replace('°', ' grados')
+  const degreeWord = locale.value === 'es' ? ' grados' : ' degrees'
+  const cleanMax = maxTemp.value.replace('Max ', '').replace('°', degreeWord)
+  const cleanMin = minTemp.value.replace('Min ', '').replace('°', degreeWord)
+  const cleanCurrent = currentTemp.value.replace('°', degreeWord)
   
-  const text = `Hola. Aquí tienes el reporte del tiempo para ${cityName.value}. ` +
-               `Actualmente tenemos ${currentCondition.value} con una temperatura de ${cleanCurrent}. ` +
-               `Para hoy esperamos una máxima de ${cleanMax} y una mínima de ${cleanMin}. ` +
-               `La probabilidad de lluvia es del ${todayPop.value} por ciento, y el viento soplará hasta los ${todayWind.value} kilómetros por hora.`
+  const text = t('weather.report.intro', { city: cityName.value }) +
+               t('weather.report.current', { condition: currentCondition.value, temp: cleanCurrent }) +
+               t('weather.report.forecast', { max: cleanMax, min: cleanMin }) +
+               t('weather.report.extra', { pop: todayPop.value, wind: todayWind.value })
                
   ttsSpeak(text)
 }
@@ -140,7 +141,7 @@ function readWeatherReport() {
         
         <!-- Left Column: Title and City -->
         <div class="header-left">
-          <div class="title">Tiempo</div>
+          <div class="title">{{ t('weather.title') }}</div>
           <div class="city-name">{{ cityName }}</div>
           <div class="full-date">{{ fullDate }}</div>
         </div>
@@ -170,14 +171,14 @@ function readWeatherReport() {
               </div>
 
               <div class="header-extra-info">
-                <div>Lluvia: <span class="extra-val">{{ todayPop }}%</span></div>
-                <div>Viento: <span class="extra-val">{{ todayWind }} km/h</span></div>
+                <div>{{ t('weather.rain') }} <span class="extra-val">{{ todayPop }}%</span></div>
+                <div>{{ t('weather.wind') }} <span class="extra-val">{{ todayWind }} km/h</span></div>
               </div>
             </div>
           </template>
         </div>
 
-        <!-- Right Column: Hidden or removed as we moved min-max to center -->
+        <!-- Right Column: Hidden -->
         <div class="header-right" style="display: none;">
           <div class="min-max">
             <div>{{ minTemp }}</div>
@@ -190,14 +191,14 @@ function readWeatherReport() {
           <!-- Row 1: Back (positioned higher) -->
           <div class="action-row back-row">
             <button class="icon-button" @click="goBack">
-              <img src="/images/back.png" alt="Volver" class="icon" />
+              <img src="/images/back.png" :alt="t('weather.back')" class="icon" />
             </button>
           </div>
 
           <!-- Row 2: Voice & TTS -->
           <div class="action-row voice-row">
-            <button class="icon-button" @click="readWeatherReport" title="Leer tiempo">
-              <img src="/images/play.png" alt="Leer" class="icon" />
+            <button class="icon-button" @click="readWeatherReport" :title="t('weather.read_title')">
+              <img src="/images/play.png" :alt="t('weather.read_btn')" class="icon" />
             </button>
             <button class="icon-button" @click="triggerVoiceAssistant">
               <img src="/images/voice.png" alt="Voice" class="icon" />
@@ -207,10 +208,10 @@ function readWeatherReport() {
           <!-- Row 3: City Nav -->
           <div class="action-row nav-row" v-if="activeCities.length > 1">
             <button class="icon-button" @click="prevCity">
-              <img src="/images/arrowback.png" alt="Anterior" class="icon" />
+              <img src="/images/arrowback.png" :alt="t('weather.prev')" class="icon" />
             </button>
             <button class="icon-button" @click="nextCity">
-              <img src="/images/arrowforward.png" alt="Siguiente" class="icon" />
+              <img src="/images/arrowforward.png" :alt="t('weather.next')" class="icon" />
             </button>
           </div>
         </div>
@@ -222,7 +223,7 @@ function readWeatherReport() {
       <!-- Hourly Forecast Bar -->
       <div class="hourly-bar">
         <div v-if="isLoading && hourlyForecast.length === 0" class="hourly-loading">
-          Cargando previsión horaria...
+          {{ t('weather.loading_hourly') }}
         </div>
         <div v-else class="hourly-item" v-for="(hour, idx) in hourlyForecast" :key="idx">
           <div class="hour-time">{{ hour.time }}</div>
@@ -235,7 +236,7 @@ function readWeatherReport() {
     <!-- Bottom Panel: Daily Forecast -->
     <div class="bottom-panel glass-panel">
       <div v-if="isLoading && dailyForecast.length === 0" class="daily-loading">
-        Cargando previsión de la semana...
+        {{ t('weather.loading_weekly') }}
       </div>
       <div v-else class="daily-card" v-for="(day, idx) in dailyForecast" :key="idx">
         <div class="day-name-group">
@@ -257,8 +258,8 @@ function readWeatherReport() {
         </div>
 
         <div class="day-extra-info">
-          <div>Lluvia: <span class="extra-val">{{ day.pop !== undefined ? day.pop : 0 }}%</span></div>
-          <div v-if="day.wind !== undefined">Viento: <span class="extra-val">{{ day.wind }} km/h</span></div>
+          <div>{{ t('weather.rain') }} <span class="extra-val">{{ day.pop !== undefined ? day.pop : 0 }}%</span></div>
+          <div v-if="day.wind !== undefined">{{ t('weather.wind') }} <span class="extra-val">{{ day.wind }} km/h</span></div>
         </div>
       </div>
     </div>
@@ -605,7 +606,7 @@ function readWeatherReport() {
 
 .hourly-loading,
 .daily-loading {
-  color: var(--text-secondary);
+  color: #666;
   font-size: 1.2rem;
   text-align: center;
   padding: 1rem;

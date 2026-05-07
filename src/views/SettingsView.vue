@@ -21,28 +21,26 @@ function goBack() {
 }
 
 function handleRestart() {
-  if (confirm('¿Reiniciar aplicación?')) {
+  if (confirm(t('settings.restart_confirm'))) {
     (window as any).config.restartApp()
   }
 }
 
 function handleExit() {
-  if (confirm('¿Salir al sistema?')) {
+  if (confirm(t('settings.exit_confirm'))) {
     (window as any).config.exitApp()
   }
 }
 
 const settingsButtons = [
-  { id: 'lang', icon: '/images/language.png', label: 'Idioma', path: '/settings/language' },
-
-  { id: 'cities', icon: '/images/weather.png', label: 'Ciudades', path: '/settings/weather' },
-  { id: 'colors', icon: '/images/color.png', label: 'Colores Botones', path: '#' },
-  { id: 'notif', icon: '/images/notif.png', label: 'Notificaciones', path: '#' },
-  { id: 'rfid', icon: '/images/card.png', label: 'Tarjetas RFID', path: '#' },
-  { id: 'audio', icon: '/images/audio.png', label: 'Audio', path: '/settings/audio' },
-
-  { id: 'logs', icon: '/images/logs.png', label: 'Logs del sistema', path: '#' },
-  { id: 'launcher', icon: '/images/settings.png', label: 'Parámetros Launcher', path: '#' },
+  { id: 'lang', icon: '/images/language.png', path: '/settings/language' },
+  { id: 'cities', icon: '/images/weather.png', path: '/settings/weather' },
+  { id: 'colors', icon: '/images/color.png', path: '#' },
+  { id: 'notif', icon: '/images/notif.png', path: '#' },
+  { id: 'rfid', icon: '/images/card.png', path: '#' },
+  { id: 'audio', icon: '/images/audio.png', path: '/settings/audio' },
+  { id: 'logs', icon: '/images/logs.png', path: '#' },
+  { id: 'parameters', icon: '/images/settings.png', path: '#' },
 ]
 </script>
 
@@ -51,14 +49,14 @@ const settingsButtons = [
     <!-- Header -->
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Configuración <span class="version-tag">v{{ version }}</span></h1>
+        <h1 class="header-title">{{ t('settings.title') }} <span class="version-tag">v{{ version }}</span></h1>
       </div>
 
       <div class="header-actions">
-        <button class="action-btn reboot" @click="handleRestart">Reiniciar</button>
-        <button class="action-btn exit" @click="handleExit">Salir</button>
+        <button class="action-btn reboot" @click="handleRestart">{{ t('settings.restart') }}</button>
+        <button class="action-btn exit" @click="handleExit">{{ t('settings.exit') }}</button>
         <button class="back-btn" @click="goBack">
-          <img src="/images/back.png" alt="Volver" />
+          <img src="/images/back.png" :alt="t('common.back')" />
         </button>
       </div>
     </div>
@@ -73,7 +71,7 @@ const settingsButtons = [
         :class="{ disabled: btn.path === '#' }"
       >
         <div class="card-icon-wrap">
-          <img :src="btn.icon" :alt="btn.label" class="card-icon" />
+          <img :src="btn.icon" :alt="btn.id" class="card-icon" />
         </div>
         <div class="card-label">{{ t(`settings.${btn.id}`) }}</div>
 

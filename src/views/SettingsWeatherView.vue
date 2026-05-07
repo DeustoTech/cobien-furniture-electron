@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 
 // State
 const catalog = ref<string[]>([])
@@ -78,7 +80,7 @@ async function setPrimary(city: string) {
 }
 
 async function deleteCity(city: string) {
-  if (confirm(`¿Seguro que quieres eliminar ${city}?`)) {
+  if (confirm(t('weather_settings.delete_confirm', { city }))) {
     catalog.value = catalog.value.filter(c => c !== city)
     activeCities.value = activeCities.value.filter(c => c !== city)
     if (primaryCity.value === city) primaryCity.value = ''
@@ -99,11 +101,11 @@ function closeModal() {
 async function saveNewCity() {
   const city = newCityName.value.trim()
   if (!city) {
-    validationError.value = "Debe escribir una ciudad."
+    validationError.value = t('weather_settings.error_empty')
     return
   }
   if (catalog.value.find(c => c.toLowerCase() === city.toLowerCase())) {
-    validationError.value = "La ciudad ya existe en la lista."
+    validationError.value = t('weather_settings.error_exists')
     return
   }
 
@@ -121,17 +123,17 @@ async function saveNewCity() {
       await saveConfig()
       closeModal()
     } else {
-      validationError.value = "Ciudad no válida. Revise el nombre."
+      validationError.value = t('weather_settings.error_invalid')
     }
   } catch(e) {
-    validationError.value = "Error al validar la ciudad (Problema de red)."
+    validationError.value = t('weather_settings.error_network')
   } finally {
     isValidating.value = false
   }
 }
 
 function goBack() {
-  router.push('/')
+  router.push('/settings')
 }
 </script>
 
@@ -140,24 +142,24 @@ function goBack() {
     
     <!-- Header -->
     <div class="header glass-panel">
-      <div class="title">Ciudades Meteorología</div>
+      <div class="title">{{ t('weather_settings.title') }}</div>
       <div class="header-buttons">
-        <button class="action-button primary" @click="openAddModal">Añadir ciudad</button>
+        <button class="action-button primary" @click="openAddModal">{{ t('weather_settings.add_city') }}</button>
         <button class="icon-button" @click="goBack">
-          <img src="/images/back.png" alt="Volver" class="icon" />
+          <img src="/images/back.png" :alt="t('weather_settings.back')" class="icon" />
         </button>
       </div>
     </div>
 
     <!-- Instruction & Letters -->
     <div class="content-box glass-panel">
-      <div class="instruction">Seleccione las ciudades a mostrar en la rotación de meteorología</div>
+      <div class="instruction">{{ t('weather_settings.instruction') }}</div>
       
       <div class="letters-row">
         <button 
           :class="['letter-btn', { active: selectedLetter === null }]" 
           @click="setLetterFilter(null)"
-        >Todas</button>
+        >{{ t('weather_settings.all') }}</button>
         <button 
           v-for="letter in availableLetters" :key="letter"
           :class="['letter-btn', { active: selectedLetter === letter }]"
@@ -168,7 +170,7 @@ function goBack() {
       <!-- Cities List -->
       <div class="cities-list">
         <div class="empty-state" v-if="filteredCities.length === 0">
-          No hay ciudades disponibles.
+          {{ t('weather_settings.no_cities') }}
         </div>
         <div class="city-card" v-for="city in filteredCities" :key="city">
           <div class="city-name" :class="{ bold: activeCities.includes(city) }">{{ city }}</div>
@@ -178,15 +180,15 @@ function goBack() {
               :class="{ active: activeCities.includes(city) }"
               @click="toggleCity(city)"
             >
-              {{ activeCities.includes(city) ? 'Activa' : 'Activar' }}
+              {{ activeCities.includes(city) ? t('weather_settings.active_label') : t('weather_settings.activate_btn') }}
             </button>
-            <button class="card-btn delete-btn" @click="deleteCity(city)">Eliminar</button>
+            <button class="card-btn delete-btn" @click="deleteCity(city)">{{ t('weather_settings.delete_btn') }}</button>
             <button 
               class="card-btn priority-btn"
               :class="{ active: primaryCity === city }"
               @click="setPrimary(city)"
             >
-              {{ primaryCity === city ? 'Prioritaria' : 'Priorizar' }}
+              {{ primaryCity === city ? t('weather_settings.primary_label') : t('weather_settings.prioritize_btn') }}
             </button>
           </div>
         </div>
@@ -196,20 +198,20 @@ function goBack() {
     <!-- Add City Modal -->
     <div class="modal-overlay" v-if="isModalOpen">
       <div class="modal-content glass-panel">
-        <div class="modal-title">Añadir ciudad a la rotación</div>
+        <div class="modal-title">{{ t('weather_settings.add_modal_title') }}</div>
         <input 
           type="text" 
           class="modal-input" 
-          placeholder="Nombre de la ciudad" 
+          :placeholder="t('weather_settings.city_placeholder')" 
           v-model="newCityName"
           @keyup.enter="saveNewCity"
         />
         <div class="validation-error">{{ validationError }}</div>
         
         <div class="modal-actions">
-          <button class="modal-btn cancel" @click="closeModal">Cancelar</button>
+          <button class="modal-btn cancel" @click="closeModal">{{ t('weather_settings.cancel_btn') }}</button>
           <button class="modal-btn save" @click="saveNewCity" :disabled="isValidating">
-            {{ isValidating ? 'Validando...' : 'Guardar' }}
+            {{ isValidating ? t('weather_settings.validating') : t('weather_settings.save_btn') }}
           </button>
         </div>
       </div>

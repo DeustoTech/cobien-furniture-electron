@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 
 interface Contact {
   displayName: string
@@ -55,12 +57,12 @@ onUnmounted(() => {
 
 const formattedDate = computed(() => {
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-  const str = currentTime.value.toLocaleDateString('es-ES', options)
+  const str = currentTime.value.toLocaleDateString(locale.value, options)
   return str.charAt(0).toUpperCase() + str.slice(1)
 })
 
 const formattedTime = computed(() => {
-  return currentTime.value.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  return currentTime.value.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
 })
 
 function getImageUrl(contact: Contact, index: number): string {
@@ -75,20 +77,20 @@ async function requestCall(contact: Contact) {
 
   callingContact.value = contact
   callStatus.value = 'sending'
-  callMessage.value = `Enviando solicitud a ${contact.displayName}...`
+  callMessage.value = t('call.sending_request', { name: contact.displayName })
 
   try {
     const result = await (window as any).config.requestCall(contact.userName)
     if (result.ok) {
       callStatus.value = 'sent'
-      callMessage.value = `✅ Solicitud enviada a ${contact.displayName}. Espera la llamada.`
+      callMessage.value = t('call.sent_success', { name: contact.displayName })
       setTimeout(() => {
         callStatus.value = 'idle'
         callingContact.value = null
       }, 4000)
     } else {
       callStatus.value = 'error'
-      callMessage.value = `❌ Error al contactar (${result.code}): ${result.detail}`
+      callMessage.value = t('call.contact_error', { code: result.code, detail: result.detail })
       setTimeout(() => {
         callStatus.value = 'idle'
         callingContact.value = null
@@ -96,7 +98,7 @@ async function requestCall(contact: Contact) {
     }
   } catch (e) {
     callStatus.value = 'error'
-    callMessage.value = '❌ Error de conexión'
+    callMessage.value = t('call.connection_error')
     setTimeout(() => {
       callStatus.value = 'idle'
       callingContact.value = null
@@ -126,7 +128,7 @@ function handleWheel(e: WheelEvent) {
     <!-- Header -->
     <div class="header glass-panel">
       <div class="header-left">
-        <h1 class="header-title">Contactos</h1>
+        <h1 class="header-title">{{ t('call.title') }}</h1>
       </div>
 
       <div class="header-center">
@@ -138,11 +140,11 @@ function handleWheel(e: WheelEvent) {
 
       <div class="header-actions">
         <button class="square-action-btn" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" alt="Voz" />
+          <img src="/images/voice.png" :alt="t('call.voice')" />
         </button>
         <div class="actions-spacer"></div>
         <button class="square-action-btn" @click="router.push('/')">
-          <img src="/images/back.png" alt="Volver" />
+          <img src="/images/back.png" :alt="t('call.back')" />
         </button>
       </div>
     </div>
@@ -167,21 +169,21 @@ function handleWheel(e: WheelEvent) {
           </div>
           <div class="contact-card-bottom">
             <div class="contact-name">{{ contact.displayName }}</div>
-            <div v-if="!contact.callable" class="contact-unavail">Fuera de línea</div>
+            <div v-if="!contact.callable" class="contact-unavail">{{ t('call.offline') }}</div>
           </div>
         </div>
       </div>
 
       <div v-else class="no-contacts">
-        <p>No hay contactos configurados.</p>
-        <p class="no-contacts-hint">Añade contactos en <code>cobien_FrontEnd/app/contacts/list_contacts.txt</code></p>
+        <p>{{ t('call.no_contacts') }}</p>
+        <p class="no-contacts-hint">{{ t('call.add_contacts_hint', { path: 'cobien_FrontEnd/app/contacts/list_contacts.txt' }) }}</p>
       </div>
     </div>
 
     <!-- Missed Calls Section -->
     <div class="missed-calls-container">
       <div v-if="missedCalls.length > 0" class="missed-calls-panel glass-panel shadow-lg">
-        <div class="missed-title">Llamadas Perdidas</div>
+        <div class="missed-title">{{ t('call.missed_calls') }}</div>
         <div class="missed-list">
           <div v-for="call in missedCalls" :key="call.id" class="missed-item">
             <div class="missed-info">
@@ -189,13 +191,13 @@ function handleWheel(e: WheelEvent) {
               <span class="missed-time">{{ call.time }}</span>
             </div>
             <button class="callback-btn" @click="requestCall({ displayName: call.author, userName: call.userName, callable: true } as any)">
-              Solicitar llamada
+              {{ t('call.request_call') }}
             </button>
           </div>
         </div>
       </div>
       <div v-else class="no-missed-calls">
-        No hay llamadas perdidas
+        {{ t('call.no_missed_calls') }}
       </div>
     </div>
 
@@ -209,11 +211,11 @@ function handleWheel(e: WheelEvent) {
             <span v-else>❌</span>
           </div>
           <div class="call-modal-title">
-            {{ callStatus === 'sending' ? 'Conectando...' : callStatus === 'sent' ? '¡Solicitud enviada!' : 'Error' }}
+            {{ callStatus === 'sending' ? t('call.connecting') : callStatus === 'sent' ? t('call.request_sent') : t('call.error') }}
           </div>
           <div class="call-modal-msg">{{ callMessage }}</div>
           <button v-if="callStatus !== 'sending'" class="call-dismiss-btn" @click="dismissStatus">
-            Cerrar
+            {{ t('call.close') }}
           </button>
         </div>
       </div>
@@ -381,7 +383,7 @@ function handleWheel(e: WheelEvent) {
 .contact-img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* A sangre */
+  object-fit: cover; /* Full bleed */
   transition: transform 0.5s;
 }
 
