@@ -62,7 +62,7 @@ const formattedDate = computed(() => {
 })
 
 const formattedTime = computed(() => {
-  return currentTime.value.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
+  return currentTime.value.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false })
 })
 
 function getImageUrl(contact: Contact, index: number): string {

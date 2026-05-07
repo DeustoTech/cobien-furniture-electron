@@ -26,7 +26,7 @@ const selectedEvents = computed(() => {
 function updateClock() {
   const d = new Date()
   const optionsDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-  const optionsTime: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  const optionsTime: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false }
   
   const dateStr = d.toLocaleDateString(locale.value, optionsDate)
   nowDate.value = dateStr.charAt(0).toUpperCase() + dateStr.slice(1)
