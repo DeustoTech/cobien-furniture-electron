@@ -1,10 +1,10 @@
 import { ref, watch } from 'vue'
 import i18n from '../i18n'
 
-const lang = ref(localStorage.getItem('cobien_lang') || 'es')
+const lang = ref(localStorage.getItem('cobien_lang') || 'en')
 const ttsEngine = ref<'piper'>(localStorage.getItem('cobien_tts_engine') as any || 'piper')
 const voiceGenders = ref<Record<string, 'male' | 'female'>>(
-  JSON.parse(localStorage.getItem('cobien_voice_genders') || '{"es": "male", "fr": "female"}')
+  JSON.parse(localStorage.getItem('cobien_voice_genders') || '{"en": "male", "es": "male", "fr": "female"}')
 )
 
 watch(lang, (newLang) => {

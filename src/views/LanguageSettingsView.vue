@@ -26,7 +26,7 @@ function setEngine(engine: 'piper') {
 
 
 async function previewVoice(l: string, g: 'male' | 'female') {
-  const text = l === 'es' ? '¡Hola! Esta será mi voz' : 'Bonjour ! Ce sera ma voix'
+  const text = 'Hello! This will be my voice'
 
   try {
     const buffer = await (window as any).config.ttsSpeak(text, l, g, ttsEngine.value)
@@ -83,19 +83,10 @@ async function previewVoice(l: string, g: 'male' | 'female') {
         <div class="lang-grid">
           <button 
             class="lang-btn" 
-            :class="{ active: lang === 'es' }"
-            @click="setLang('es')"
+            :class="{ active: lang === 'en' }"
+            @click="setLang('en')"
           >
-            Spanish
-
-          </button>
-          <button 
-            class="lang-btn" 
-            :class="{ active: lang === 'fr' }"
-            @click="setLang('fr')"
-          >
-            French
-
+            English
           </button>
         </div>
       </div>

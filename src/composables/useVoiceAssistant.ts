@@ -84,8 +84,8 @@ export function useVoiceAssistant() {
     
     const g = tm('assistant.greetings')
     const greetings = Array.isArray(g) ? g : [
-      "Hola, ¿en qué puedo ayudarte?",
-      "Dime, ¿qué necesitas?"
+      "Hello, how can I help you?",
+      "Tell me, what do you need?"
     ]
     
     let idx = Math.floor(Math.random() * greetings.length)
