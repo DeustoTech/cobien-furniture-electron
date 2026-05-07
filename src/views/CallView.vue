@@ -23,13 +23,23 @@ let clockTimer: any = null
 
 onMounted(async () => {
   try {
-    contacts.value = await (window as any).config.getContacts()
-    // For demo, we can mock or fetch if the API exists
-    // missedCalls.value = await (window as any).config.getMissedCalls()
-    // Mocking one for the user to see
-    missedCalls.value = [
-      { id: 1, author: 'Carmen A. S.', time: '02:45', userName: 'carmen_as' }
+    const fetched = await (window as any).config.getContacts()
+    
+    // Add 6 mock contacts to test scroll and landscapes
+    const mockNames = ['Javier R.', 'Elena M.', 'Pedro G.', 'Lucía F.', 'Marcos T.', 'Sonia V.']
+    const mockContacts = mockNames.map((name, i) => ({
+      displayName: name,
+      userName: `user_${i}`,
+      imagePath: '', // No photo, will use landscape
+      callable: true
+    }))
+
+    contacts.value = [
+      ...fetched,
+      ...mockContacts
     ]
+    missedCalls.value = [] // Clear demo mock
+
   } catch (e) {
     console.error('[CONTACTS] Error loading:', e)
   }
@@ -53,9 +63,11 @@ const formattedTime = computed(() => {
   return currentTime.value.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 })
 
-function getImageUrl(imagePath: string): string {
-  if (!imagePath) return '/images/user_silhouette.png'
-  return `cobien-media://${imagePath}`
+function getImageUrl(contact: Contact, index: number): string {
+  if (contact.imagePath) return `cobien-media://${contact.imagePath}`
+  // Cycle through 5 landscapes
+  const landscapeId = (index % 5) + 1
+  return `/images/landscape_${landscapeId}.png`
 }
 
 async function requestCall(contact: Contact) {
@@ -100,6 +112,13 @@ function dismissStatus() {
 function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
+
+function handleWheel(e: WheelEvent) {
+  const container = e.currentTarget as HTMLElement
+  if (container) {
+    container.scrollLeft += e.deltaY + e.deltaX
+  }
+}
 </script>
 
 <template>
@@ -129,10 +148,10 @@ function triggerVoiceAssistant() {
     </div>
 
     <!-- Contact cards scrollable row -->
-    <div class="contacts-view">
-      <div class="contacts-grid" v-if="contacts.length > 0">
+    <div class="contacts-view horizontal-scroll" @wheel="handleWheel">
+      <div class="contacts-horizontal-row" v-if="contacts.length > 0">
         <div
-          v-for="contact in contacts"
+          v-for="(contact, index) in contacts"
           :key="contact.userName || contact.displayName"
           class="contact-card shadow-lg"
           :class="{ disabled: !contact.callable, calling: callingContact?.displayName === contact.displayName }"
@@ -140,10 +159,10 @@ function triggerVoiceAssistant() {
         >
           <div class="contact-card-top">
             <img
-              :src="getImageUrl(contact.imagePath)"
+              :src="getImageUrl(contact, index)"
               :alt="contact.displayName"
               class="contact-img"
-              @error="(e: any) => (e.target.src = '/images/user_silhouette.png')"
+              @error="(e: any) => (e.target.src = '/images/landscape_1.png')"
             />
           </div>
           <div class="contact-card-bottom">
@@ -162,7 +181,7 @@ function triggerVoiceAssistant() {
     <!-- Missed Calls Section -->
     <div class="missed-calls-container">
       <div v-if="missedCalls.length > 0" class="missed-calls-panel glass-panel shadow-lg">
-        <div class="missed-title">🚨 Llamadas Perdidas</div>
+        <div class="missed-title">Llamadas Perdidas</div>
         <div class="missed-list">
           <div v-for="call in missedCalls" :key="call.id" class="missed-item">
             <div class="missed-info">
@@ -205,22 +224,24 @@ function triggerVoiceAssistant() {
 <style scoped>
 .view-container {
   height: 100vh;
-  padding: 2.5rem 3rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  overflow: hidden;
-}
-
-.view-container {
-  height: 100vh;
-  padding: 2.5rem 3rem 1.5rem;
+  padding: 2.5rem 0 1.5rem; /* Removed side padding for full-bleed */
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   overflow: hidden;
-  background: transparent;
 }
+
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 3rem; /* Kept header padding */
+  border-radius: 20px;
+  margin: 0 3rem; /* Align header with standard margins */
+}
+
+
 
 
 .header-left {
@@ -287,32 +308,63 @@ function triggerVoiceAssistant() {
   height: 3rem;
 }
 
-/* Grid area */
-.contacts-view {
+/* Horizontal Scroll area */
+.contacts-view.horizontal-scroll {
   flex: 1;
-  overflow-y: auto;
-  padding-bottom: 2rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  align-items: center;
+  padding: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Immersive fading edges */
+  mask-image: linear-gradient(to right, 
+    transparent 0%, 
+    black 10%, 
+    black 90%, 
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(to right, 
+    transparent 0%, 
+    black 10%, 
+    black 90%, 
+    transparent 100%
+  );
 }
 
-.contacts-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 3 per view as requested */
+/* Hide scrollbar */
+.contacts-view.horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.contacts-horizontal-row {
+  display: flex;
   gap: 3rem;
-  padding: 0.5rem;
+  padding: 0 12%; /* Side padding to ensure first/last cards can center */
+  height: 100%;
+  align-items: center;
 }
 
 /* Contact card */
 .contact-card {
+  flex-shrink: 0;
+  width: 30vw; /* Fits 3 per view more precisely */
+  max-width: 480px;
   background: white;
-  border-radius: 24px;
+  border-radius: 32px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  aspect-ratio: 0.85; /* Portrait orientation as in reference image */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  aspect-ratio: 0.82;
   border: 2px solid transparent;
+  scroll-snap-align: center;
 }
+
+
 
 .contact-card:hover:not(.disabled) {
   transform: translateY(-8px);
@@ -469,7 +521,7 @@ function triggerVoiceAssistant() {
   margin-top: 0.5rem;
 }/* Missed Calls */
 .missed-calls-container {
-  height: 12rem;
+  height: 18rem; /* Larger */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -477,38 +529,39 @@ function triggerVoiceAssistant() {
 }
 
 .missed-calls-panel {
-  background: rgba(255, 255, 255, 0.9);
-  padding: 1rem 3rem;
-  border-radius: 24px;
+  background: white;
+  padding: 2.5rem 5rem;
+  border-radius: 32px;
   display: flex;
   align-items: center;
-  gap: 2.5rem;
-  border: 2px solid #ff4d4d;
+  gap: 4rem;
+  border: 4px solid #ff4d4d;
   animation: slideUp 0.5s ease-out;
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(40px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
 .missed-title {
-  font-size: 1.6rem;
-  font-weight: 800;
+  font-size: 3rem; /* Doubled */
+  font-weight: 900;
   color: #ff4d4d;
+  text-transform: uppercase;
 }
 
 .missed-list {
   display: flex;
-  gap: 2rem;
+  gap: 3rem;
 }
 
 .missed-item {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding-left: 2rem;
-  border-left: 2px solid rgba(0,0,0,0.1);
+  gap: 3rem;
+  padding-left: 3rem;
+  border-left: 4px solid rgba(0,0,0,0.1);
 }
 
 .missed-info {
@@ -517,34 +570,36 @@ function triggerVoiceAssistant() {
 }
 
 .missed-author {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111;
+  font-size: 2.8rem; /* Doubled */
+  font-weight: 800;
+  color: #000;
 }
 
 .missed-time {
-  font-size: 1.1rem;
+  font-size: 1.8rem; /* Doubled */
+  font-weight: 600;
   color: #666;
 }
 
 .callback-btn {
-  background: #000;
+  background: #4CAF50; /* Green */
   color: white;
   border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  padding: 1.5rem 3rem; /* Doubled */
+  border-radius: 18px;
+  font-weight: 800;
+  font-size: 1.8rem; /* Doubled */
   cursor: pointer;
   transition: transform 0.2s;
+  box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
 }
 
 .callback-btn:active { transform: scale(0.95); }
 
 .no-missed-calls {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: rgba(0,0,0,0.3);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(0,0,0,0.2);
 }
 
 </style>
