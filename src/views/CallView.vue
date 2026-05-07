@@ -12,6 +12,7 @@ interface Contact {
 }
 
 const contacts = ref<Contact[]>([])
+const missedCalls = ref<any[]>([])
 const callStatus = ref<'idle' | 'sending' | 'sent' | 'error'>('idle')
 const callMessage = ref('')
 const callingContact = ref<Contact | null>(null)
@@ -23,6 +24,12 @@ let clockTimer: any = null
 onMounted(async () => {
   try {
     contacts.value = await (window as any).config.getContacts()
+    // For demo, we can mock or fetch if the API exists
+    // missedCalls.value = await (window as any).config.getMissedCalls()
+    // Mocking one for the user to see
+    missedCalls.value = [
+      { id: 1, author: 'Carmen A. S.', time: '02:45', userName: 'carmen_as' }
+    ]
   } catch (e) {
     console.error('[CONTACTS] Error loading:', e)
   }
@@ -152,6 +159,27 @@ function triggerVoiceAssistant() {
       </div>
     </div>
 
+    <!-- Missed Calls Section -->
+    <div class="missed-calls-container">
+      <div v-if="missedCalls.length > 0" class="missed-calls-panel glass-panel shadow-lg">
+        <div class="missed-title">🚨 Llamadas Perdidas</div>
+        <div class="missed-list">
+          <div v-for="call in missedCalls" :key="call.id" class="missed-item">
+            <div class="missed-info">
+              <span class="missed-author">{{ call.author }}</span>
+              <span class="missed-time">{{ call.time }}</span>
+            </div>
+            <button class="callback-btn" @click="requestCall({ displayName: call.author, userName: call.userName, callable: true } as any)">
+              Solicitar llamada
+            </button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="no-missed-calls">
+        No hay llamadas perdidas
+      </div>
+    </div>
+
     <!-- Call status modal -->
     <Teleport to="body">
       <div v-if="callStatus !== 'idle'" class="call-modal-overlay">
@@ -184,13 +212,16 @@ function triggerVoiceAssistant() {
   overflow: hidden;
 }
 
-.header {
+.view-container {
+  height: 100vh;
+  padding: 2.5rem 3rem 1.5rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 2rem;
-  border-radius: 20px;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow: hidden;
+  background: transparent;
 }
+
 
 .header-left {
   flex: 1;
@@ -215,13 +246,13 @@ function triggerVoiceAssistant() {
 }
 
 .date-str {
-  font-size: 1.4rem;
+  font-size: 1.82rem; /* +30% from 1.4 */
   font-weight: 700;
   color: #333;
 }
 
 .time-str {
-  font-size: 1.2rem;
+  font-size: 1.56rem; /* +30% from 1.2 */
   font-weight: 600;
   color: #666;
 }
@@ -265,8 +296,8 @@ function triggerVoiceAssistant() {
 
 .contacts-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 per view as requested */
-  gap: 2.5rem;
+  grid-template-columns: repeat(3, 1fr); /* 3 per view as requested */
+  gap: 3rem;
   padding: 0.5rem;
 }
 
@@ -436,5 +467,84 @@ function triggerVoiceAssistant() {
   font-weight: 600;
   cursor: pointer;
   margin-top: 0.5rem;
+}/* Missed Calls */
+.missed-calls-container {
+  height: 12rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
 }
+
+.missed-calls-panel {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1rem 3rem;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  border: 2px solid #ff4d4d;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.missed-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ff4d4d;
+}
+
+.missed-list {
+  display: flex;
+  gap: 2rem;
+}
+
+.missed-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-left: 2rem;
+  border-left: 2px solid rgba(0,0,0,0.1);
+}
+
+.missed-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.missed-author {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.missed-time {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.callback-btn {
+  background: #000;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.callback-btn:active { transform: scale(0.95); }
+
+.no-missed-calls {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: rgba(0,0,0,0.3);
+}
+
 </style>
