@@ -2,13 +2,11 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettings } from './useSettings'
-
-
-
+const lastGreetingIndex = ref(-1)
 
 export function useVoiceAssistant() {
   const router = useRouter()
-  const { locale, t } = useI18n()
+  const { locale, t, tm } = useI18n()
   const { ttsEngine, voiceGenders } = useSettings()
 
 
@@ -84,11 +82,19 @@ export function useVoiceAssistant() {
     if (isActive.value) return
     isActive.value = true
     
-    const greetings = (t('assistant.greetings', { returnObjects: true }) as unknown as string[]) || [
+    const g = tm('assistant.greetings')
+    const greetings = Array.isArray(g) ? g : [
       "Hola, ¿en qué puedo ayudarte?",
       "Dime, ¿qué necesitas?"
     ]
-    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
+    
+    let idx = Math.floor(Math.random() * greetings.length)
+    // Avoid repeating the same greeting twice in a row
+    if (idx === lastGreetingIndex.value && greetings.length > 1) {
+      idx = (idx + 1) % greetings.length
+    }
+    lastGreetingIndex.value = idx
+    const randomGreeting = greetings[idx]
     
     await speak(randomGreeting)
     if (!isActive.value) return 
@@ -168,6 +174,7 @@ export function useVoiceAssistant() {
     message,
     audioLevel,
     step,
+    speak,
     startAssistant,
     cancelAssistant
   }
