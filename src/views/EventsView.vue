@@ -708,8 +708,14 @@ function goBack() {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1.2rem;
+  grid-template-rows: auto repeat(5, 1fr);
+  gap: 1rem;
   flex: 1;
+  min-height: 0;
+}
+
+.six-rows .calendar-grid {
+  grid-template-rows: auto repeat(6, 1fr);
 }
 
 .weekday {
@@ -724,7 +730,6 @@ function goBack() {
   background: white;
   border-radius: 14px;
   border: 2px solid #000;
-  aspect-ratio: 1.4 / 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -732,10 +737,8 @@ function goBack() {
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
-}
-
-.six-rows .day {
-  aspect-ratio: 1.75 / 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .day-num {

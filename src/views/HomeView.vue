@@ -418,10 +418,10 @@ async function openBrightnessPopup() {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 169px 169px; /* Increased height by another 10% */
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
   justify-content: center;
-  align-content: center;
+  align-content: stretch;
 }
 
 
