@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -11,6 +12,7 @@ const currentIndex = ref(0)
 const loading = ref(true)
 const showReplyModal = ref(false)
 const showFullscreenImage = ref(false)
+const showDeleteConfirm = ref(false)
 
 const currentMessage = computed(() => {
   if (messages.value.length === 0) return null
@@ -99,16 +101,19 @@ async function handleReply(text: string) {
   }
 }
 
-async function handleDelete() {
+function triggerDelete() {
   if (!currentMessage.value) return
-  if (confirm(t('board.delete_confirm'))) {
+  showDeleteConfirm.value = true
+}
 
-    const ok = await (window as any).config.deleteBoardMessage(currentMessage.value.id)
-    if (ok) {
-      messages.value.splice(currentIndex.value, 1)
-      if (currentIndex.value >= messages.value.length) {
-        currentIndex.value = Math.max(0, messages.value.length - 1)
-      }
+async function handleDelete() {
+  showDeleteConfirm.value = false
+  if (!currentMessage.value) return
+  const ok = await (window as any).config.deleteBoardMessage(currentMessage.value.id)
+  if (ok) {
+    messages.value.splice(currentIndex.value, 1)
+    if (currentIndex.value >= messages.value.length) {
+      currentIndex.value = Math.max(0, messages.value.length - 1)
     }
   }
 }
@@ -251,7 +256,7 @@ function goBack() {
     </div>
 
     <!-- Global Trash Button -->
-    <button class="global-delete-btn" @click="handleDelete" v-if="messages.length > 0">
+    <button class="global-delete-btn" @click="triggerDelete" v-if="messages.length > 0">
       <img src="/images/trash.png" :alt="t('board.delete_btn')" />
     </button>
 
@@ -288,6 +293,15 @@ function goBack() {
         <img :src="currentMessage.image" class="fullscreen-img" />
       </div>
     </Teleport>
+
+    <ConfirmModal
+      v-if="showDeleteConfirm"
+      :title="t('common.delete')"
+      :message="t('board.delete_confirm')"
+      confirm-class="delete"
+      @confirm="handleDelete"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 
 </template>

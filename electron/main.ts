@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 dotenv.config()
-import { app, BrowserWindow, ipcMain, protocol, net } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
@@ -154,9 +154,61 @@ function setupIPC() {
 
   ipcMain.handle('contacts:openCall', async (_, userName: string) => {
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
-    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
-    const url = `${baseUrl}/videocall/?room=${encodeURIComponent(userName)}&device=${encodeURIComponent(deviceId)}`
+    const deviceApiKey = process.env.COBIEN_VIDEOCALL_DEVICE_API_KEY || ''
+    const sessionUrl = process.env.COBIEN_DEVICE_VIDEOCALL_SESSION_URL || 'https://portal.co-bien.eu/api/device-videocall-session/'
+    const devicePortalUrl = process.env.COBIEN_PORTAL_VIDEOCALL_DEVICE_URL || 'https://portal.co-bien.eu/videocall/device/'
+    const answeredUrl = process.env.COBIEN_PORTAL_CALL_ANSWERED_URL || 'https://portal.co-bien.eu/api/call-answered/'
+    const portalUrl = process.env.COBIEN_PORTAL_VIDEOCALL_URL || 'https://portal.co-bien.eu/videocall/'
+
+    let targetUrl = `${portalUrl}?room=${encodeURIComponent(userName)}&device=${encodeURIComponent(deviceId)}`
+
+    if (deviceApiKey) {
+      try {
+        console.log(`[VIDEOCALL] Fetching device session for room: ${userName}, device: ${deviceId}`)
+        const sessionRes = await fetch(sessionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-DEVICE-ID': deviceId,
+            'X-DEVICE-KEY': deviceApiKey
+          },
+          body: JSON.stringify({
+            device_id: deviceId,
+            room: userName
+          }),
+          signal: AbortSignal.timeout(8000)
+        })
+
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json()
+          const { token, room_name, identity, call_answered_url } = sessionData
+          
+          if (token) {
+            // Notify backend that the call is answered
+            const targetAnsweredUrl = call_answered_url || answeredUrl
+            try {
+              console.log(`[VIDEOCALL] Notifying call answered to: ${targetAnsweredUrl}`)
+              await fetch(targetAnsweredUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room: room_name, device: identity }),
+                signal: AbortSignal.timeout(5000)
+              })
+            } catch (err) {
+              console.error('[VIDEOCALL] Failed to notify backend call answered:', err)
+            }
+
+            // Build hash fragment URL
+            targetUrl = `${devicePortalUrl}#token=${encodeURIComponent(token)}&room=${encodeURIComponent(room_name)}&identity=${encodeURIComponent(identity)}`
+            console.log('[VIDEOCALL] Generated Twilio token URL successfully')
+          }
+        } else {
+          console.warn(`[VIDEOCALL] Device session request failed with status: ${sessionRes.status}`)
+        }
+      } catch (err) {
+        console.error('[VIDEOCALL] Error request session:', err)
+      }
+    }
 
     const { BrowserWindow: BW } = await import('electron')
     const callWin = new BW({
@@ -165,7 +217,23 @@ function setupIPC() {
       fullscreen: true,
       webPreferences: { nodeIntegration: false, contextIsolation: true },
     })
-    callWin.loadURL(url)
+
+    callWin.loadURL(targetUrl)
+
+    // Intercept cobien://call-ended to close call window
+    callWin.webContents.on('will-navigate', (event, url) => {
+      if (url.startsWith('cobien://call-ended')) {
+        event.preventDefault()
+        callWin.close()
+      }
+    })
+    callWin.webContents.on('did-start-navigation', (event, url) => {
+      if (url.startsWith('cobien://call-ended')) {
+        event.preventDefault()
+        callWin.close()
+      }
+    })
+
     return true
   })
 
@@ -203,7 +271,8 @@ function setupIPC() {
     return {
       version: app.getVersion(),
       deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
-      contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt')
+      contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
+      defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en'
     }
   })
 
@@ -310,6 +379,21 @@ function createWindow() {
 }
  
 app.whenReady().then(() => {
+  // Automatically grant camera/microphone/media permissions
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowed = ['media', 'geolocation', 'notifications', 'midiSysex', 'openExternal']
+    if (allowed.includes(permission)) {
+      callback(true)
+    } else {
+      callback(false)
+    }
+  })
+  
+  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    const allowed = ['media', 'geolocation', 'notifications', 'midiSysex', 'openExternal']
+    return allowed.includes(permission)
+  })
+
   protocol.handle('cobien-media', (request) => {
     const url = request.url.replace('cobien-media://', '')
     return net.fetch('file://' + url)

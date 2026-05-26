@@ -125,6 +125,45 @@ function triggerVoiceAssistant() {
   window.dispatchEvent(new CustomEvent('start-voice-assistant'))
 }
 
+const isDown = ref(false)
+const startX = ref(0)
+const scrollLeftVal = ref(0)
+
+function handleMouseDown(e: MouseEvent) {
+  const container = e.currentTarget as HTMLElement
+  if (!container) return
+  isDown.value = true
+  container.classList.add('active-dragging')
+  startX.value = e.pageX - container.offsetLeft
+  scrollLeftVal.value = container.scrollLeft
+}
+
+function handleMouseLeave() {
+  isDown.value = false
+  const container = document.querySelector('.contacts-view.horizontal-scroll') as HTMLElement
+  if (container) {
+    container.classList.remove('active-dragging')
+  }
+}
+
+function handleMouseUp() {
+  isDown.value = false
+  const container = document.querySelector('.contacts-view.horizontal-scroll') as HTMLElement
+  if (container) {
+    container.classList.remove('active-dragging')
+  }
+}
+
+function handleMouseMove(e: MouseEvent) {
+  if (!isDown.value) return
+  e.preventDefault()
+  const container = e.currentTarget as HTMLElement
+  if (!container) return
+  const x = e.pageX - container.offsetLeft
+  const walk = (x - startX.value) * 1.5
+  container.scrollLeft = scrollLeftVal.value - walk
+}
+
 function handleWheel(e: WheelEvent) {
   const container = e.currentTarget as HTMLElement
   if (container) {
@@ -160,7 +199,14 @@ function handleWheel(e: WheelEvent) {
     </div>
 
     <!-- Contact cards scrollable row -->
-    <div class="contacts-view horizontal-scroll" @wheel="handleWheel">
+    <div 
+      class="contacts-view horizontal-scroll" 
+      @wheel="handleWheel"
+      @mousedown="handleMouseDown"
+      @mouseleave="handleMouseLeave"
+      @mouseup="handleMouseUp"
+      @mousemove="handleMouseMove"
+    >
       <div class="contacts-horizontal-row" v-if="contacts.length > 0">
         <div
           v-for="(contact, index) in contacts"
@@ -331,6 +377,7 @@ function handleWheel(e: WheelEvent) {
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
+  user-select: none;
   /* Immersive fading edges */
   mask-image: linear-gradient(to right, 
     transparent 0%, 
@@ -344,6 +391,12 @@ function handleWheel(e: WheelEvent) {
     black 90%, 
     transparent 100%
   );
+}
+
+.contacts-view.horizontal-scroll.active-dragging {
+  scroll-snap-type: none !important;
+  scroll-behavior: auto !important;
+  cursor: grabbing;
 }
 
 /* Hide scrollbar */

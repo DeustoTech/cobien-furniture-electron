@@ -5,6 +5,7 @@ import { useMqtt } from './composables/useMqtt'
 import { startWakeWordDetection, stopWakeWordDetection } from './services/voiceRecognizer'
 import { useSettings } from './composables/useSettings'
 import VoiceAssistant from './components/VoiceAssistant.vue'
+import NotificationOverlay from './components/NotificationOverlay.vue'
 // import IdleOverlay from './components/IdleOverlay.vue'
 
 // Register MQTT listener at root level so it works across all screens
@@ -75,6 +76,7 @@ onMounted(async () => {
 <template>
   <router-view />
   <VoiceAssistant ref="voiceAssistantRef" />
+  <NotificationOverlay />
   <!-- <IdleOverlay :timeout-sec="idleTimeout" /> -->
 </template>
 

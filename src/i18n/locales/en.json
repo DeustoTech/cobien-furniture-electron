@@ -222,5 +222,24 @@
       "forecast": "For today we expect a maximum of {max} and a minimum of {min}. ",
       "extra": "The probability of rain is {pop} percent, and the wind will blow up to {wind} kilometers per hour."
     }
+  },
+  "notification": {
+    "incoming_call": "Incoming Call",
+    "incoming_call_from": "Incoming call from {caller}",
+    "accept": "Accept",
+    "decline": "Decline",
+    "new_message": "New Message",
+    "new_message_from": "New message from {sender}",
+    "new_photo_from": "New photo from {sender}",
+    "view": "View",
+    "later": "Later",
+    "new_event": "New Event",
+    "new_event_title": "New event: {title}",
+    "ok": "OK",
+    "view_calendar": "View Calendar",
+    "missed_call": "Missed Call",
+    "missed_call_from": "Missed call from {caller} at {time}",
+    "request_call": "Request Call",
+    "close": "Close"
   }
 }

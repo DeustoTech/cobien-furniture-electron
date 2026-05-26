@@ -3,12 +3,15 @@ import { ref, onMounted } from 'vue'
 
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 const router = useRouter()
 const { t } = useI18n()
 
 const version = ref('...')
 const deviceId = ref('...')
+const showRestartConfirm = ref(false)
+const showExitConfirm = ref(false)
 
 onMounted(async () => {
   const sys = await (window as any).config.getSystemInfo()
@@ -20,16 +23,22 @@ function goBack() {
   router.push('/')
 }
 
+function triggerRestart() {
+  showRestartConfirm.value = true
+}
+
+function triggerExit() {
+  showExitConfirm.value = true
+}
+
 function handleRestart() {
-  if (confirm(t('settings.restart_confirm'))) {
-    (window as any).config.restartApp()
-  }
+  showRestartConfirm.value = false;
+  (window as any).config.restartApp()
 }
 
 function handleExit() {
-  if (confirm(t('settings.exit_confirm'))) {
-    (window as any).config.exitApp()
-  }
+  showExitConfirm.value = false;
+  (window as any).config.exitApp()
 }
 
 const settingsButtons = [
@@ -53,8 +62,8 @@ const settingsButtons = [
       </div>
 
       <div class="header-actions">
-        <button class="action-btn reboot" @click="handleRestart">{{ t('settings.restart') }}</button>
-        <button class="action-btn exit" @click="handleExit">{{ t('settings.exit') }}</button>
+        <button class="action-btn reboot" @click="triggerRestart">{{ t('settings.restart') }}</button>
+        <button class="action-btn exit" @click="triggerExit">{{ t('settings.exit') }}</button>
         <button class="back-btn" @click="goBack">
           <img src="/images/back.png" :alt="t('common.back')" />
         </button>
@@ -77,6 +86,22 @@ const settingsButtons = [
 
       </button>
     </div>
+    <ConfirmModal
+      v-if="showRestartConfirm"
+      :title="t('settings.restart')"
+      :message="t('settings.restart_confirm')"
+      confirm-class="reboot"
+      @confirm="handleRestart"
+      @cancel="showRestartConfirm = false"
+    />
+    <ConfirmModal
+      v-if="showExitConfirm"
+      :title="t('settings.exit')"
+      :message="t('settings.exit_confirm')"
+      confirm-class="exit"
+      @confirm="handleExit"
+      @cancel="showExitConfirm = false"
+    />
   </div>
 </template>
 

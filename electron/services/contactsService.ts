@@ -173,9 +173,11 @@ export async function requestCall(
         'X-Api-Key': apiKey,
       },
       body: JSON.stringify({
-        type: 'videollamada',
-        destination: userName,
-        origin: deviceId,
+        to_user: userName,
+        from_device: deviceId,
+        kind: 'call_ready',
+        message: '',
+        ttl_hours: 12
       }),
       signal: AbortSignal.timeout(10000),
     })

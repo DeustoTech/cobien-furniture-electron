@@ -211,6 +211,25 @@
     "loading": "Chargement de la phrase...",
     "another": "😄 Une autre phrase",
     "fallback": "Pourquoi le jardinier a-t-il dit à l'autre jardinier ? On se voit quand on peut (le tondre)."
+  },
+  "notification": {
+    "incoming_call": "Appel entrant",
+    "incoming_call_from": "Appel entrant de {caller}",
+    "accept": "Accepter",
+    "decline": "Rejeter",
+    "new_message": "Nouveau message",
+    "new_message_from": "Nouveau message de {sender}",
+    "new_photo_from": "Nouvelle photo de {sender}",
+    "view": "Voir",
+    "later": "Plus tard",
+    "new_event": "Nouvel événement",
+    "new_event_title": "Nouvel événement : {title}",
+    "ok": "Accepter",
+    "view_calendar": "Voir l'agenda",
+    "missed_call": "Appel manqué",
+    "missed_call_from": "Appel manqué de {caller} à {time}",
+    "request_call": "Rappeler",
+    "close": "Fermer"
   }
 }
 

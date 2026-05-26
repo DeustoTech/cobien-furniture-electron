@@ -222,6 +222,25 @@
     "loading": "Cargando frase...",
     "another": "😄 Otra frase",
     "fallback": "¿Qué le dice un jardinero a otro? Nos vemos cuando podamos."
+  },
+  "notification": {
+    "incoming_call": "Llamada entrante",
+    "incoming_call_from": "Llamada entrante de {caller}",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "new_message": "Nuevo mensaje",
+    "new_message_from": "Nuevo mensaje de {sender}",
+    "new_photo_from": "Nueva foto de {sender}",
+    "view": "Ver",
+    "later": "Más tarde",
+    "new_event": "Nuevo evento",
+    "new_event_title": "Nuevo evento: {title}",
+    "ok": "Aceptar",
+    "view_calendar": "Ver agenda",
+    "missed_call": "Llamada perdida",
+    "missed_call_from": "Llamada perdida de {caller} a las {time}",
+    "request_call": "Devolver llamada",
+    "close": "Cerrar"
   }
 }
 

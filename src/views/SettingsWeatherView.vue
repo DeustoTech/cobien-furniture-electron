@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -17,6 +18,10 @@ const isModalOpen = ref(false)
 const newCityName = ref('')
 const validationError = ref('')
 const isValidating = ref(false)
+
+// Delete confirm state
+const showDeleteConfirm = ref(false)
+const cityToDelete = ref('')
 
 onMounted(async () => {
   await loadConfig()
@@ -79,13 +84,21 @@ async function setPrimary(city: string) {
   await saveConfig()
 }
 
-async function deleteCity(city: string) {
-  if (confirm(t('weather_settings.delete_confirm', { city }))) {
-    catalog.value = catalog.value.filter(c => c !== city)
-    activeCities.value = activeCities.value.filter(c => c !== city)
-    if (primaryCity.value === city) primaryCity.value = ''
-    await saveConfig()
-  }
+function deleteCity(city: string) {
+  cityToDelete.value = city
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteCity() {
+  const city = cityToDelete.value
+  showDeleteConfirm.value = false
+  if (!city) return
+  
+  catalog.value = catalog.value.filter(c => c !== city)
+  activeCities.value = activeCities.value.filter(c => c !== city)
+  if (primaryCity.value === city) primaryCity.value = ''
+  await saveConfig()
+  cityToDelete.value = ''
 }
 
 function openAddModal() {
@@ -217,6 +230,14 @@ function goBack() {
       </div>
     </div>
     
+    <ConfirmModal
+      v-if="showDeleteConfirm"
+      :title="t('weather_settings.delete_btn')"
+      :message="t('weather_settings.delete_confirm', { city: cityToDelete })"
+      confirm-class="delete"
+      @confirm="confirmDeleteCity"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
