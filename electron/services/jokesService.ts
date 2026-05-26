@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-const JOKES_DIR = join(_dirname, '../../../cobien_FrontEnd/app/data/jokes')
+const JOKES_DIR = join(_dirname, '../public/data/jokes')
 
 
 let cachedJokes: string[] = []
@@ -15,7 +15,7 @@ let lastJoke: string = ''
 
 async function loadJokes(lang: string = 'es'): Promise<string[]> {
   try {
-    const file = lang === 'fr' ? 'jokes_fr.json' : 'jokes_es.json'
+    const file = lang === 'fr' ? 'jokes_fr.json' : lang === 'en' ? 'jokes_en.json' : 'jokes_es.json'
     const raw = await fs.readFile(join(JOKES_DIR, file), 'utf-8')
     const data = JSON.parse(raw)
 
@@ -36,6 +36,13 @@ async function loadJokes(lang: string = 'es'): Promise<string[]> {
     return jokes.filter(Boolean)
   } catch (e) {
     console.error('[JOKES] Error loading jokes:', e)
+    if (lang === 'en') {
+      return [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "What do you call a fake noodle? An Impasta.",
+        "Why did the scarecrow win an award? Because he was outstanding in his field."
+      ]
+    }
     return [
       '¿Qué le dice un jardinero a otro? Nos vemos cuando podamos.',
       '¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter.',
@@ -49,7 +56,7 @@ export async function getRandomJoke(lang = 'es'): Promise<string> {
     cachedJokes = await loadJokes(lang)
   }
 
-  if (cachedJokes.length === 0) return 'No hay chistes disponibles.'
+  if (cachedJokes.length === 0) return lang === 'en' ? 'No jokes available.' : lang === 'fr' ? 'Aucune blague disponible.' : 'No hay chistes disponibles.'
 
   const available = cachedJokes.length > 1
     ? cachedJokes.filter(j => j !== lastJoke)

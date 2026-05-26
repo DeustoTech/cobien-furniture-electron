@@ -41,13 +41,20 @@ const voiceFlowMessage = ref('')
 const voiceFlowStep = ref<'idle' | 'listening' | 'speaking'>('idle')
 const voiceTargetDay = ref<string>('') // DD-MM-YYYY
 
+let globalAudioCtx: AudioContext | null = null
+function getAudioCtx() {
+  if (!globalAudioCtx) globalAudioCtx = new AudioContext()
+  return globalAudioCtx
+}
+
 async function speak(text: string) {
   voiceFlowStep.value = 'speaking'
   voiceFlowMessage.value = text
   try {
-    const buffer = await (window as any).config.ttsSpeak(text)
+    const lang = locale.value.split('-')[0]
+    const buffer = await (window as any).config.ttsSpeak(text, lang)
     if (buffer) {
-      const audioCtx = new AudioContext()
+      const audioCtx = getAudioCtx()
       await audioCtx.resume()
       
       const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
@@ -58,7 +65,7 @@ async function speak(text: string) {
       
       await new Promise<void>(resolve => {
         source.onended = () => {
-          setTimeout(resolve, 300)
+          setTimeout(resolve, 500) // Increased delay to ensure audio is fully stopped
         }
         source.start()
       })
@@ -100,14 +107,14 @@ async function startVoiceAddFlow(dateStr: string) {
   const title = titleRaw.trim().charAt(0).toUpperCase() + titleRaw.trim().slice(1)
 
   // Step 2: Confirm and Ask for description
-  voiceFlowMessage.value = `✅ Title: "${title}"`
+  voiceFlowMessage.value = `✅ ${t('events.voice_flow.title_label')}: "${title}"`
   await speak(t('events.voice_flow.ask_description', { title }))
   voiceFlowMessage.value = t('events.voice_flow.listening_description')
   const descriptionRaw = await listenWithVosk()
-  const description = descriptionRaw?.trim() || (locale.value === 'es' ? 'Sin descripción' : 'No description')
+  const description = descriptionRaw?.trim() || t('events.voice_flow.no_description')
 
   // Step 3: Confirm both and Ask for location
-  voiceFlowMessage.value = `✅ Title: "${title}"\n✅ Desc: "${description}"`
+  voiceFlowMessage.value = `✅ ${t('events.voice_flow.title_label')}: "${title}"\n✅ ${t('events.voice_flow.desc_label')}: "${description}"`
   await speak(t('events.voice_flow.ask_location_bool', { title, description }))
   
   voiceFlowMessage.value = t('events.voice_flow.listening_location_bool')
@@ -120,22 +127,24 @@ async function startVoiceAddFlow(dateStr: string) {
     voiceFlowMessage.value = t('events.voice_flow.listening_location')
     const locRaw = await listenWithVosk()
     location = locRaw?.trim() || ''
-    if (location) voiceFlowMessage.value += `\n📍 Loc: "${location}"`
+    if (location) voiceFlowMessage.value += `\n📍 ${t('events.voice_flow.loc_label')}: "${location}"`
   } else {
-    await speak(locale.value === 'es' ? 'De acuerdo.' : 'Understood.')
+    await speak(t('events.voice_flow.ok'))
   }
 
   // Step 4: Save
   voiceFlowMessage.value = t('events.voice_flow.saving', { title })
   try {
+    console.log(`[EVENTS] Saving event: "${title}" on ${dateStr}`)
     const ok = await (window as any).config.addPersonalEvent({
       date: dateStr,
       title,
       description,
       location
     })
+    console.log(`[EVENTS] Save result:`, ok)
     if (ok) {
-      voiceFlowMessage.value = `🎉 Event "${title}" saved.`
+      voiceFlowMessage.value = `🎉 ${t('events.voice_flow.saved_label', { title })}`
       await speak(t('events.voice_flow.saved_success', { title }))
       const data = await (window as any).config.getEvents()
       eventsList.value = data
@@ -145,6 +154,7 @@ async function startVoiceAddFlow(dateStr: string) {
     }
   } catch(e) {
     voiceFlowMessage.value = t('events.voice_flow.error_db')
+    await speak(t('events.voice_flow.error_db'))
   }
 
   await new Promise(r => setTimeout(r, 2000))
@@ -333,6 +343,7 @@ async function startVoiceEditFlow(event: any) {
     }
   } catch(e) {
     voiceFlowMessage.value = t('events.voice_flow.error_db')
+    await speak(t('events.voice_flow.error_db'))
   }
 
   await new Promise(r => setTimeout(r, 2000))
@@ -398,7 +409,7 @@ function goBack() {
 
       <div class="header-actions">
         <button class="square-action-btn" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" :alt="t('events.voice')" />
+          <img src="/svg/voice.svg" :alt="t('events.voice')" />
         </button>
         <div class="actions-spacer"></div>
         <button class="square-action-btn" @click="goBack">
@@ -466,7 +477,7 @@ function goBack() {
         <div class="detail-body">
           <div class="detail-actions">
             <button class="voice-add-btn-large" @click="startVoiceAddFlow((() => { const d = selectedDate!; const day = d.getDate().toString().padStart(2,'0'); const m = (d.getMonth()+1).toString().padStart(2,'0'); return `${day}-${m}-${d.getFullYear()}` })())">
-              <img src="/images/plus.png" alt="+" />
+              <img src="/svg/plus.svg" alt="+" />
               <span>{{ t('events.add_event_btn') }}</span>
             </button>
           </div>
@@ -533,7 +544,7 @@ function goBack() {
       <div v-if="voiceFlowActive" class="voice-modal-overlay">
         <div class="voice-modal-card">
           <div class="voice-modal-header">
-            <img src="/images/voice.png" alt="voice" class="voice-icon-large" />
+            <img src="/svg/voice.svg" alt="voice" class="voice-icon-large" />
             <h2>{{ t('events.voice_assistant_title') }}</h2>
           </div>
 

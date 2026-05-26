@@ -17,7 +17,7 @@ defineExpose({
     <div v-if="isActive" class="voice-overlay">
       <div class="voice-card glass-panel">
         <div class="voice-header">
-          <img src="/images/voice.png" alt="voz" class="voice-icon" />
+          <img src="/svg/voice.svg" alt="voz" class="voice-icon" />
           <h2>{{ t('assistant.title') }}</h2>
 
         </div>
@@ -61,11 +61,11 @@ defineExpose({
 .voice-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 30px;
-  padding: 3rem;
-  width: min(600px, 90vw);
+  padding: 4rem;
+  width: min(800px, 95vw);
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
   box-shadow: 0 40px 100px rgba(0,0,0,0.5);
   animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -105,12 +105,12 @@ defineExpose({
 }
 
 .voice-text {
-  font-size: 1.8rem;
+  font-size: 2.5rem;
   text-align: center;
-  color: #111;
-  font-weight: 500;
+  color: #000;
+  font-weight: 700;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .status-indicator {
@@ -173,18 +173,21 @@ defineExpose({
 
 .close-voice-btn {
   width: 100%;
-  padding: 1.2rem;
-  border-radius: 15px;
-  border: none;
-  background: rgba(0,0,0,0.05);
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: #666;
+  padding: 2.5rem;
+  border-radius: 20px;
+  border: 4px solid #000;
+  background: #fff;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #000;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .close-voice-btn:hover {
-  background: rgba(0,0,0,0.1);
+  background: #000;
+  color: #fff;
 }
 </style>

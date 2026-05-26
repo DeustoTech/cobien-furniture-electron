@@ -115,7 +115,8 @@ async function handleDelete() {
 
 async function speak(text: string) {
   try {
-    const buffer = await (window as any).config.ttsSpeak(text)
+    const lang = locale.value.split('-')[0]
+    const buffer = await (window as any).config.ttsSpeak(text, lang)
     if (buffer) {
       const audioCtx = new AudioContext()
       await audioCtx.resume()
@@ -173,10 +174,10 @@ function goBack() {
 
       <div class="header-actions">
         <button class="audio-btn" @click="readCurrentMessage" v-if="messages.length > 0">
-          <img src="/images/play.png" :alt="t('board.read')" />
+          <img src="/svg/play.svg" :alt="t('board.read')" style="width: 110%; height: 110%;" />
         </button>
         <button class="voice-button-small" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" :alt="t('board.voice')" />
+          <img src="/svg/voice.svg" :alt="t('board.voice')" />
         </button>
         <button class="back-btn" @click="goBack" style="margin-left: 2rem;">
           <img src="/images/back.png" :alt="t('board.back')" />
@@ -352,8 +353,8 @@ function goBack() {
 
 
 .back-btn, .voice-button-small, .audio-btn {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 7rem;
+  height: 7rem;
 
   background: white;
   border: 2px solid #000;

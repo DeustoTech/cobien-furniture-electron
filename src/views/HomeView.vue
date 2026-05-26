@@ -9,20 +9,20 @@ import BrightnessPopup from '../components/BrightnessPopup.vue'
 
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 
 const currentDate = ref('')
 const currentTime = ref('')
 const weatherTemp = ref('17°')
-const weatherCondition = ref('Cloudy')
+const weatherCondition = ref('')
 const weatherIcon = ref('/images/sol.png')
-const cityName = ref('Loading...')
+const cityName = ref(t('common.loading'))
 
-const minTemp = ref('Min 8°')
-const maxTemp = ref('Max 19°')
-const nextEvent = ref('No upcoming events')
-const jokeText = ref('Why do birds not use Facebook? Because they already have Twitter.')
+const minTemp = ref('')
+const maxTemp = ref('')
+const nextEvent = ref(t('common.no_upcoming_events'))
+const jokeText = ref('')
 const systemMeta = ref('CoBien2 · v3.2.40')
 
 // Reminder notification
@@ -45,7 +45,7 @@ onMounted(async () => {
     if (config.primary) {
       cityName.value = config.primary
     }
-    const bundle = await (window as any).config.fetchWeather(cityName.value)
+    const bundle = await (window as any).config.fetchWeather(cityName.value, locale.value.split('-')[0])
     if (bundle) {
       weatherTemp.value = bundle.temp
       weatherCondition.value = bundle.description
@@ -68,12 +68,13 @@ onMounted(async () => {
     (window as any).config.onReminderFire((reminder: any) => {
       reminderMessage.value = reminder.message
       reminderActive.value = true
-      ;(window as any).config.ttsSpeak(`Reminder: ${reminder.message}`)
+      const lang = locale.value.split('-')[0]
+      ;(window as any).config.ttsSpeak(`${t('common.reminder_prefix')}${reminder.message}`, lang)
     })
   } catch(e) {}
 
   try {
-    jokeText.value = await (window as any).config.getRandomJoke()
+    jokeText.value = await (window as any).config.getJoke(locale.value.split('-')[0])
   } catch(e) {}
 })
 
@@ -84,8 +85,8 @@ onUnmounted(() => {
 
 function updateTime() {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  currentTime.value = now.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false })
+  currentDate.value = now.toLocaleDateString(locale.value, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function handleNavigation(route: string) {
@@ -162,7 +163,7 @@ async function openBrightnessPopup() {
             </button>
 
             <button class="action-box" @click="triggerVoiceAssistant">
-              <img src="/images/voice.png" alt="Voice" />
+              <img src="/svg/voice.svg" alt="Voice" />
             </button>
           </div>
         </div>
@@ -173,7 +174,7 @@ async function openBrightnessPopup() {
     <div class="nav-section">
       <div class="nav-grid">
         <button class="nav-card" @click="handleNavigation('/weather')">
-          <img src="/images/parcial.png" class="nav-card-icon" alt="Weather" />
+          <img src="/svg/parcial.svg" class="nav-card-icon" alt="Weather" />
           <span class="nav-card-text">{{ t('home.weather') }}</span>
         </button>
 
@@ -183,7 +184,7 @@ async function openBrightnessPopup() {
         </button>
 
         <button class="nav-card" @click="handleNavigation('/board')">
-          <img src="/images/pizarra.png" class="nav-card-icon" alt="Board" />
+          <img src="/svg/pizarra.svg" class="nav-card-icon" alt="Board" />
           <span class="nav-card-text">{{ t('home.board') }}</span>
         </button>
 
@@ -221,9 +222,9 @@ async function openBrightnessPopup() {
       <div v-if="reminderActive" class="reminder-overlay">
         <div class="reminder-card">
           <div class="reminder-icon">⏰</div>
-          <h2 class="reminder-title">Reminder</h2>
+          <h2 class="reminder-title">{{ t('common.reminder_prefix').trim().replace(':', '') }}</h2>
           <p class="reminder-msg">{{ reminderMessage }}</p>
-          <button class="reminder-dismiss" @click="reminderActive = false">Got it</button>
+          <button class="reminder-dismiss" @click="reminderActive = false">{{ t('common.ok') || 'OK' }}</button>
         </div>
       </div>
     </Teleport>

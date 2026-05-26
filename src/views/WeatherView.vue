@@ -15,7 +15,7 @@ const minTemp = ref('Min —°')
 const maxTemp = ref('Max —°')
 const todayPop = ref(0)
 const todayWind = ref(0)
-const currentIcon = ref('/images/nubes.png')
+const currentIcon = ref('/svg/nubes.svg')
 const isLoading = ref(false)
 const fullDate = ref('')
 
@@ -38,7 +38,7 @@ async function loadWeather(city: string) {
   if (!city || city === 'Sin Ciudad' || city === 'No City') return
   isLoading.value = true
   try {
-    const bundle = await (window as any).config.fetchWeather(city)
+    const bundle = await (window as any).config.fetchWeather(city, locale.value.split('-')[0])
     if (bundle) {
       currentTemp.value = bundle.temp
       currentCondition.value = bundle.description
@@ -117,10 +117,10 @@ function triggerVoiceAssistant() {
 }
 
 function readWeatherReport() {
-  const degreeWord = locale.value === 'es' ? ' grados' : ' degrees'
-  const cleanMax = maxTemp.value.replace('Max ', '').replace('°', degreeWord)
-  const cleanMin = minTemp.value.replace('Min ', '').replace('°', degreeWord)
-  const cleanCurrent = currentTemp.value.replace('°', degreeWord)
+  const degreeWord = locale.value === 'es' ? ' grados' : locale.value === 'fr' ? ' degrés' : ' degrees'
+  const cleanMax = maxTemp.value.replace(/[^\d-]/g, '') + degreeWord
+  const cleanMin = minTemp.value.replace(/[^\d-]/g, '') + degreeWord
+  const cleanCurrent = currentTemp.value.replace(/[^\d-]/g, '') + degreeWord
   
   const text = t('weather.report.intro', { city: cityName.value }) +
                t('weather.report.current', { condition: currentCondition.value, temp: cleanCurrent }) +
@@ -198,10 +198,10 @@ function readWeatherReport() {
           <!-- Row 2: Voice & TTS -->
           <div class="action-row voice-row">
             <button class="icon-button" @click="readWeatherReport" :title="t('weather.read_title')">
-              <img src="/images/play.png" :alt="t('weather.read_btn')" class="icon" />
+              <img src="/svg/play.svg" :alt="t('weather.read_btn')" class="icon" style="width: 110%; height: 110%;" />
             </button>
             <button class="icon-button" @click="triggerVoiceAssistant">
-              <img src="/images/voice.png" alt="Voice" class="icon" />
+              <img src="/svg/voice.svg" alt="Voice" class="icon" />
             </button>
           </div>
 
@@ -426,8 +426,8 @@ function readWeatherReport() {
 }
 
 .icon-button {
-  width: 5.8rem; /* Increased 15% */
-  height: 5.8rem; /* Increased 15% */
+  width: 7.5rem;
+  height: 7.5rem;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(0,0,0,0.2);
@@ -592,8 +592,8 @@ function readWeatherReport() {
 
 /* Loading states */
 .loading-spinner {
-  width: 5rem;
-  height: 5rem;
+  width: 7.5rem;
+  height: 7.5rem;
   border: 5px solid rgba(0,0,0,0.1);
   border-top-color: #1E90FF;
   border-radius: 50%;

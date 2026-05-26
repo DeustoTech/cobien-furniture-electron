@@ -31,24 +31,13 @@ contextBridge.exposeInMainWorld('config', {
   getEvents: () => ipcRenderer.invoke('events:get'),
   addPersonalEvent: (payload: any) => ipcRenderer.invoke('events:addPersonal', payload),
   deleteEvent: (id: string) => ipcRenderer.invoke('events:delete', id),
-  fetchWeather: (city: string) => ipcRenderer.invoke('weather:fetch', city),
-  getRandomJoke: () => ipcRenderer.invoke('jokes:getRandom'),
+  fetchWeather: (city: string, lang = 'es') => ipcRenderer.invoke('weather:fetch', city, lang),
+  getRandomJoke: (lang = 'es') => ipcRenderer.invoke('jokes:getRandom', lang),
   getContacts: () => ipcRenderer.invoke('contacts:list'),
   requestCall: (userName: string) => ipcRenderer.invoke('contacts:requestCall', userName),
   syncContacts: () => ipcRenderer.invoke('contacts:sync'),
   openCall: (userName: string) => ipcRenderer.invoke('contacts:openCall', userName),
 
-  onAsrPartial: (callback: (text: string) => void) => {
-    const subscription = (_event: any, text: string) => callback(text)
-    ipcRenderer.on('asr:partial', subscription)
-    return () => ipcRenderer.removeListener('asr:partial', subscription)
-  },
-  onAsrLevel: (callback: (level: number) => void) => {
-
-    const subscription = (_event: any, level: number) => callback(level)
-    ipcRenderer.on('asr:level', subscription)
-    return () => ipcRenderer.removeListener('asr:level', subscription)
-  },
   addReminder: (message: string, isoDatetime: string) => ipcRenderer.invoke('reminders:add', message, isoDatetime),
 
   listReminders: () => ipcRenderer.invoke('reminders:list'),
@@ -58,10 +47,8 @@ contextBridge.exposeInMainWorld('config', {
   markMessageRead: (id: string) => ipcRenderer.invoke('board:read', id),
   submitQuickReply: (id: string, text: string) => ipcRenderer.invoke('board:reply', id, text),
   ttsSpeak: (text: string, lang = 'es', gender = 'male', engine = 'piper') => ipcRenderer.invoke('tts:speak', text, lang, gender, engine),
+  ttsStop: () => ipcRenderer.invoke('tts:stop'),
 
-
-  sttListen: (language: string) => ipcRenderer.invoke('stt:listen', language),
-  abortStt: () => ipcRenderer.invoke('stt:abort'),
 
   getSystemInfo: () => ipcRenderer.invoke('config:getSystemInfo'),
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
@@ -70,13 +57,6 @@ contextBridge.exposeInMainWorld('config', {
   adjustVolume: (value: number, isAbsolute = false) => ipcRenderer.invoke('hardware:adjustVolume', value, isAbsolute),
   getVolume: () => ipcRenderer.invoke('hardware:getVolume'),
   adjustBrightness: (value?: number) => ipcRenderer.invoke('hardware:adjustBrightness', value),
-
-  onWakeWordDetected: (callback: () => void) => {
-    const subscription = () => callback()
-    ipcRenderer.on('asr:wake-word-detected', subscription)
-    return () => ipcRenderer.removeListener('asr:wake-word-detected', subscription)
-  },
-  restartWakeWord: () => ipcRenderer.invoke('asr:restartWakeWord'),
 
 
 

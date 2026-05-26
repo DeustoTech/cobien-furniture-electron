@@ -83,6 +83,20 @@ async function previewVoice(l: string, g: 'male' | 'female') {
         <div class="lang-grid">
           <button 
             class="lang-btn" 
+            :class="{ active: lang === 'es' }"
+            @click="setLang('es')"
+          >
+            Español
+          </button>
+          <button 
+            class="lang-btn" 
+            :class="{ active: lang === 'fr' }"
+            @click="setLang('fr')"
+          >
+            Français
+          </button>
+          <button 
+            class="lang-btn" 
             :class="{ active: lang === 'en' }"
             @click="setLang('en')"
           >
@@ -203,7 +217,7 @@ h3 {
 
 .lang-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
 }
 

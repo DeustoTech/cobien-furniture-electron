@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettings } from './useSettings'
+import { startListening, stopListening, startWakeWordDetection, stopWakeWordDetection } from '../services/voiceRecognizer'
 const lastGreetingIndex = ref(-1)
 
 export function useVoiceAssistant() {
@@ -22,7 +23,7 @@ export function useVoiceAssistant() {
 
   async function speak(text: string) {
     step.value = 'speaking'
-    message.value = text
+    // message.value = text // Removed as per user request to only show user speech
     try {
       const lang = locale.value as string
       const engine = ttsEngine.value
@@ -55,26 +56,36 @@ export function useVoiceAssistant() {
 
   async function listen(): Promise<string | null> {
     step.value = 'listening'
-    const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
-      audioLevel.value = lvl
-    })
-    const stopPartial = (window as any).config.onAsrPartial((text: string) => {
-      if (text) message.value = `🎤 ${text}...`
-    })
+    message.value = '🎤 ...'
+    
+    return new Promise((resolve) => {
+      // Temporarily stop Wake Word while listening to user command
+      stopWakeWordDetection()
 
-    try {
-      const text = await (window as any).config.sttListen(locale.value)
-      stopLevel()
-      stopPartial()
-      audioLevel.value = 0
-      return text || null
-    } catch (e) {
-      stopLevel()
-      stopPartial()
-      audioLevel.value = 0
-      console.error('Global STT Error:', e)
-      return null
-    }
+      startListening(
+        locale.value,
+        // onResult
+        (text) => {
+          stopListening()
+          audioLevel.value = 0
+          resolve(text)
+        },
+        // onPartial
+        (partialText) => {
+          if (partialText) {
+            message.value = `🎤 ${partialText}...`
+          }
+        },
+        // onLevel
+        (level) => {
+          audioLevel.value = level
+        }
+      ).catch((err) => {
+        console.error('ASR start error:', err)
+        audioLevel.value = 0
+        resolve(null)
+      })
+    })
   }
 
 
@@ -82,10 +93,10 @@ export function useVoiceAssistant() {
     if (isActive.value) return
     isActive.value = true
     
-    const g = tm('assistant.greetings')
+    const g = (tm as any)('assistant.greetings')
     const greetings = Array.isArray(g) ? g : [
-      "Hello, how can I help you?",
-      "Tell me, what do you need?"
+      t('assistant.greeting_1') || "Hello",
+      t('assistant.greeting_2') || "How can I help you?"
     ]
     
     let idx = Math.floor(Math.random() * greetings.length)
@@ -108,6 +119,15 @@ export function useVoiceAssistant() {
       await new Promise(r => setTimeout(r, 1500))
       isActive.value = false
       step.value = 'idle'
+      
+      // Re-enable Wake Word detection
+      try {
+        startWakeWordDetection(locale.value, () => {
+          console.log('[WAKE] UI Triggered by voice')
+          window.dispatchEvent(new Event('wake-word-detected'))
+          startAssistant()
+        })
+      } catch(e) {}
       return
     }
 
@@ -115,11 +135,35 @@ export function useVoiceAssistant() {
     message.value = t('assistant.understood', { text })
     
     const keywords = {
-      weather: ['tiempo', 'clima', 'météo', 'prévisions'],
-      events: ['eventos', 'agenda', 'calendario', 'événements', 'calendrier'],
-      board: ['mensajes', 'pizarra', 'tableau', 'messages'],
-      call: ['llamar', 'llamada', 'appeler', 'appel', 'contact'],
-      home: ['inicio', 'volver', 'accueil', 'retour']
+      weather: ['tiempo', 'clima', 'météo', 'prévisions', 'weather', 'forecast'],
+      events: ['eventos', 'agenda', 'calendario', 'événements', 'calendrier', 'events', 'calendar'],
+      board: ['mensajes', 'pizarra', 'tableau', 'messages', 'board'],
+      call: ['llamar', 'llamada', 'appeler', 'appel', 'contact', 'call', 'phone'],
+      home: ['inicio', 'volver', 'accueil', 'retour', 'home', 'back']
+    }
+
+    const stopKeywords = {
+      es: ['silencio', 'cállate', 'callate', 'para', 'es suficiente', 'basta'],
+      en: ['silence', 'shut up', 'stop', 'enough'],
+      fr: ['silence', 'tais-toi', 'arrête', 'ça suffit']
+    }
+    const currentLang = (locale.value.split('-')[0] || 'es') as keyof typeof stopKeywords
+    const activeStopWords = stopKeywords[currentLang] || stopKeywords.es
+
+    if (activeStopWords.some(k => text.includes(k))) {
+      await (window as any).config.ttsStop()
+      isActive.value = false
+      step.value = 'idle'
+      
+      // Re-enable Wake Word detection
+      try {
+        startWakeWordDetection(locale.value, () => {
+          console.log('[WAKE] UI Triggered by voice')
+          window.dispatchEvent(new Event('wake-word-detected'))
+          startAssistant()
+        })
+      } catch(e) {}
+      return
     }
 
     if (keywords.weather.some(k => text.includes(k))) {
@@ -147,8 +191,13 @@ export function useVoiceAssistant() {
     isActive.value = false
     step.value = 'idle'
     
+    // Re-enable Wake Word detection
     try {
-      await (window as any).config.restartWakeWord()
+      startWakeWordDetection(locale.value, () => {
+        console.log('[WAKE] UI Triggered by voice')
+        window.dispatchEvent(new Event('wake-word-detected'))
+        startAssistant()
+      })
     } catch(e) {}
   }
 
@@ -158,10 +207,14 @@ export function useVoiceAssistant() {
     isActive.value = false
     step.value = 'idle'
     try {
-      (window as any).config.abortStt()
+      stopListening()
       // Force restart wake word listening
       setTimeout(() => {
-        (window as any).config.restartWakeWord()
+        startWakeWordDetection(locale.value, () => {
+          console.log('[WAKE] UI Triggered by voice')
+          window.dispatchEvent(new Event('wake-word-detected'))
+          startAssistant()
+        })
       }, 500)
     } catch(e) {
       console.error('Cancel error:', e)

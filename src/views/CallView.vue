@@ -18,12 +18,22 @@ const missedCalls = ref<any[]>([])
 const callStatus = ref<'idle' | 'sending' | 'sent' | 'error'>('idle')
 const callMessage = ref('')
 const callingContact = ref<Contact | null>(null)
+const contactsPath = ref('list_contacts.txt')
 
 // Clock for the header
 const currentTime = ref(new Date())
 let clockTimer: any = null
 
 onMounted(async () => {
+  try {
+    const sysInfo = await (window as any).config.getSystemInfo()
+    if (sysInfo && sysInfo.contactsPath) {
+      contactsPath.value = sysInfo.contactsPath
+    }
+  } catch (e) {
+    console.error('Error fetching system info contacts path:', e)
+  }
+
   try {
     const fetched = await (window as any).config.getContacts()
     
@@ -140,7 +150,7 @@ function handleWheel(e: WheelEvent) {
 
       <div class="header-actions">
         <button class="square-action-btn" @click="triggerVoiceAssistant">
-          <img src="/images/voice.png" :alt="t('call.voice')" />
+          <img src="/svg/voice.svg" :alt="t('call.voice')" />
         </button>
         <div class="actions-spacer"></div>
         <button class="square-action-btn" @click="router.push('/')">
@@ -176,7 +186,7 @@ function handleWheel(e: WheelEvent) {
 
       <div v-else class="no-contacts">
         <p>{{ t('call.no_contacts') }}</p>
-        <p class="no-contacts-hint">{{ t('call.add_contacts_hint', { path: 'cobien_FrontEnd/app/contacts/list_contacts.txt' }) }}</p>
+        <p class="no-contacts-hint">{{ t('call.add_contacts_hint', { path: contactsPath }) }}</p>
       </div>
     </div>
 

@@ -16,24 +16,19 @@ import { loadContacts, requestCall, syncContacts } from './services/contactsServ
 
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 import { startMqtt, stopMqtt } from './services/mqttService'
-import { listenWithVosk, abortStt } from './services/asrService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
-
-import { startWakeWordDetection, stopWakeWordDetection } from './services/wakeWordService'
-
-
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
 
-const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
+const configPath = join(_dirname, '../config/config.default.json')
 
 
 function getPiperConfig(lang = 'es', gender = 'male') {
   try {
-    const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
-    const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
+    const configPath = join(_dirname, '../config/config.default.json')
+    const localPath = join(app.getPath('userData'), 'config.local.json')
     
     const defaultData = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
     let localData = {}
@@ -58,22 +53,19 @@ function getPiperConfig(lang = 'es', gender = 'male') {
       if (modelName.startsWith('/') || modelName.includes(':') || modelName.startsWith('http')) {
         model = modelName
       } else {
-        // Try FrontEnd app path
-        const fePath = join(_dirname, '../../../cobien_FrontEnd/app', modelName)
         // Try Electron public path
         const elPath = join(_dirname, '../public/models/piper', modelName)
         
-        if (fsSync.existsSync(fePath)) {
-          model = fePath
-        } else if (fsSync.existsSync(elPath)) {
+        if (fsSync.existsSync(elPath)) {
           model = elPath
         } else {
-          model = fePath // Fallback to FE path (old behavior)
+          model = elPath // Fallback to Electron path
         }
       }
     } else {
       // Fallback based on hardcoded defaults if not in config
       if (lang === 'fr') model = join(_dirname, '../public/models/piper/fr_FR-siwis-medium.onnx')
+      else if (lang === 'en') model = join(_dirname, '../public/models/piper/en_US-amy-medium.onnx')
       else model = defaultModel
     }
     
@@ -131,12 +123,12 @@ function setupIPC() {
     return await getEvents(configPath)
   })
 
-  ipcMain.handle('weather:fetch', async (_, cityName: string) => {
-    return await fetchWeatherBundle(cityName)
+  ipcMain.handle('weather:fetch', async (_, cityName: string, lang = 'es') => {
+    return await fetchWeatherBundle(cityName, lang)
   })
 
-  ipcMain.handle('jokes:getRandom', async () => {
-    return await getRandomJoke('es')
+  ipcMain.handle('jokes:getRandom', async (_, lang = 'es') => {
+    return await getRandomJoke(lang)
   })
 
   ipcMain.handle('contacts:list', async () => {
@@ -191,8 +183,10 @@ function setupIPC() {
 
   ipcMain.handle('events:addPersonal', async (_, payload: any) => {
     const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    const location = data.settings?.device_location || 'Bilbao'
+    const defaultLocation = data.settings?.device_location || 'Bilbao'
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    // Ensure we don't override payload.location if it exists
+    const location = payload.location || defaultLocation
     return await addPersonalEvent({ ...payload, location, deviceId })
   })
   
@@ -208,7 +202,8 @@ function setupIPC() {
   ipcMain.handle('config:getSystemInfo', () => {
     return {
       version: app.getVersion(),
-      deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX'
+      deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
+      contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt')
     }
   })
 
@@ -222,6 +217,13 @@ function setupIPC() {
   })
 
   let currentTtsProcess: any = null
+
+  ipcMain.handle('tts:stop', () => {
+    if (currentTtsProcess) {
+      try { currentTtsProcess.kill() } catch(e) {}
+      currentTtsProcess = null
+    }
+  })
 
   ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'male', engine = 'piper') => {
     console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`)
@@ -271,59 +273,34 @@ function setupIPC() {
   })
 
 
-  ipcMain.handle('stt:listen', async (event, language: string) => {
-    return await listenWithVosk(language, (level) => {
-      event.sender.send('asr:level', level)
-    }, (partial) => {
-      event.sender.send('asr:partial', partial)
-    })
-  })
-
-
-
   ipcMain.handle('hardware:adjustVolume', async (_, value: number, isAbsolute = false) => {
     return await adjustVolume(value, isAbsolute)
   })
   ipcMain.handle('hardware:adjustBrightness', async (_, value?: number) => {
     return await adjustBrightness(value)
   })
-
+ 
   ipcMain.handle('hardware:getVolume', async () => {
     return await getVolume()
   })
-
-  ipcMain.handle('stt:abort', () => {
-
-    abortStt()
-  })
-
-  ipcMain.handle('asr:restartWakeWord', () => {
-    if (mainWindow) {
-      startWakeWordDetection(mainWindow, _dirname)
-    }
-  })
-
-
-
-
+ 
 }
-
-
+ 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
     fullscreen: false,
-
+ 
     webPreferences: {
       preload: join(_dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
   })
-
+ 
   mainWindow.setBackgroundColor('#ffffff')
-
+ 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
     mainWindow.webContents.openDevTools()
@@ -331,13 +308,13 @@ function createWindow() {
     mainWindow.loadFile(join(_dirname, '../dist/index.html'))
   }
 }
-
+ 
 app.whenReady().then(() => {
   protocol.handle('cobien-media', (request) => {
     const url = request.url.replace('cobien-media://', '')
     return net.fetch('file://' + url)
   })
-
+ 
   setupIPC()
   
   // Initial Syncs
@@ -346,26 +323,21 @@ app.whenReady().then(() => {
   const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
   const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
   syncContacts(deviceId, apiKey, baseUrl).catch(console.error)
-
+ 
   createWindow()
-
-
+ 
   // Load pending reminders and wire notification to renderer
   loadPendingReminders((reminder) => {
     if (mainWindow) {
       mainWindow.webContents.send('reminder:fire', reminder)
     }
   })
-
+ 
   if (mainWindow) {
-    const configPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.default.json')
-    const localPath = join(_dirname, '../../../cobien_FrontEnd/app/config/config.local.json')
+    const localPath = join(app.getPath('userData'), 'config.local.json')
     startBackendSync(mainWindow, configPath, localPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)
-    
-    // Start background listening for "cobien"
-    startWakeWordDetection(mainWindow, _dirname)
   }
 
 

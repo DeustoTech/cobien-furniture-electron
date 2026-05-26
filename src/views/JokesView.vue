@@ -38,7 +38,7 @@ onMounted(fetchJoke)
       </button>
       <h1 class="header-title">{{ t('jokes.title') }}</h1>
       <button class="icon-btn" @click="triggerVoiceAssistant">
-        <img src="/images/voice.png" :alt="t('jokes.listen')" class="hdr-icon" />
+        <img src="/svg/voice.svg" :alt="t('jokes.listen')" class="hdr-icon" />
       </button>
     </div>
 

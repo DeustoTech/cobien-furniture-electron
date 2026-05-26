@@ -1,7 +1,4 @@
-/**
- * contactsService.ts — Load contacts from legacy list_contacts.txt
- * and send videocall notifications via portal API.
- */
+import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,9 +6,9 @@ import * as fsSync from 'node:fs'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
-const CONTACTS_DIR = join(_dirname, '../../../cobien_FrontEnd/app/contacts')
+const CONTACTS_DIR = join(app.getPath('userData'), 'contacts')
 const CONTACTS_FILE = join(CONTACTS_DIR, 'list_contacts.txt')
-const DEFAULT_IMG = join(CONTACTS_DIR, 'default_user.png')
+const DEFAULT_IMG = join(_dirname, '../public/images/default_user.png')
 
 function normalizeName(name: string): string {
   return name

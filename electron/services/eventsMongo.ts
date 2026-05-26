@@ -105,6 +105,11 @@ export async function addPersonalEvent(payload: {
     // Convert DD-MM-YYYY to a JS Date for the stored field
     const [day, month, year] = payload.date.split('-').map(Number)
     const dateObj = new Date(year, month - 1, day)
+    
+    if (isNaN(dateObj.getTime())) {
+      console.error('[EVENTS] Invalid date provided:', payload.date)
+      return false
+    }
 
     const doc = {
       _id: new ObjectId(),
@@ -123,8 +128,9 @@ export async function addPersonalEvent(payload: {
     await collection.insertOne(doc)
     console.log(`[EVENTS] Personal event added: ${payload.title} on ${payload.date}`)
     return true
-  } catch(e) {
-    console.error('[EVENTS] Error adding personal event:', e)
+  } catch(e: any) {
+    console.error('[EVENTS] Error adding personal event:', e.message || e)
+    if (e.stack) console.error(e.stack)
     return false
   }
 }

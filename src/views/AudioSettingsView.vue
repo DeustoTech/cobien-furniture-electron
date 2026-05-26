@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { startListening, stopListening } from '../services/voiceRecognizer'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -49,26 +50,37 @@ async function testMicrophone() {
   sttText.value = t('audio.listening')
   audioLevel.value = 0
 
-  const stopLevel = (window as any).config.onAsrLevel((lvl: number) => {
-    audioLevel.value = lvl
-  })
-  const stopPartial = (window as any).config.onAsrPartial((text: string) => {
-    if (text) sttText.value = text
-  })
-
   try {
-    const text = await (window as any).config.sttListen(locale.value.split('-')[0])
-    sttText.value = text || t('audio.no_voice')
+    await startListening(
+      locale.value.split('-')[0],
+      // onResult
+      (text) => {
+        sttText.value = text || t('audio.no_voice')
+        stopListening()
+        isSttTesting.value = false
+        audioLevel.value = 0
+      },
+      // onPartial
+      (partialText) => {
+        if (partialText) sttText.value = partialText
+      },
+      // onLevel
+      (lvl) => {
+        audioLevel.value = lvl
+      }
+    )
   } catch (e) {
     console.error('STT Test failed:', e)
     sttText.value = t('audio.mic_error')
-  } finally {
-    stopLevel()
-    stopPartial()
+    stopListening()
     isSttTesting.value = false
     audioLevel.value = 0
   }
 }
+
+onUnmounted(() => {
+  stopListening()
+})
 </script>
 
 <template>

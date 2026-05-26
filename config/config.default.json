@@ -1,0 +1,110 @@
+{
+    "meta": {
+        "schema_version": 1,
+        "updated_at": ""
+    },
+    "settings": {
+        "language": "es",
+        "weather_cities": [
+            "Bilbao",
+            "Toulouse",
+            "Logroño"
+        ],
+        "weather_city_catalog": [
+            "Bilbao",
+            "Toulouse",
+            "Logroño"
+        ],
+        "weather_primary_city": "Bilbao",
+        "button_colors": {},
+        "rfid_actions": {},
+        "microphone_device": "",
+        "audio_output_device": "",
+        "device_id": "",
+        "videocall_room": "",
+        "device_location": "Bilbao",
+        "joke_category": "general",
+        "idle_timeout_sec": 60,
+        "solitaire_enabled": false,
+        "chess_enabled": false
+    },
+    "notifications": {
+        "videollamada": {
+            "group": 1,
+            "intensity": 255,
+            "color": "#00FF00",
+            "mode": "ON",
+            "ringtone": ""
+        },
+        "nuevo_evento": {
+            "group": 2,
+            "intensity": 255,
+            "color": "#FF0000",
+            "mode": "ON",
+            "ringtone": ""
+        },
+        "nueva_foto": {
+            "group": 3,
+            "intensity": 255,
+            "color": "#0000FF",
+            "mode": "BLINK",
+            "ringtone": ""
+        }
+    },
+    "security": {
+        "settings_pin": "",
+        "restart_pin": ""
+    },
+    "services": {
+        "mqtt_local_broker": "localhost",
+        "mqtt_local_port": 1883,
+        "backend_base_url": "https://portal.co-bien.eu",
+        "device_poll_url": "https://portal.co-bien.eu/pizarra/api/device/poll/",
+        "device_poll_interval_sec": 5,
+        "owm_api_key": "",
+        "news_api_key": "",
+        "mongo_uri": "",
+        "http_timeout_sec": 8.0,
+        "tts_engine": "pyttsx3",
+        "tts_rate": 155,
+        "tts_volume": 0.85,
+        "tts_piper_bin": "",
+        "tts_piper_model_es": "",
+        "tts_piper_model_fr": "",
+        "tts_piper_model_es_male": "",
+        "tts_piper_model_es_female": "",
+        "tts_piper_model_fr_male": "",
+        "tts_piper_model_fr_female": "",
+        "tts_piper_model_es_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+        "tts_piper_model_fr_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/mls_1840/low/fr_FR-mls_1840-low.onnx",
+        "tts_piper_model_es_male_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+        "tts_piper_model_es_female_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/mls_10246/low/es_ES-mls_10246-low.onnx",
+        "tts_piper_model_fr_male_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/mls_1840/low/fr_FR-mls_1840-low.onnx",
+        "tts_piper_model_fr_female_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
+        "tts_piper_voice_es": "male",
+        "tts_piper_voice_fr": "male",
+        "disable_system_sleep": "0",
+        "notify_api_key": "",
+        "videocall_device_api_key": "",
+        "pizarra_notify_url": "https://portal.co-bien.eu/pizarra/api/notify/",
+        "pizarra_messages_url": "https://portal.co-bien.eu/pizarra/api/messages/",
+        "pizarra_delete_url_template": "https://portal.co-bien.eu/pizarra/api/messages/{post_id}/delete/",
+        "contacts_api_url": "https://portal.co-bien.eu/pizarra/api/contacts/",
+        "device_heartbeat_url": "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/",
+        "device_heartbeat_interval_sec": 60,
+        "icso_telemetry_url": "https://portal.co-bien.eu/pizarra/api/icso/telemetry/",
+        "icso_events_url": "https://portal.co-bien.eu/pizarra/api/icso/events/",
+        "portal_videocall_url": "https://portal.co-bien.eu/videocall/",
+        "portal_videocall_device_url": "https://portal.co-bien.eu/videocall/device/",
+        "device_videocall_session_url": "https://portal.co-bien.eu/api/device-videocall-session/",
+        "portal_call_answered_url": "https://portal.co-bien.eu/api/call-answered/",
+        "openweather_current_url": "https://api.openweathermap.org/data/2.5/weather",
+        "openweather_forecast_url": "https://api.openweathermap.org/data/2.5/forecast",
+        "news_api_url": "https://newsapi.org/v2/top-headlines",
+        "open_meteo_url": "https://api.open-meteo.com/v1/forecast",
+        "nominatim_search_url": "https://nominatim.openstreetmap.org/search"
+    },
+    "software": {
+        "version": ""
+    }
+}
