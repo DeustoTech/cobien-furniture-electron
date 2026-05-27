@@ -251,7 +251,7 @@ function setupIPC() {
 
   ipcMain.handle('events:addPersonal', async (_, payload: any) => {
     const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    const defaultLocation = data.settings?.device_location || 'Bilbao'
+    const defaultLocation = process.env.COBIEN_DEVICE_LOCATION || data.settings?.device_location || 'Bilbao'
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
     // Ensure we don't override payload.location if it exists
     const location = payload.location || defaultLocation

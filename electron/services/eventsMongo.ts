@@ -15,11 +15,25 @@ async function getClient() {
 export async function getEvents(configPath: string) {
   try {
     const defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    const locationName = defaultData.settings?.device_location || 'Bilbao'
+    const deviceId = process.env.COBIEN_DEVICE_ID || defaultData.settings?.device_id || 'CoBien6'
     
     const client = await getClient()
     const db = client.db('LabasAppDB')
     const collection = db.collection('eventos')
+
+    // Fetch device configuration from DB to respect region-aware scope settings
+    const deviceDoc = await db.collection('devices').findOne({ device_id: deviceId }) || {}
+    const visibilityScope = String(deviceDoc.event_visibility_scope || 'all').trim().toLowerCase()
+    
+    let eventRegions: string[] = []
+    const rawRegions = deviceDoc.event_regions || []
+    if (typeof rawRegions === 'string') {
+      eventRegions = rawRegions.split(/\r?\n/).map((r: string) => r.trim().toLowerCase()).filter(Boolean)
+    } else if (Array.isArray(rawRegions)) {
+      eventRegions = rawRegions.map((r: any) => String(r).trim().toLowerCase()).filter(Boolean)
+    }
+
+    const locationName = process.env.COBIEN_DEVICE_LOCATION || deviceDoc.location || defaultData.settings?.device_location || 'Bilbao'
 
     const query = {
       $or: [
@@ -33,8 +47,8 @@ export async function getEvents(configPath: string) {
         { 
           audience: 'device', 
           $or: [
-            { target_device: 'CoBien6' },
-            { target_devices: 'CoBien6' }
+            { target_device: deviceId },
+            { target_devices: deviceId }
           ]
         }
       ]
@@ -47,16 +61,31 @@ export async function getEvents(configPath: string) {
     const events = rawEvents.map(event => {
       let audience = event.audience || 'all'
       if (typeof audience === 'string' && audience.toLowerCase() === 'device') audience = 'device'
-      else audience = 'all'
+      else audience = 'public' // Map public/all to 'public' for frontend compatibility
 
       let color = audience === 'device' ? '#FF3B30' : '#1E90FF'
       if (event.color) color = event.color
       
       let loc = (event.location || '').trim()
       
-      // Filter out public events that have a specific location which is not ours
-      if (audience === 'all' && loc && loc.toLowerCase() !== normalizedLocation) {
-        return null
+      // Filter out public events based on region/location visibility scope
+      if (audience === 'public' && loc) {
+        const locLower = loc.toLowerCase()
+        
+        let visible = false
+        if (locLower === normalizedLocation) {
+          visible = true
+        } else if (visibilityScope === 'region') {
+          const allowed = eventRegions.length > 0 ? eventRegions : (normalizedLocation ? [normalizedLocation] : [])
+          visible = allowed.includes(locLower)
+        } else {
+          // visibilityScope === 'all': show everything
+          visible = true
+        }
+        
+        if (!visible) {
+          return null
+        }
       }
 
       // Convert date format correctly

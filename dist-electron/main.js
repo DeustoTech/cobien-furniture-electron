@@ -77,34 +77,39 @@ async function w() {
 }
 async function ne(e) {
 	try {
-		let t = JSON.parse(await m.readFile(e, "utf-8")).settings?.device_location || "Bilbao", n = await (await w()).db("LabasAppDB").collection("eventos").find({ $or: [{ $or: [
+		let t = JSON.parse(await m.readFile(e, "utf-8")), n = process.env.COBIEN_DEVICE_ID || t.settings?.device_id || "CoBien6", r = (await w()).db("LabasAppDB"), i = r.collection("eventos"), a = await r.collection("devices").findOne({ device_id: n }) || {}, o = String(a.event_visibility_scope || "all").trim().toLowerCase(), s = [], c = a.event_regions || [];
+		typeof c == "string" ? s = c.split(/\r?\n/).map((e) => e.trim().toLowerCase()).filter(Boolean) : Array.isArray(c) && (s = c.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
+		let l = process.env.COBIEN_DEVICE_LOCATION || a.location || t.settings?.device_location || "Bilbao", u = { $or: [{ $or: [
 			{ audience: "all" },
 			{ audience: { $exists: !1 } },
 			{ audience: null }
 		] }, {
 			audience: "device",
-			$or: [{ target_device: "CoBien6" }, { target_devices: "CoBien6" }]
-		}] }).toArray(), r = t.trim().toLowerCase();
-		return n.map((e) => {
-			let n = e.audience || "all";
-			n = typeof n == "string" && n.toLowerCase() === "device" ? "device" : "all";
-			let i = n === "device" ? "#FF3B30" : "#1E90FF";
-			e.color && (i = e.color);
-			let a = (e.location || "").trim();
-			if (n === "all" && a && a.toLowerCase() !== r) return null;
-			let o = e.date || e.fecha_inicio || "";
-			if (o instanceof Date) {
-				let e = o;
-				o = `${e.getDate().toString().padStart(2, "0")}-${(e.getMonth() + 1).toString().padStart(2, "0")}-${e.getFullYear()}`;
+			$or: [{ target_device: n }, { target_devices: n }]
+		}] }, d = await i.find(u).toArray(), f = l.trim().toLowerCase();
+		return d.map((e) => {
+			let t = e.audience || "all";
+			t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public";
+			let n = t === "device" ? "#FF3B30" : "#1E90FF";
+			e.color && (n = e.color);
+			let r = (e.location || "").trim();
+			if (t === "public" && r) {
+				let e = r.toLowerCase(), t = !1;
+				if (t = e === f ? !0 : o === "region" ? (s.length > 0 ? s : f ? [f] : []).includes(e) : !0, !t) return null;
+			}
+			let i = e.date || e.fecha_inicio || "";
+			if (i instanceof Date) {
+				let e = i;
+				i = `${e.getDate().toString().padStart(2, "0")}-${(e.getMonth() + 1).toString().padStart(2, "0")}-${e.getFullYear()}`;
 			}
 			return {
 				id: e._id.toString(),
-				date: o,
+				date: i,
 				title: e.title || e.titulo || "Sin título",
 				description: e.description || e.descripcion || "Sin descripción",
-				location: a || t,
-				audience: n,
-				color: i,
+				location: r || l,
+				audience: t,
+				color: n,
 				target_device: e.target_device || "",
 				created_by: e.created_by || "",
 				all_day: e.all_day !== !1,
@@ -1006,11 +1011,11 @@ function Ye() {
 			t.startsWith("cobien://call-ended") && (e.preventDefault(), l.close());
 		}), !0;
 	}), r.handle("reminders:add", async (e, t, n) => await ke(t, n)), r.handle("reminders:list", async () => await Ae()), r.handle("reminders:delete", async (e, t) => await je(t)), r.handle("events:addPersonal", async (e, t) => {
-		let n = JSON.parse(await m.readFile(Q, "utf-8")).settings?.device_location || "Bilbao", r = process.env.COBIEN_DEVICE_ID || "CoBien6", i = t.location || n;
+		let n = JSON.parse(await m.readFile(Q, "utf-8")), r = process.env.COBIEN_DEVICE_LOCATION || n.settings?.device_location || "Bilbao", i = process.env.COBIEN_DEVICE_ID || "CoBien6", a = t.location || r;
 		return await re({
 			...t,
-			location: i,
-			deviceId: r
+			location: a,
+			deviceId: i
 		});
 	}), r.handle("events:updatePersonal", async (e, t) => await ie(t)), r.handle("events:delete", async (e, t) => await ae(t)), r.handle("board:fetch", async () => await le()), r.handle("board:delete", async (e, t) => await ue(t)), r.handle("board:read", async (e, t) => await de(t)), r.handle("board:reply", async (e, t, n) => await fe(t, n)), r.handle("config:getSystemInfo", () => ({
 		version: n.getVersion(),
