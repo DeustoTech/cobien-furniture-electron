@@ -28,7 +28,14 @@
     "no_image": "Sin imagen",
     "delete_confirm": "¿Seguro que quieres borrar este mensaje?",
     "respond_to": "Responder a {author}",
-    "responded_with": "Has respondido: {text}"
+    "responded_with": "Has respondido: {text}",
+    "read": "Leer",
+    "voice": "Voz",
+    "back": "Volver",
+    "respond_btn": "Responder",
+    "responded_label": "Has respondido:",
+    "delete_btn": "Eliminar",
+    "narration_intro": "Mensaje de {author}, recibido el {date}. "
   },
   "settings": {
     "title": "Configuración",

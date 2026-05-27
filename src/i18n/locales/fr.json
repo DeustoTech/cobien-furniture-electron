@@ -28,7 +28,14 @@
     "no_image": "Pas d'image",
     "delete_confirm": "Voulez-vous vraiment supprimer ce message ?",
     "respond_to": "Répondre à {author}",
-    "responded_with": "Vous avez répondu : {text}"
+    "responded_with": "Vous avez répondu : {text}",
+    "read": "Lire",
+    "voice": "Voix",
+    "back": "Retour",
+    "respond_btn": "Répondre",
+    "responded_label": "Vous avez répondu :",
+    "delete_btn": "Supprimer",
+    "narration_intro": "Message de {author}, reçu le {date}. "
   },
   "settings": {
     "title": "Paramètres",
