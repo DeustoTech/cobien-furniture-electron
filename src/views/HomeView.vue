@@ -159,7 +159,7 @@ async function openBrightnessPopup() {
           
           <div class="top-right-actions">
             <button class="action-box" @click="handleNavigation('/admin-login')">
-              <img src="/images/settings.png" alt="Settings" />
+              <img src="/svg/settings.svg" alt="Settings" />
             </button>
 
             <button class="action-box" @click="triggerVoiceAssistant">
