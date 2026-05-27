@@ -185,6 +185,16 @@ onMounted(async () => {
   } catch (e) {
     console.error('Error loading events:', e)
   }
+
+  try {
+    ;(window as any).config.onEventsChanged(async () => {
+      console.log('[EVENTS] Events changed on disk, updating view.')
+      const data = await (window as any).config.getEvents()
+      eventsList.value = data
+    })
+  } catch (e) {
+    console.error('Failed to register onEventsChanged listener:', e)
+  }
 })
 
 onUnmounted(() => {

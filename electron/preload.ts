@@ -70,5 +70,8 @@ contextBridge.exposeInMainWorld('config', {
   },
   onMqttEvent: (callback: (event: any) => void) => {
     ipcRenderer.on('mqtt:event', (_event, data) => callback(data))
+  },
+  onEventsChanged: (callback: () => void) => {
+    ipcRenderer.on('events:changed', () => callback())
   }
 })

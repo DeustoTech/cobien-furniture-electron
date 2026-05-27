@@ -1,26 +1,26 @@
-import e from "dotenv";
-import { BrowserWindow as t, app as n, ipcMain as r, net as i, protocol as a, session as o } from "electron";
-import { dirname as s, join as c } from "node:path";
-import { fileURLToPath as l } from "node:url";
-import { exec as u, execFile as d } from "node:child_process";
-import * as f from "node:fs";
-import { createWriteStream as p, promises as m } from "node:fs";
-import * as h from "node:os";
-import { MongoClient as ee, ObjectId as g } from "mongodb";
-import _ from "mqtt";
-import { promisify as v } from "node:util";
+import { a as e, i as t, n, t as r } from "./eventsMongo-BM_eHlBl.js";
+import i from "dotenv";
+import { BrowserWindow as a, app as o, ipcMain as s, net as c, protocol as l, session as u } from "electron";
+import { dirname as d, join as f } from "node:path";
+import { fileURLToPath as p } from "node:url";
+import { exec as ee, execFile as m } from "node:child_process";
+import * as h from "node:fs";
+import { createWriteStream as g, promises as _ } from "node:fs";
+import * as v from "node:os";
+import y from "mqtt";
+import { promisify as te } from "node:util";
 //#region electron/services/backendSync.ts
-var y = "home";
-async function te(e, t, n) {
-	r.handle("app:route-changed", (e, t) => {
-		y = t;
-	}), setInterval(() => x(t, n), 6e4), setInterval(() => S(e, t, n), 5e3), x(t, n), S(e, t, n);
+var b = "home";
+async function x(e, t, n) {
+	s.handle("app:route-changed", (e, t) => {
+		b = t;
+	}), setInterval(() => C(t, n), 6e4), setInterval(() => w(e, t, n), 5e3), C(t, n), w(e, t, n);
 }
-async function b(e, t) {
+async function S(e, t) {
 	try {
-		let n = JSON.parse(await m.readFile(e, "utf-8")), r = {};
+		let n = JSON.parse(await _.readFile(e, "utf-8")), r = {};
 		try {
-			r = JSON.parse(await m.readFile(t, "utf-8"));
+			r = JSON.parse(await _.readFile(t, "utf-8"));
 		} catch {}
 		return {
 			...n.services,
@@ -30,8 +30,8 @@ async function b(e, t) {
 		return {};
 	}
 }
-async function x(e, t) {
-	let n = await b(e, t), r = n.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/", i = process.env.NOTIFY_API_KEY || n.notify_api_key || "";
+async function C(e, t) {
+	let n = await S(e, t), r = n.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/", i = process.env.NOTIFY_API_KEY || n.notify_api_key || "";
 	try {
 		let e = await fetch(r, {
 			method: "POST",
@@ -41,209 +41,74 @@ async function x(e, t) {
 			},
 			body: JSON.stringify({
 				device_id: process.env.COBIEN_DEVICE_ID || "CoBien6",
-				screen: y,
+				screen: b,
 				sent_at: (/* @__PURE__ */ new Date()).toISOString(),
 				software_version: "Electron-v1.0"
 			})
 		});
-		e.ok ? console.log(`[HEARTBEAT] Sent (Screen: ${y})`) : console.warn(`[HEARTBEAT] Failed with status: ${e.status}`);
+		e.ok ? console.log(`[HEARTBEAT] Sent (Screen: ${b})`) : console.warn(`[HEARTBEAT] Failed with status: ${e.status}`);
 	} catch {
 		console.error("[HEARTBEAT] Network error");
 	}
 }
-async function S(e, t, n) {
-	let r = await b(t, n), i = r.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/", a = process.env.NOTIFY_API_KEY || r.notify_api_key || "";
+async function w(e, t, n) {
+	let r = await S(t, n), i = r.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/", a = process.env.NOTIFY_API_KEY || r.notify_api_key || "";
 	try {
-		let t = process.env.COBIEN_DEVICE_ID || "CoBien6", n = await fetch(`${i}?device_id=${t}`, {
+		let n = process.env.COBIEN_DEVICE_ID || "CoBien6", r = await fetch(`${i}?device_id=${n}`, {
 			method: "GET",
 			headers: { "X-API-KEY": a }
 		});
-		if (n.ok) {
-			let t = (await n.json()).notifications || [];
-			t.length > 0 && (console.log(`[POLL] Received ${t.length} notifications`), t.forEach((t) => {
-				e.webContents.send("backend:notification", t);
-			}));
+		if (r.ok) {
+			let n = (await r.json()).notifications || [];
+			if (n.length > 0) {
+				console.log(`[POLL] Received ${n.length} notifications`);
+				let r = !1;
+				n.forEach((t) => {
+					e.webContents.send("backend:notification", t);
+					let n = (t.type || "").toLowerCase();
+					(n === "new_event" || n === "events_reload") && (r = !0);
+				}), r && (console.log("[POLL] Event notification received. Refreshing local events cache..."), import("./eventsMongo-BM_eHlBl.js").then((e) => e.r).then(({ getEvents: e }) => {
+					e(t).catch((e) => console.error("[POLL] Failed to background-refresh events:", e));
+				}).catch((e) => console.error("[POLL] Failed to dynamically import eventsMongo:", e)));
+			}
 		}
 	} catch {}
 }
 //#endregion
-//#region electron/services/eventsMongo.ts
-var C = null;
-async function w() {
-	if (C) return C;
-	let e = process.env.MONGO_URI || "";
-	if (!e) throw Error("MONGO_URI is missing");
-	let t = new ee(e, {
-		serverSelectionTimeoutMS: 5e3,
-		connectTimeoutMS: 5e3
-	});
-	try {
-		return await t.connect(), C = t, C;
-	} catch (e) {
-		throw C = null, e;
-	}
-}
-async function ne(e) {
-	let t = {}, n = "CoBien6";
-	try {
-		t = JSON.parse(await m.readFile(e, "utf-8")), n = process.env.COBIEN_DEVICE_ID || t.settings?.device_id || "CoBien6";
-	} catch (e) {
-		console.error("[EVENTS] Error loading settings config:", e);
-	}
-	try {
-		let e = (await w()).db("LabasAppDB"), r = e.collection("eventos"), i = await e.collection("devices").findOne({ device_id: n }) || {}, a = String(i.event_visibility_scope || "all").trim().toLowerCase(), o = [], s = i.event_regions || [];
-		typeof s == "string" ? o = s.split(/\r?\n/).map((e) => e.trim().toLowerCase()).filter(Boolean) : Array.isArray(s) && (o = s.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
-		let c = process.env.COBIEN_DEVICE_LOCATION || i.location || t.settings?.device_location || "Bilbao", l = { $or: [{ $or: [
-			{ audience: "all" },
-			{ audience: { $exists: !1 } },
-			{ audience: null }
-		] }, {
-			audience: "device",
-			$or: [{ target_device: n }, { target_devices: n }]
-		}] }, u = await r.find(l).toArray(), d = c.trim().toLowerCase();
-		return u.map((e) => {
-			let t = e.audience || "all";
-			t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public";
-			let n = t === "device" ? "#FF3B30" : "#1E90FF";
-			e.color && (n = e.color);
-			let r = (e.location || "").trim();
-			if (t === "public" && r) {
-				let e = r.toLowerCase(), t = !1;
-				if (t = e === d ? !0 : a === "region" ? (o.length > 0 ? o : d ? [d] : []).includes(e) : !0, !t) return null;
-			}
-			let i = e.date || e.fecha_inicio || "";
-			if (i instanceof Date) {
-				let e = i;
-				i = `${e.getDate().toString().padStart(2, "0")}-${(e.getMonth() + 1).toString().padStart(2, "0")}-${e.getFullYear()}`;
-			}
-			return {
-				id: e._id.toString(),
-				date: i,
-				title: e.title || e.titulo || "Sin título",
-				description: e.description || e.descripcion || "Sin descripción",
-				location: r || c,
-				venue: e.venue || "",
-				audience: t,
-				color: n,
-				target_device: e.target_device || "",
-				created_by: e.created_by || "",
-				all_day: e.all_day === !0 || e.all_day !== !1 && e.all_day !== "false" && !e.start_time,
-				start_time: e.start_time || "",
-				end_time: e.end_time || ""
-			};
-		}).filter((e) => e !== null);
-	} catch (e) {
-		console.warn("[EVENTS] MongoDB connection/query failed. Fallback to REST API:", e.message || e), C = null;
-		try {
-			let e = (process.env.COBIEN_BACKEND_BASE_URL || t.services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), r = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || t.services?.notify_api_key || "", i = process.env.COBIEN_DEVICE_LOCATION || t.settings?.device_location || "Bilbao", a = `${e}/pizarra/api/events/?device_id=${n}&location=${encodeURIComponent(i)}`;
-			console.log(`[EVENTS] Fetching events from REST API fallback: ${a}`);
-			let o = await fetch(a, {
-				method: "GET",
-				headers: { "X-API-KEY": r }
-			});
-			if (!o.ok) throw Error(`REST API returned status ${o.status}`);
-			let s = await o.json();
-			if (!s.ok || !Array.isArray(s.events)) throw Error(s.error || "Invalid API response format");
-			return console.log(`[EVENTS] REST API fallback fetched ${s.events.length} events successfully`), s.events.map((e) => {
-				let t = e.audience || "all";
-				return t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public", {
-					id: e.id || "",
-					date: e.date || "",
-					title: e.title || "Sin título",
-					description: e.description || "",
-					location: e.location || i,
-					venue: e.venue || "",
-					audience: t,
-					color: t === "device" ? "#FF3B30" : "#1E90FF",
-					target_device: e.target_device || "",
-					created_by: e.created_by || "",
-					all_day: e.all_day === !0 || e.all_day !== !1 && e.all_day !== "false" && !e.start_time,
-					start_time: e.start_time || "",
-					end_time: e.end_time || ""
-				};
-			});
-		} catch (e) {
-			return console.error("[EVENTS] Both MongoDB and REST API fallback failed:", e.message || e), [];
-		}
-	}
-}
-async function re(e) {
-	try {
-		let t = (await w()).db("LabasAppDB").collection("eventos"), [n, r, i] = e.date.split("-").map(Number), a = new Date(i, r - 1, n);
-		if (isNaN(a.getTime())) return console.error("[EVENTS] Invalid date provided:", e.date), !1;
-		let o = {
-			_id: new g(),
-			title: e.title,
-			description: e.description,
-			date: e.date,
-			fecha_inicio: a,
-			audience: "device",
-			target_device: e.deviceId,
-			target_devices: [e.deviceId],
-			location: e.location,
-			all_day: !0,
-			created_by: e.deviceId,
-			created_at: /* @__PURE__ */ new Date()
-		};
-		return await t.insertOne(o), console.log(`[EVENTS] Personal event added: ${e.title} on ${e.date}`), !0;
-	} catch (e) {
-		return console.error("[EVENTS] Error adding personal event:", e.message || e), e.stack && console.error(e.stack), !1;
-	}
-}
-async function ie(e) {
-	try {
-		let t = await (await w()).db("LabasAppDB").collection("eventos").updateOne({ _id: new g(e.id) }, { $set: {
-			title: e.title,
-			description: e.description,
-			location: e.location
-		} });
-		return console.log(`[EVENTS] Personal event updated: ${e.id}`), t.modifiedCount > 0;
-	} catch (e) {
-		return console.error("[EVENTS] Error updating personal event:", e.message || e), e.stack && console.error(e.stack), !1;
-	}
-}
-async function ae(e) {
-	try {
-		return (await (await w()).db("LabasAppDB").collection("eventos").deleteOne({ _id: new g(e) })).deletedCount > 0;
-	} catch (e) {
-		return console.error("[EVENTS] Error deleting event:", e), !1;
-	}
-}
-//#endregion
 //#region electron/services/boardService.ts
-var oe = "board_cache";
-async function se() {
-	let e = c(n.getPath("userData"), oe);
+var ne = "board_cache";
+async function re() {
+	let e = f(o.getPath("userData"), ne);
 	try {
-		await m.access(e);
+		await _.access(e);
 	} catch {
-		await m.mkdir(e, { recursive: !0 });
+		await _.mkdir(e, { recursive: !0 });
 	}
 	return e;
 }
-async function ce(e, t, n) {
+async function T(e, t, n) {
 	if (!e) return "";
 	try {
-		let r = await se(), i = ".png";
+		let r = await re(), i = ".png";
 		(e.includes(".jpg") || e.includes(".jpeg")) && (i = ".jpg");
-		let a = c(r, `${t}_${n}${i}`);
+		let a = f(r, `${t}_${n}${i}`);
 		try {
-			return await m.access(a), `cobien-media://${a}`;
+			return await _.access(a), `cobien-media://${a}`;
 		} catch {}
 		let o = {};
 		process.env.COBIEN_NOTIFY_API_KEY && (o["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
 		let s = await fetch(e, { headers: o });
 		if (!s.ok) throw Error(`Failed to fetch image: ${s.statusText}`);
-		if (p(a), s.body) {
+		if (g(a), s.body) {
 			let e = await s.arrayBuffer(), t = Buffer.from(e);
-			return await m.writeFile(a, t), `cobien-media://${a}`;
+			return await _.writeFile(a, t), `cobien-media://${a}`;
 		}
 		return "";
 	} catch (t) {
 		return console.error(`[BOARD] Failed to cache image ${e}:`, t), "";
 	}
 }
-async function le() {
+async function ie() {
 	let e = process.env.COBIEN_DEVICE_ID || "CoBien6", t = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/?recipient=${e}`, n = {};
 	process.env.COBIEN_NOTIFY_API_KEY && (n["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
 	try {
@@ -252,7 +117,7 @@ async function le() {
 		let r = (await e.json()).messages || [];
 		return await Promise.all(r.map(async (e) => {
 			let t = "", n = "";
-			return (e.image || e.image_url) && (t = await ce(e.image || e.image_url, "img", e.id)), e.author_avatar_url && (n = await ce(e.author_avatar_url, "avatar", e.id)), {
+			return (e.image || e.image_url) && (t = await T(e.image || e.image_url, "img", e.id)), e.author_avatar_url && (n = await T(e.author_avatar_url, "avatar", e.id)), {
 				id: e.id,
 				author: e.author_name || e.author || "—",
 				author_avatar: n,
@@ -268,7 +133,7 @@ async function le() {
 		return console.error("[BOARD] Failed to fetch messages:", e), [];
 	}
 }
-async function ue(e) {
+async function ae(e) {
 	let t = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/delete/`, n = {};
 	process.env.COBIEN_NOTIFY_API_KEY && (n["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
 	try {
@@ -280,7 +145,7 @@ async function ue(e) {
 		return console.error("[BOARD] Failed to delete message:", e), !1;
 	}
 }
-async function de(e) {
+async function oe(e) {
 	let t = process.env.COBIEN_DEVICE_ID || "CoBien6", n = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/read/`, r = { "Content-Type": "application/json" };
 	process.env.COBIEN_NOTIFY_API_KEY && (r["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
 	try {
@@ -293,7 +158,7 @@ async function de(e) {
 		return console.error("[BOARD] Failed to mark message read:", e), !1;
 	}
 }
-async function fe(e, t) {
+async function se(e, t) {
 	let n = process.env.COBIEN_DEVICE_ID || "CoBien6", r = `${process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu"}/pizarra/api/messages/${e}/reply/`, i = { "Content-Type": "application/json" };
 	process.env.COBIEN_NOTIFY_API_KEY && (i["X-API-KEY"] = process.env.COBIEN_NOTIFY_API_KEY);
 	try {
@@ -311,7 +176,7 @@ async function fe(e, t) {
 }
 //#endregion
 //#region electron/services/weatherService.ts
-var pe = {
+var ce = {
 	0: "/images/sol.png",
 	1: "/svg/parcial.svg",
 	2: "/svg/parcial.svg",
@@ -340,7 +205,7 @@ var pe = {
 	95: "/images/tormenta.png",
 	96: "/images/tormenta.png",
 	99: "/images/tormenta.png"
-}, me = {
+}, le = {
 	es: {
 		0: "Cielo despejado",
 		1: "Mayormente despejado",
@@ -411,17 +276,17 @@ var pe = {
 		99: "Orage avec grêle forte"
 	}
 };
-function T(e, t = !0) {
-	return !t && e <= 1 ? "/svg/noche.svg" : pe[e] ?? "/svg/nubes.svg";
+function E(e, t = !0) {
+	return !t && e <= 1 ? "/svg/noche.svg" : ce[e] ?? "/svg/nubes.svg";
 }
-function E(e, t = "es") {
-	return (me[t] || me.es)[e] ?? (t === "en" ? "Unknown condition" : t === "fr" ? "Condition inconnue" : "Condición desconocida");
+function D(e, t = "es") {
+	return (le[t] || le.es)[e] ?? (t === "en" ? "Unknown condition" : t === "fr" ? "Condition inconnue" : "Condición desconocida");
 }
-function he(e) {
+function ue(e) {
 	let t = new Date(e).getHours(), n = t < 12 ? "a.m." : "p.m.";
 	return `${t % 12 || 12} ${n}`;
 }
-async function ge(e) {
+async function de(e) {
 	try {
 		let t = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(e)}`, n = await (await fetch(t, { headers: { "User-Agent": "CoBien6-Furniture" } })).json();
 		if (!n.length) return null;
@@ -435,7 +300,7 @@ async function ge(e) {
 		return console.error("[WEATHER] Geocode error:", e), null;
 	}
 }
-async function _e(e, t = "es") {
+async function fe(e, t = "es") {
 	let n = {
 		city: e,
 		temp: "—°",
@@ -449,7 +314,7 @@ async function _e(e, t = "es") {
 		daily: []
 	};
 	try {
-		let r = await ge(e);
+		let r = await de(e);
 		if (!r) return n.error = "Ciudad no encontrada", n;
 		let { lat: i, lon: a, tz: o } = r, s = [
 			`https://api.open-meteo.com/v1/forecast?latitude=${i}&longitude=${a}`,
@@ -459,24 +324,24 @@ async function _e(e, t = "es") {
 			"&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,wind_speed_10m_max",
 			"&forecast_days=7"
 		].join(""), c = await (await fetch(s)).json(), l = c.current?.weathercode ?? 0, u = (c.current?.is_day ?? 1) === 1;
-		n.temp = `${Math.round(c.current?.temperature_2m ?? 0)}°`, n.icon = T(l, u);
+		n.temp = `${Math.round(c.current?.temperature_2m ?? 0)}°`, n.icon = E(l, u);
 		let d = process.env.OWM_API_KEY ?? "";
 		if (d) try {
 			let e = `https://api.openweathermap.org/data/2.5/weather?lat=${i}&lon=${a}&appid=${d}&units=metric&lang=${t}`;
-			n.description = (await (await fetch(e)).json()).weather?.[0]?.description ?? E(l, t), n.description = n.description.charAt(0).toUpperCase() + n.description.slice(1);
+			n.description = (await (await fetch(e)).json()).weather?.[0]?.description ?? D(l, t), n.description = n.description.charAt(0).toUpperCase() + n.description.slice(1);
 		} catch {
-			n.description = E(l, t);
+			n.description = D(l, t);
 		}
-		else n.description = E(l, t);
+		else n.description = D(l, t);
 		let f = Math.round(c.daily?.temperature_2m_min?.[0] ?? 0), p = Math.round(c.daily?.temperature_2m_max?.[0] ?? 0);
 		n.tempMin = `Min ${f}°`, n.tempMax = `Max ${p}°`, n.todayPop = c.daily?.precipitation_probability_max?.[0] ?? 0, n.todayWind = Math.round(c.daily?.wind_speed_10m_max?.[0] ?? 0);
-		let m = (/* @__PURE__ */ new Date()).getHours(), h = c.hourly?.time ?? [], ee = c.hourly?.temperature_2m ?? [], g = c.hourly?.weathercode ?? [], _ = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), v = h.findIndex((e) => e.startsWith(_) && new Date(e).getHours() >= m);
-		v < 0 && (v = 0), n.hourly = h.slice(v, v + 12).map((e, t) => {
+		let ee = (/* @__PURE__ */ new Date()).getHours(), m = c.hourly?.time ?? [], h = c.hourly?.temperature_2m ?? [], g = c.hourly?.weathercode ?? [], _ = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), v = m.findIndex((e) => e.startsWith(_) && new Date(e).getHours() >= ee);
+		v < 0 && (v = 0), n.hourly = m.slice(v, v + 12).map((e, t) => {
 			let n = new Date(e).getHours();
 			return {
-				time: he(e),
-				icon: T(g[v + t] ?? 0, n >= 6 && n < 20),
-				temp: `${Math.round(ee[v + t] ?? 0)}°`
+				time: ue(e),
+				icon: E(g[v + t] ?? 0, n >= 6 && n < 20),
+				temp: `${Math.round(h[v + t] ?? 0)}°`
 			};
 		});
 		let y = c.daily?.time ?? [], te = c.daily?.temperature_2m_max ?? [], b = c.daily?.temperature_2m_min ?? [], x = c.daily?.weathercode ?? [], S = c.daily?.precipitation_probability_max ?? [], C = c.daily?.wind_speed_10m_max ?? [];
@@ -485,7 +350,7 @@ async function _e(e, t = "es") {
 			return {
 				name: s.charAt(0).toUpperCase() + s.slice(1),
 				date: t === "en" ? `${o} ${i}` : `${i} de ${o}`,
-				icon: T(x[n + 1] ?? 0),
+				icon: E(x[n + 1] ?? 0),
 				tmin: `${Math.round(b[n + 1] ?? 0)}°`,
 				tmax: `${Math.round(te[n + 1] ?? 0)}°`,
 				pop: S[n + 1] ?? 0,
@@ -498,10 +363,10 @@ async function _e(e, t = "es") {
 }
 //#endregion
 //#region electron/services/jokesService.ts
-var ve = c(typeof __dirname < "u" ? __dirname : s(l(import.meta.url)), "../public/data/jokes"), D = [], O = "";
-async function ye(e = "es") {
+var pe = f(typeof __dirname < "u" ? __dirname : d(p(import.meta.url)), "../public/data/jokes"), O = [], k = "";
+async function me(e = "es") {
 	try {
-		let t = e === "fr" ? "jokes_fr.json" : e === "en" ? "jokes_en.json" : "jokes_es.json", n = await m.readFile(c(ve, t), "utf-8"), r = JSON.parse(n), i = [];
+		let t = e === "fr" ? "jokes_fr.json" : e === "en" ? "jokes_en.json" : "jokes_es.json", n = await _.readFile(f(pe, t), "utf-8"), r = JSON.parse(n), i = [];
 		for (let e of Object.values(r)) if (Array.isArray(e)) {
 			for (let t of e) if (typeof t == "string" && t.trim()) i.push(t.trim());
 			else if (typeof t == "object" && t) {
@@ -522,19 +387,19 @@ async function ye(e = "es") {
 		];
 	}
 }
-async function be(e = "es") {
-	if (D.length === 0 && (D = await ye(e)), D.length === 0) return e === "en" ? "No jokes available." : e === "fr" ? "Aucune blague disponible." : "No hay chistes disponibles.";
-	let t = D.length > 1 ? D.filter((e) => e !== O) : D, n = t[Math.floor(Math.random() * t.length)];
-	return O = n, n;
+async function he(e = "es") {
+	if (O.length === 0 && (O = await me(e)), O.length === 0) return e === "en" ? "No jokes available." : e === "fr" ? "Aucune blague disponible." : "No hay chistes disponibles.";
+	let t = O.length > 1 ? O.filter((e) => e !== k) : O, n = t[Math.floor(Math.random() * t.length)];
+	return k = n, n;
 }
 //#endregion
 //#region electron/services/contactsService.ts
-var xe = typeof __dirname < "u" ? __dirname : s(l(import.meta.url)), k = c(n.getPath("userData"), "contacts"), A = c(k, "list_contacts.txt"), Se = c(xe, "../public/images/default_user.png");
-function j(e) {
+var ge = typeof __dirname < "u" ? __dirname : d(p(import.meta.url)), A = f(o.getPath("userData"), "contacts"), j = f(A, "list_contacts.txt"), _e = f(ge, "../public/images/default_user.png");
+function M(e) {
 	return e.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
-function Ce(e) {
-	let t = j(e);
+function ve(e) {
+	let t = M(e);
 	for (let e of [
 		".png",
 		".jpg",
@@ -543,20 +408,20 @@ function Ce(e) {
 		".JPG",
 		".JPEG"
 	]) {
-		let n = c(k, t + e);
-		if (f.existsSync(n)) return n;
+		let n = f(A, t + e);
+		if (h.existsSync(n)) return n;
 	}
-	return Se;
+	return _e;
 }
-async function we() {
+async function ye() {
 	let e = [];
 	try {
-		let t = await m.readFile(A, "utf-8");
+		let t = await _.readFile(j, "utf-8");
 		for (let n of t.split("\n")) {
 			if (!n.includes("=")) continue;
 			let [t, r] = n.split("=", 2).map((e) => e.trim());
 			if (!t) continue;
-			let i = /^[A-Za-z0-9_.-]+$/.test(r ?? ""), a = Ce(t);
+			let i = /^[A-Za-z0-9_.-]+$/.test(r ?? ""), a = ve(t);
 			e.push({
 				displayName: t,
 				userName: r ?? "",
@@ -569,7 +434,7 @@ async function we() {
 	}
 	return e;
 }
-async function Te(e, t, n) {
+async function be(e, t, n) {
 	try {
 		let r = await fetch(e, {
 			headers: { "X-Api-Key": n },
@@ -578,16 +443,16 @@ async function Te(e, t, n) {
 		if (!r.ok) return null;
 		let i = r.headers.get("Content-Type") || "", a = ".jpg";
 		i.includes("png") ? a = ".png" : i.includes("webp") ? a = ".webp" : i.includes("gif") && (a = ".gif");
-		let o = t + a, s = c(k, o), l = await r.arrayBuffer();
-		return await m.writeFile(s, Buffer.from(l)), o;
+		let o = t + a, s = f(A, o), c = await r.arrayBuffer();
+		return await _.writeFile(s, Buffer.from(c)), o;
 	} catch (t) {
 		return console.error(`[CONTACTS] Failed to download image ${e}:`, t), null;
 	}
 }
-async function M(e, t, n) {
+async function N(e, t, n) {
 	try {
-		f.existsSync(k) || f.mkdirSync(k, { recursive: !0 });
-		let r = `${N(n, "/")}/pizarra/api/contacts/?device_id=${e}`, i = await fetch(r, {
+		h.existsSync(A) || h.mkdirSync(A, { recursive: !0 });
+		let r = `${P(n, "/")}/pizarra/api/contacts/?device_id=${e}`, i = await fetch(r, {
 			headers: { "X-Api-Key": t },
 			signal: AbortSignal.timeout(1e4)
 		});
@@ -600,11 +465,11 @@ async function M(e, t, n) {
 				user: i
 			}), a)) {
 				let e = a;
-				a.startsWith("/") && (e = N(n, "/") + "/" + Ee(a, "/")), await Te(e, j(r), t) && c++;
+				a.startsWith("/") && (e = P(n, "/") + "/" + xe(a, "/")), await be(e, M(r), t) && c++;
 			}
 		}
 		let l = s.map((e) => `${e.display}=${e.user}`).join("\n") + "\n";
-		return await m.writeFile(A, l), console.log(`[CONTACTS] Sync complete. ${s.length} contacts, ${c} images.`), {
+		return await _.writeFile(j, l), console.log(`[CONTACTS] Sync complete. ${s.length} contacts, ${c} images.`), {
 			count: s.length,
 			images: c
 		};
@@ -615,17 +480,17 @@ async function M(e, t, n) {
 		};
 	}
 }
-function N(e, t) {
+function P(e, t) {
 	let n = e;
 	for (; n.endsWith(t);) n = n.slice(0, -t.length);
 	return n;
 }
-function Ee(e, t) {
+function xe(e, t) {
 	let n = e;
 	for (; n.startsWith(t);) n = n.slice(t.length);
 	return n;
 }
-async function De(e, t, n, r) {
+async function Se(e, t, n, r) {
 	if (!e || !/^[A-Za-z0-9_.-]+$/.test(e)) return {
 		ok: !1,
 		code: "VC-USER",
@@ -642,7 +507,7 @@ async function De(e, t, n, r) {
 		detail: "Device ID no configurado"
 	};
 	try {
-		let i = `${N(r, "/")}/pizarra/api/notify/`, a = await fetch(i, {
+		let i = `${P(r, "/")}/pizarra/api/notify/`, a = await fetch(i, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -680,64 +545,64 @@ async function De(e, t, n, r) {
 }
 //#endregion
 //#region electron/services/remindersService.ts
-var P = null, F = /* @__PURE__ */ new Map(), I = null;
-function L() {
-	return P ||= c(n.getPath("userData"), "reminders.json"), P;
+var F = null, I = /* @__PURE__ */ new Map(), L = null;
+function R() {
+	return F ||= f(o.getPath("userData"), "reminders.json"), F;
 }
-async function R() {
+async function z() {
 	try {
-		let e = await m.readFile(L(), "utf-8");
+		let e = await _.readFile(R(), "utf-8");
 		return JSON.parse(e);
 	} catch {
 		return [];
 	}
 }
-async function z(e) {
-	await m.writeFile(L(), JSON.stringify(e, null, 2), "utf-8");
+async function B(e) {
+	await _.writeFile(R(), JSON.stringify(e, null, 2), "utf-8");
 }
-function B(e) {
+function V(e) {
 	let t = new Date(e.datetime).getTime() - Date.now();
 	if (t <= 0) return;
 	let n = setTimeout(async () => {
-		F.delete(e.id), I?.(e), await z((await R()).filter((t) => t.id !== e.id));
+		I.delete(e.id), L?.(e), await B((await z()).filter((t) => t.id !== e.id));
 	}, t);
-	F.set(e.id, n);
+	I.set(e.id, n);
 }
-async function Oe(e) {
-	I = e;
-	let t = await R(), n = /* @__PURE__ */ new Date(), r = [];
-	for (let e of t) new Date(e.datetime) > n && (B(e), r.push(e));
-	await z(r), console.log(`[REMINDERS] ${r.length} reminders scheduled`);
+async function Ce(e) {
+	L = e;
+	let t = await z(), n = /* @__PURE__ */ new Date(), r = [];
+	for (let e of t) new Date(e.datetime) > n && (V(e), r.push(e));
+	await B(r), console.log(`[REMINDERS] ${r.length} reminders scheduled`);
 }
-async function ke(e, t) {
+async function we(e, t) {
 	let n = {
 		id: `rem_${Date.now()}`,
 		message: e,
 		datetime: t
-	}, r = await R();
-	return r.push(n), await z(r), B(n), n;
+	}, r = await z();
+	return r.push(n), await B(r), V(n), n;
 }
-async function Ae() {
-	let e = await R(), t = /* @__PURE__ */ new Date();
+async function Te() {
+	let e = await z(), t = /* @__PURE__ */ new Date();
 	return e.filter((e) => new Date(e.datetime) > t);
 }
-async function je(e) {
-	let t = await R(), n = t.filter((t) => t.id !== e);
+async function Ee(e) {
+	let t = await z(), n = t.filter((t) => t.id !== e);
 	if (n.length === t.length) return !1;
-	await z(n);
-	let r = F.get(e);
-	return r && (clearTimeout(r), F.delete(e)), !0;
+	await B(n);
+	let r = I.get(e);
+	return r && (clearTimeout(r), I.delete(e)), !0;
 }
 //#endregion
 //#region electron/services/mqttService.ts
-var V = "rfid/read", H = "sensors/update", U = "app/nav", Me = "events/reload", Ne = "board/reload", Pe = "weather/reload", Fe = [
-	V,
+var H = "rfid/read", U = "sensors/update", W = "app/nav", G = "events/reload", De = "board/reload", Oe = "weather/reload", ke = [
 	H,
 	U,
-	Me,
-	Ne,
-	Pe
-], Ie = {
+	W,
+	G,
+	De,
+	Oe
+], Ae = {
 	1: {
 		target: "main",
 		source: "home_button"
@@ -746,11 +611,11 @@ var V = "rfid/read", H = "sensors/update", U = "app/nav", Me = "events/reload", 
 		target: "voice_cmd",
 		source: "vocal_assistant"
 	}
-}, W = {}, Le = 5e3, Re = null, ze = 0, G = null, K = null;
-function q(e) {
-	!K || K.isDestroyed() || K.webContents.send("mqtt:event", e);
+}, K = {}, je = 5e3, Me = null, Ne = 0, q = null, J = null;
+function Y(e) {
+	!J || J.isDestroyed() || J.webContents.send("mqtt:event", e);
 }
-function Be(e) {
+function Pe(e) {
 	let t;
 	try {
 		t = e?.data?.id === void 0 ? parseInt(e.id ?? 0) : parseInt(e.data.id);
@@ -759,24 +624,24 @@ function Be(e) {
 	}
 	if (!t) return;
 	let n = Date.now();
-	if (t === Re && n - ze < Le) {
+	if (t === Me && n - Ne < je) {
 		console.log(`[MQTT] RFID debounce ignored: ${t}`);
 		return;
 	}
-	Re = t, ze = n, console.log(`[MQTT] RFID card: ${t}`);
-	let r = W[t];
-	q(r ? {
-		topic: U,
+	Me = t, Ne = n, console.log(`[MQTT] RFID card: ${t}`);
+	let r = K[t];
+	Y(r ? {
+		topic: W,
 		type: "nav",
 		source: "rfid",
 		...r
 	} : {
-		topic: V,
+		topic: H,
 		type: "rfid",
 		cardId: t
 	});
 }
-function Ve(e) {
+function Fe(e) {
 	let t;
 	try {
 		t = e?.data?.PIC === void 0 ? parseInt(e.PIC ?? 0) : parseInt(e.data.PIC);
@@ -784,21 +649,21 @@ function Ve(e) {
 		t = 0;
 	}
 	if (!t) return;
-	let n = Ie[t];
-	n ? (console.log(`[MQTT] Button PIC=${t} → ${n.target}`), q({
-		topic: H,
+	let n = Ae[t];
+	n ? (console.log(`[MQTT] Button PIC=${t} → ${n.target}`), Y({
+		topic: U,
 		type: "nav",
 		target: n.target,
 		source: n.source
 	})) : console.warn(`[MQTT] Unknown button PIC: ${t}`);
 }
-function He(e) {
-	q({
-		topic: U,
+function Ie(e) {
+	Y({
+		topic: W,
 		...e
 	});
 }
-async function J() {
+async function Le() {
 	let { promises: e } = await import("node:fs"), { join: t, dirname: n } = await import("node:path"), { app: r } = await import("electron"), i = t(r.getPath("userData"), "config.local.json");
 	try {
 		let t = JSON.parse(await e.readFile(i, "utf-8")).settings?.rfid_actions || {}, n = {};
@@ -814,30 +679,30 @@ async function J() {
 				extra: { to_user: o }
 			} : n[t] = { target: "day_events" };
 		}
-		W = n, console.log(`[MQTT] Loaded ${Object.keys(W).length} RFID actions`);
+		K = n, console.log(`[MQTT] Loaded ${Object.keys(K).length} RFID actions`);
 	} catch (e) {
 		console.error("[MQTT] Failed to load RFID config:", e);
 	}
 }
-function Ue(e) {
-	K = e, J();
+function Re(e) {
+	J = e, Le();
 	let t = `mqtt://${process.env.COBIEN_MQTT_LOCAL_BROKER || "localhost"}:${parseInt(process.env.COBIEN_MQTT_LOCAL_PORT || "1883", 10)}`;
-	console.log(`[MQTT] Connecting to ${t}`), G = _.connect(t, {
+	console.log(`[MQTT] Connecting to ${t}`), q = y.connect(t, {
 		clientId: `cobien-electron-${Date.now()}`,
 		connectTimeout: 5e3,
 		reconnectPeriod: 1e4,
 		clean: !0
-	}), G.on("connect", () => {
+	}), q.on("connect", () => {
 		console.log("[MQTT] Connected");
-		for (let e of Fe) G.subscribe(e, { qos: 0 }, (t) => {
+		for (let e of ke) q.subscribe(e, { qos: 0 }, (t) => {
 			t ? console.error(`[MQTT] Subscribe error on ${e}:`, t) : console.log(`[MQTT] Subscribed: ${e}`);
 		});
-		q({
+		Y({
 			topic: "mqtt/status",
 			type: "status",
 			connected: !0
 		});
-	}), G.on("message", (e, t) => {
+	}), q.on("message", (e, t) => {
 		let n = {};
 		try {
 			n = JSON.parse(t.toString());
@@ -845,91 +710,91 @@ function Ue(e) {
 			n = {};
 		}
 		switch (e) {
-			case V:
-				Be(n);
-				break;
 			case H:
-				Ve(n);
+				Pe(n);
 				break;
 			case U:
-				He(n);
+				Fe(n);
 				break;
-			case Me:
-				q({
+			case W:
+				Ie(n);
+				break;
+			case G:
+				Y({
 					topic: e,
 					type: "reload",
 					target: "events"
 				});
 				break;
-			case Ne:
-				q({
+			case De:
+				Y({
 					topic: e,
 					type: "reload",
 					target: "board"
 				});
 				break;
-			case Pe:
-				q({
+			case Oe:
+				Y({
 					topic: e,
 					type: "reload",
 					target: "weather"
 				});
 				break;
 			case "rfid/actions_reload":
-				J();
+				Le();
 				break;
 			default: console.log(`[MQTT] Unhandled topic: ${e}`);
 		}
-	}), G.on("error", (e) => {
-		console.warn("[MQTT] Error:", e.message), q({
+	}), q.on("error", (e) => {
+		console.warn("[MQTT] Error:", e.message), Y({
 			topic: "mqtt/status",
 			type: "status",
 			connected: !1,
 			error: e.message
 		});
-	}), G.on("offline", () => {
-		console.warn("[MQTT] Offline — will retry"), q({
+	}), q.on("offline", () => {
+		console.warn("[MQTT] Offline — will retry"), Y({
 			topic: "mqtt/status",
 			type: "status",
 			connected: !1
 		});
-	}), G.on("reconnect", () => {
+	}), q.on("reconnect", () => {
 		console.log("[MQTT] Reconnecting...");
 	});
 }
-function We() {
-	G && (G.end(!0), G = null, console.log("[MQTT] Disconnected"));
+function ze() {
+	q && (q.end(!0), q = null, console.log("[MQTT] Disconnected"));
 }
 //#endregion
 //#region electron/services/hardwareService.ts
-var Y = v(u);
-async function Ge(e, t = !1) {
+var X = te(ee);
+async function Be(e, t = !1) {
 	try {
-		return t ? await Y(`pactl set-sink-volume @DEFAULT_SINK@ ${e}%`) : await Y(`pactl set-sink-volume @DEFAULT_SINK@ ${`${e >= 0 ? "+" : ""}${e}%`}`), !0;
+		return t ? await X(`pactl set-sink-volume @DEFAULT_SINK@ ${e}%`) : await X(`pactl set-sink-volume @DEFAULT_SINK@ ${`${e >= 0 ? "+" : ""}${e}%`}`), !0;
 	} catch (e) {
 		return console.error("Failed to adjust volume:", e), !1;
 	}
 }
-async function Ke() {
+async function Ve() {
 	try {
-		let { stdout: e } = await Y("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1");
+		let { stdout: e } = await X("pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '\\d+(?=%)' | head -n 1");
 		return parseInt(e.trim()) || 0;
 	} catch (e) {
 		return console.error("Failed to get volume:", e), 50;
 	}
 }
-async function qe(e) {
+async function He(e) {
 	try {
-		let { stdout: t } = await Y("xrandr --query | grep ' connected' | cut -d' ' -f1"), n = t.trim().split("\n");
+		let { stdout: t } = await X("xrandr --query | grep ' connected' | cut -d' ' -f1"), n = t.trim().split("\n");
 		if (n.length === 0) return !1;
 		for (let t of n) {
 			let n = .4;
 			if (e !== void 0) n = e;
 			else {
-				let { stdout: e } = await Y(`xrandr --verbose --output ${t} | grep -i brightness`), r = parseFloat(e.split(":")[1].trim());
+				let { stdout: e } = await X(`xrandr --verbose --output ${t} | grep -i brightness`), r = parseFloat(e.split(":")[1].trim());
 				n = r < .6 ? .7 : r < .9 ? 1 : .4;
 			}
-			await Y(`xrandr --output ${t} --brightness ${n.toFixed(2)}`);
+			await X(`xrandr --output ${t} --brightness ${n.toFixed(2)}`);
 		}
 		return !0;
 	} catch (e) {
@@ -938,39 +803,39 @@ async function qe(e) {
 }
 //#endregion
 //#region electron/main.ts
-e.config();
-var X = typeof __dirname < "u" ? __dirname : s(l(import.meta.url)), Z = null, Q = c(X, "../config/config.default.json");
-function Je(e = "es", t = "male") {
+i.config();
+var Z = typeof __dirname < "u" ? __dirname : d(p(import.meta.url)), Q = null, $ = f(Z, "../config/config.default.json");
+function Ue(e = "es", t = "male") {
 	try {
-		let r = c(X, "../config/config.default.json"), i = c(n.getPath("userData"), "config.local.json"), a = JSON.parse(f.readFileSync(r, "utf-8")), o = {};
+		let n = f(Z, "../config/config.default.json"), r = f(o.getPath("userData"), "config.local.json"), i = JSON.parse(h.readFileSync(n, "utf-8")), a = {};
 		try {
-			o = JSON.parse(f.readFileSync(i, "utf-8"));
+			a = JSON.parse(h.readFileSync(r, "utf-8"));
 		} catch {}
 		let s = {
-			...a.services,
-			...o.services
-		}, l = c(X, "../public/models/piper/bin/piper"), u = c(X, "../public/models/piper/es_ES-davefx-medium.onnx"), d = s.tts_piper_bin || l, p = s[`tts_piper_model_${e}_${t}`] || s[`tts_piper_model_${e}`], m = "";
-		if (p) if (p.startsWith("/") || p.includes(":") || p.startsWith("http")) m = p;
+			...i.services,
+			...a.services
+		}, c = f(Z, "../public/models/piper/bin/piper"), l = f(Z, "../public/models/piper/es_ES-davefx-medium.onnx"), u = s.tts_piper_bin || c, d = s[`tts_piper_model_${e}_${t}`] || s[`tts_piper_model_${e}`], p = "";
+		if (d) if (d.startsWith("/") || d.includes(":") || d.startsWith("http")) p = d;
 		else {
-			let e = c(X, "../public/models/piper", p);
-			m = (f.existsSync(e), e);
+			let e = f(Z, "../public/models/piper", d);
+			p = (h.existsSync(e), e);
 		}
-		else m = e === "fr" ? c(X, "../public/models/piper/fr_FR-siwis-medium.onnx") : e === "en" ? c(X, "../public/models/piper/en_US-amy-medium.onnx") : u;
+		else p = e === "fr" ? f(Z, "../public/models/piper/fr_FR-siwis-medium.onnx") : e === "en" ? f(Z, "../public/models/piper/en_US-amy-medium.onnx") : l;
 		return {
-			bin: d,
-			model: m
+			bin: u,
+			model: p
 		};
 	} catch (e) {
 		return console.error("Error reading piper config:", e), {
-			bin: c(X, "../public/models/piper/bin/piper"),
-			model: c(X, "../public/models/piper/es_ES-davefx-medium.onnx")
+			bin: f(Z, "../public/models/piper/bin/piper"),
+			model: f(Z, "../public/models/piper/es_ES-davefx-medium.onnx")
 		};
 	}
 }
-function Ye() {
-	r.handle("config:getWeather", async () => {
+function We() {
+	s.handle("config:getWeather", async () => {
 		try {
-			let e = JSON.parse(await m.readFile(Q, "utf-8"));
+			let e = JSON.parse(await _.readFile($, "utf-8"));
 			return {
 				catalog: e.settings.weather_city_catalog || [],
 				active: e.settings.weather_cities || [],
@@ -983,26 +848,26 @@ function Ye() {
 				primary: ""
 			};
 		}
-	}), r.handle("config:getSettings", async () => {
+	}), s.handle("config:getSettings", async () => {
 		try {
-			return JSON.parse(await m.readFile(Q, "utf-8")).settings || {};
+			return JSON.parse(await _.readFile($, "utf-8")).settings || {};
 		} catch {
 			return {};
 		}
-	}), r.handle("config:saveWeather", async (e, t) => {
+	}), s.handle("config:saveWeather", async (e, t) => {
 		try {
-			let e = JSON.parse(await m.readFile(Q, "utf-8"));
-			return e.settings.weather_city_catalog = t.catalog, e.settings.weather_cities = t.active, e.settings.weather_primary_city = t.primary, await m.writeFile(Q, JSON.stringify(e, null, 4)), !0;
+			let e = JSON.parse(await _.readFile($, "utf-8"));
+			return e.settings.weather_city_catalog = t.catalog, e.settings.weather_cities = t.active, e.settings.weather_primary_city = t.primary, await _.writeFile($, JSON.stringify(e, null, 4)), !0;
 		} catch (e) {
 			return console.error("Error saving config:", e), !1;
 		}
-	}), r.handle("events:get", async () => await ne(Q)), r.handle("weather:fetch", async (e, t, n = "es") => await _e(t, n)), r.handle("jokes:getRandom", async (e, t = "es") => await be(t)), r.handle("contacts:list", async () => await we()), r.handle("contacts:sync", async () => {
+	}), s.handle("events:get", async () => await t($)), s.handle("weather:fetch", async (e, t, n = "es") => await fe(t, n)), s.handle("jokes:getRandom", async (e, t = "es") => await he(t)), s.handle("contacts:list", async () => await ye()), s.handle("contacts:sync", async () => {
 		let e = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await M(process.env.COBIEN_DEVICE_ID || "CoBien6", e, (JSON.parse(await m.readFile(Q, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
-	}), r.handle("contacts:requestCall", async (e, t) => {
+		return await N(process.env.COBIEN_DEVICE_ID || "CoBien6", e, (JSON.parse(await _.readFile($, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+	}), s.handle("contacts:requestCall", async (e, t) => {
 		let n = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await De(t, process.env.COBIEN_DEVICE_ID || "CoBien6", n, (JSON.parse(await m.readFile(Q, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
-	}), r.handle("contacts:openCall", async (e, t) => {
+		return await Se(t, process.env.COBIEN_DEVICE_ID || "CoBien6", n, (JSON.parse(await _.readFile($, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+	}), s.handle("contacts:openCall", async (e, t) => {
 		let n = process.env.COBIEN_DEVICE_ID || "CoBien6", r = process.env.COBIEN_VIDEOCALL_DEVICE_API_KEY || "", i = process.env.COBIEN_DEVICE_VIDEOCALL_SESSION_URL || "https://portal.co-bien.eu/api/device-videocall-session/", a = process.env.COBIEN_PORTAL_VIDEOCALL_DEVICE_URL || "https://portal.co-bien.eu/videocall/device/", o = process.env.COBIEN_PORTAL_CALL_ANSWERED_URL || "https://portal.co-bien.eu/api/call-answered/", s = `${process.env.COBIEN_PORTAL_VIDEOCALL_URL || "https://portal.co-bien.eu/videocall/"}?room=${encodeURIComponent(t)}&device=${encodeURIComponent(n)}`;
 		if (r) try {
 			console.log(`[VIDEOCALL] Fetching device session for room: ${t}, device: ${n}`);
@@ -1056,43 +921,43 @@ function Ye() {
 		}), l.webContents.on("did-start-navigation", (e, t) => {
 			t.startsWith("cobien://call-ended") && (e.preventDefault(), l.close());
 		}), !0;
-	}), r.handle("reminders:add", async (e, t, n) => await ke(t, n)), r.handle("reminders:list", async () => await Ae()), r.handle("reminders:delete", async (e, t) => await je(t)), r.handle("events:addPersonal", async (e, t) => {
-		let n = JSON.parse(await m.readFile(Q, "utf-8")), r = process.env.COBIEN_DEVICE_LOCATION || n.settings?.device_location || "Bilbao", i = process.env.COBIEN_DEVICE_ID || "CoBien6", a = t.location || r;
-		return await re({
+	}), s.handle("reminders:add", async (e, t, n) => await we(t, n)), s.handle("reminders:list", async () => await Te()), s.handle("reminders:delete", async (e, t) => await Ee(t)), s.handle("events:addPersonal", async (e, t) => {
+		let n = JSON.parse(await _.readFile($, "utf-8")), i = process.env.COBIEN_DEVICE_LOCATION || n.settings?.device_location || "Bilbao", a = process.env.COBIEN_DEVICE_ID || "CoBien6", o = t.location || i;
+		return await r({
 			...t,
-			location: a,
-			deviceId: i
+			location: o,
+			deviceId: a
 		});
-	}), r.handle("events:updatePersonal", async (e, t) => await ie(t)), r.handle("events:delete", async (e, t) => await ae(t)), r.handle("board:fetch", async () => await le()), r.handle("board:delete", async (e, t) => await ue(t)), r.handle("board:read", async (e, t) => await de(t)), r.handle("board:reply", async (e, t, n) => await fe(t, n)), r.handle("config:getSystemInfo", () => ({
-		version: n.getVersion(),
+	}), s.handle("events:updatePersonal", async (t, n) => await e(n)), s.handle("events:delete", async (e, t) => await n(t)), s.handle("board:fetch", async () => await ie()), s.handle("board:delete", async (e, t) => await ae(t)), s.handle("board:read", async (e, t) => await oe(t)), s.handle("board:reply", async (e, t, n) => await se(t, n)), s.handle("config:getSystemInfo", () => ({
+		version: o.getVersion(),
 		deviceId: process.env.COBIEN_DEVICE_ID || "CoBienX",
-		contactsPath: c(n.getPath("userData"), "contacts/list_contacts.txt"),
+		contactsPath: f(o.getPath("userData"), "contacts/list_contacts.txt"),
 		defaultLanguage: process.env.COBIEN_APP_LANGUAGE || "en"
-	})), r.handle("app:restart", () => {
-		n.relaunch(), n.exit();
-	}), r.handle("app:exit", () => {
-		n.quit();
+	})), s.handle("app:restart", () => {
+		o.relaunch(), o.exit();
+	}), s.handle("app:exit", () => {
+		o.quit();
 	});
-	let e = null;
-	r.handle("tts:stop", () => {
-		if (e) {
+	let i = null;
+	s.handle("tts:stop", () => {
+		if (i) {
 			try {
-				e.kill();
+				i.kill();
 			} catch {}
-			e = null;
+			i = null;
 		}
-	}), r.handle("tts:speak", async (t, n, r = "es", i = "male", a = "piper") => {
-		if (console.log(`[TTS] Speaking (${r}/${i}) via ${a}: "${n}"`), e) {
+	}), s.handle("tts:speak", async (e, t, n = "es", r = "male", a = "piper") => {
+		if (console.log(`[TTS] Speaking (${n}/${r}) via ${a}: "${t}"`), i) {
 			try {
-				e.kill();
+				i.kill();
 			} catch {}
-			e = null;
+			i = null;
 		}
-		let o = c(h.tmpdir(), `tts_${Date.now()}.wav`), { bin: s, model: l } = Je(r, i);
-		return console.log(`[TTS] Piper Config: bin=${s}, model=${l}`), l ? new Promise((e) => {
-			let t = d(s, [
+		let o = f(v.tmpdir(), `tts_${Date.now()}.wav`), { bin: s, model: c } = Ue(n, r);
+		return console.log(`[TTS] Piper Config: bin=${s}, model=${c}`), c ? new Promise((e) => {
+			let n = m(s, [
 				"--model",
-				l,
+				c,
 				"--output_file",
 				o
 			], async (t, n, r) => {
@@ -1101,30 +966,30 @@ function Ye() {
 					return;
 				}
 				try {
-					let t = await m.readFile(o);
-					await m.unlink(o), console.log(`[TTS] Generated WAV: ${t.length} bytes`), e(t);
+					let t = await _.readFile(o);
+					await _.unlink(o), console.log(`[TTS] Generated WAV: ${t.length} bytes`), e(t);
 				} catch (t) {
 					console.error("[TTS] Error reading temp wav:", t), e(null);
 				}
 			});
-			t.stdin?.write(n), t.stdin?.end();
+			n.stdin?.write(t), n.stdin?.end();
 		}) : (console.error("TTS: No Piper model configured."), null);
-	}), r.handle("hardware:adjustVolume", async (e, t, n = !1) => await Ge(t, n)), r.handle("hardware:adjustBrightness", async (e, t) => await qe(t)), r.handle("hardware:getVolume", async () => await Ke());
+	}), s.handle("hardware:adjustVolume", async (e, t, n = !1) => await Be(t, n)), s.handle("hardware:adjustBrightness", async (e, t) => await He(t)), s.handle("hardware:getVolume", async () => await Ve());
 }
-function $() {
-	Z = new t({
+function Ge() {
+	Q = new a({
 		width: 1024,
 		height: 768,
 		fullscreen: !1,
 		webPreferences: {
-			preload: c(X, "preload.mjs"),
+			preload: f(Z, "preload.mjs"),
 			nodeIntegration: !1,
 			contextIsolation: !0
 		}
-	}), Z.setBackgroundColor("#ffffff"), process.env.VITE_DEV_SERVER_URL ? (Z.loadURL(process.env.VITE_DEV_SERVER_URL), Z.webContents.openDevTools()) : Z.loadFile(c(X, "../dist/index.html"));
+	}), Q.setBackgroundColor("#ffffff"), process.env.VITE_DEV_SERVER_URL ? (Q.loadURL(process.env.VITE_DEV_SERVER_URL), Q.webContents.openDevTools()) : Q.loadFile(f(Z, "../dist/index.html"));
 }
-n.whenReady().then(() => {
-	o.defaultSession.setPermissionRequestHandler((e, t, n) => {
+o.whenReady().then(() => {
+	u.defaultSession.setPermissionRequestHandler((e, t, n) => {
 		[
 			"media",
 			"geolocation",
@@ -1132,27 +997,27 @@ n.whenReady().then(() => {
 			"midiSysex",
 			"openExternal"
 		].includes(t) ? n(!0) : n(!1);
-	}), o.defaultSession.setPermissionCheckHandler((e, t, n) => [
+	}), u.defaultSession.setPermissionCheckHandler((e, t, n) => [
 		"media",
 		"geolocation",
 		"notifications",
 		"midiSysex",
 		"openExternal"
-	].includes(t)), a.handle("cobien-media", (e) => {
+	].includes(t)), l.handle("cobien-media", (e) => {
 		let t = e.url.replace("cobien-media://", "");
-		return i.fetch("file://" + t);
-	}), Ye();
-	let e = (JSON.parse(f.readFileSync(Q, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), r = process.env.COBIEN_NOTIFY_API_KEY || "";
-	if (M(process.env.COBIEN_DEVICE_ID || "CoBien6", r, e).catch(console.error), $(), Oe((e) => {
-		Z && Z.webContents.send("reminder:fire", e);
-	}), Z) {
-		let e = c(n.getPath("userData"), "config.local.json");
-		te(Z, Q, e), Ue(Z);
+		return c.fetch("file://" + t);
+	}), We();
+	let e = (JSON.parse(h.readFileSync($, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), t = process.env.COBIEN_NOTIFY_API_KEY || "";
+	if (N(process.env.COBIEN_DEVICE_ID || "CoBien6", t, e).catch(console.error), Ge(), Ce((e) => {
+		Q && Q.webContents.send("reminder:fire", e);
+	}), Q) {
+		let e = f(o.getPath("userData"), "config.local.json");
+		x(Q, $, e), Re(Q);
 	}
-	n.on("activate", () => {
-		t.getAllWindows().length === 0 && $();
+	o.on("activate", () => {
+		a.getAllWindows().length === 0 && Ge();
 	});
-}), n.on("window-all-closed", () => {
-	We(), process.platform !== "darwin" && n.quit();
+}), o.on("window-all-closed", () => {
+	ze(), process.platform !== "darwin" && o.quit();
 });
 //#endregion

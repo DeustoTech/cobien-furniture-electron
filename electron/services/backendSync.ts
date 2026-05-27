@@ -82,9 +82,21 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
       
       if (notifications.length > 0) {
         console.log(`[POLL] Received ${notifications.length} notifications`)
+        let reloadEvents = false
         notifications.forEach((notif: any) => {
           mainWindow.webContents.send('backend:notification', notif)
+          const type = (notif.type || '').toLowerCase()
+          if (type === 'new_event' || type === 'events_reload') {
+            reloadEvents = true
+          }
         })
+
+        if (reloadEvents) {
+          console.log('[POLL] Event notification received. Refreshing local events cache...')
+          import('./eventsMongo').then(({ getEvents }) => {
+            getEvents(configPath).catch(err => console.error('[POLL] Failed to background-refresh events:', err))
+          }).catch(err => console.error('[POLL] Failed to dynamically import eventsMongo:', err))
+        }
       }
     }
   } catch(e) {
