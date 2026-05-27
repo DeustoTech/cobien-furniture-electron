@@ -201,10 +201,10 @@ async function openBrightnessPopup() {
     <div class="footer-controls">
       <div class="footer-left">
         <button class="control-box" @click="openVolumePopup">
-          <img src="/images/volume_ctrl.png" alt="Volume" />
+          <img src="/svg/volume.svg" alt="Volume" />
         </button>
         <button class="control-box" @click="openBrightnessPopup">
-          <img src="/images/brightness_ctrl.png" alt="Brightness" />
+          <img src="/svg/brightness.svg" alt="Brightness" />
         </button>
       </div>
 
