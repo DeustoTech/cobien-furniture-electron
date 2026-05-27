@@ -73,21 +73,35 @@ async function w() {
 	if (C) return C;
 	let e = process.env.MONGO_URI || "";
 	if (!e) throw Error("MONGO_URI is missing");
-	return C = new ee(e), await C.connect(), C;
+	let t = new ee(e, {
+		serverSelectionTimeoutMS: 5e3,
+		connectTimeoutMS: 5e3
+	});
+	try {
+		return await t.connect(), C = t, C;
+	} catch (e) {
+		throw C = null, e;
+	}
 }
 async function ne(e) {
+	let t = {}, n = "CoBien6";
 	try {
-		let t = JSON.parse(await m.readFile(e, "utf-8")), n = process.env.COBIEN_DEVICE_ID || t.settings?.device_id || "CoBien6", r = (await w()).db("LabasAppDB"), i = r.collection("eventos"), a = await r.collection("devices").findOne({ device_id: n }) || {}, o = String(a.event_visibility_scope || "all").trim().toLowerCase(), s = [], c = a.event_regions || [];
-		typeof c == "string" ? s = c.split(/\r?\n/).map((e) => e.trim().toLowerCase()).filter(Boolean) : Array.isArray(c) && (s = c.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
-		let l = process.env.COBIEN_DEVICE_LOCATION || a.location || t.settings?.device_location || "Bilbao", u = { $or: [{ $or: [
+		t = JSON.parse(await m.readFile(e, "utf-8")), n = process.env.COBIEN_DEVICE_ID || t.settings?.device_id || "CoBien6";
+	} catch (e) {
+		console.error("[EVENTS] Error loading settings config:", e);
+	}
+	try {
+		let e = (await w()).db("LabasAppDB"), r = e.collection("eventos"), i = await e.collection("devices").findOne({ device_id: n }) || {}, a = String(i.event_visibility_scope || "all").trim().toLowerCase(), o = [], s = i.event_regions || [];
+		typeof s == "string" ? o = s.split(/\r?\n/).map((e) => e.trim().toLowerCase()).filter(Boolean) : Array.isArray(s) && (o = s.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
+		let c = process.env.COBIEN_DEVICE_LOCATION || i.location || t.settings?.device_location || "Bilbao", l = { $or: [{ $or: [
 			{ audience: "all" },
 			{ audience: { $exists: !1 } },
 			{ audience: null }
 		] }, {
 			audience: "device",
 			$or: [{ target_device: n }, { target_devices: n }]
-		}] }, d = await i.find(u).toArray(), f = l.trim().toLowerCase();
-		return d.map((e) => {
+		}] }, u = await r.find(l).toArray(), d = c.trim().toLowerCase();
+		return u.map((e) => {
 			let t = e.audience || "all";
 			t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public";
 			let n = t === "device" ? "#FF3B30" : "#1E90FF";
@@ -95,7 +109,7 @@ async function ne(e) {
 			let r = (e.location || "").trim();
 			if (t === "public" && r) {
 				let e = r.toLowerCase(), t = !1;
-				if (t = e === f ? !0 : o === "region" ? (s.length > 0 ? s : f ? [f] : []).includes(e) : !0, !t) return null;
+				if (t = e === d ? !0 : a === "region" ? (o.length > 0 ? o : d ? [d] : []).includes(e) : !0, !t) return null;
 			}
 			let i = e.date || e.fecha_inicio || "";
 			if (i instanceof Date) {
@@ -107,7 +121,7 @@ async function ne(e) {
 				date: i,
 				title: e.title || e.titulo || "Sin título",
 				description: e.description || e.descripcion || "Sin descripción",
-				location: r || l,
+				location: r || c,
 				audience: t,
 				color: n,
 				target_device: e.target_device || "",
@@ -118,7 +132,37 @@ async function ne(e) {
 			};
 		}).filter((e) => e !== null);
 	} catch (e) {
-		return console.error("[EVENTS] Error fetching from MongoDB:", e), [];
+		console.warn("[EVENTS] MongoDB connection/query failed. Fallback to REST API:", e.message || e), C = null;
+		try {
+			let e = (process.env.COBIEN_BACKEND_BASE_URL || t.services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), r = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || t.services?.notify_api_key || "", i = process.env.COBIEN_DEVICE_LOCATION || t.settings?.device_location || "Bilbao", a = `${e}/pizarra/api/events/?device_id=${n}&location=${encodeURIComponent(i)}`;
+			console.log(`[EVENTS] Fetching events from REST API fallback: ${a}`);
+			let o = await fetch(a, {
+				method: "GET",
+				headers: { "X-API-KEY": r }
+			});
+			if (!o.ok) throw Error(`REST API returned status ${o.status}`);
+			let s = await o.json();
+			if (!s.ok || !Array.isArray(s.events)) throw Error(s.error || "Invalid API response format");
+			return console.log(`[EVENTS] REST API fallback fetched ${s.events.length} events successfully`), s.events.map((e) => {
+				let t = e.audience || "all";
+				return t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public", {
+					id: e.id || "",
+					date: e.date || "",
+					title: e.title || "Sin título",
+					description: e.description || "",
+					location: e.location || i,
+					audience: t,
+					color: t === "device" ? "#FF3B30" : "#1E90FF",
+					target_device: e.target_device || "",
+					created_by: e.created_by || "",
+					all_day: e.all_day !== !1,
+					start_time: e.start_time || "",
+					end_time: e.end_time || ""
+				};
+			});
+		} catch (e) {
+			return console.error("[EVENTS] Both MongoDB and REST API fallback failed:", e.message || e), [];
+		}
 	}
 }
 async function re(e) {

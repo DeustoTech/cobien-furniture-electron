@@ -7,16 +7,33 @@ async function getClient() {
   if (cachedClient) return cachedClient
   const uri = process.env.MONGO_URI || ''
   if (!uri) throw new Error('MONGO_URI is missing')
-  cachedClient = new MongoClient(uri)
-  await cachedClient.connect()
-  return cachedClient
+  
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000
+  })
+  
+  try {
+    await client.connect()
+    cachedClient = client
+    return cachedClient
+  } catch (err) {
+    cachedClient = null
+    throw err
+  }
 }
 
 export async function getEvents(configPath: string) {
+  let defaultData: any = {}
+  let deviceId = 'CoBien6'
   try {
-    const defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    const deviceId = process.env.COBIEN_DEVICE_ID || defaultData.settings?.device_id || 'CoBien6'
-    
+    defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    deviceId = process.env.COBIEN_DEVICE_ID || defaultData.settings?.device_id || 'CoBien6'
+  } catch (e) {
+    console.error('[EVENTS] Error loading settings config:', e)
+  }
+
+  try {
     const client = await getClient()
     const db = client.db('LabasAppDB')
     const collection = db.collection('eventos')
@@ -113,9 +130,64 @@ export async function getEvents(configPath: string) {
     }).filter(e => e !== null)
 
     return events
-  } catch(e) {
-    console.error('[EVENTS] Error fetching from MongoDB:', e)
-    return []
+  } catch(e: any) {
+    console.warn('[EVENTS] MongoDB connection/query failed. Fallback to REST API:', e.message || e)
+    cachedClient = null // Clear cached client so next attempt tries a fresh connection
+
+    try {
+      const baseUrl = (process.env.COBIEN_BACKEND_BASE_URL || defaultData.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+      const apiKey = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || defaultData.services?.notify_api_key || ''
+      const locationName = process.env.COBIEN_DEVICE_LOCATION || defaultData.settings?.device_location || 'Bilbao'
+
+      const url = `${baseUrl}/pizarra/api/events/?device_id=${deviceId}&location=${encodeURIComponent(locationName)}`
+      console.log(`[EVENTS] Fetching events from REST API fallback: ${url}`)
+      
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': apiKey
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error(`REST API returned status ${res.status}`)
+      }
+
+      const data = await res.json()
+      if (!data.ok || !Array.isArray(data.events)) {
+        throw new Error(data.error || 'Invalid API response format')
+      }
+
+      console.log(`[EVENTS] REST API fallback fetched ${data.events.length} events successfully`)
+
+      // Normalize REST API events to match expected frontend schema
+      const normalizedEvents = data.events.map((evt: any) => {
+        let audience = evt.audience || 'all'
+        if (typeof audience === 'string' && audience.toLowerCase() === 'device') audience = 'device'
+        else audience = 'public'
+
+        return {
+          id: evt.id || '',
+          date: evt.date || '',
+          title: evt.title || 'Sin título',
+          description: evt.description || '',
+          location: evt.location || locationName,
+          audience: audience,
+          color: audience === 'device' ? '#FF3B30' : '#1E90FF',
+          target_device: evt.target_device || '',
+          created_by: evt.created_by || '',
+          all_day: evt.all_day !== false,
+          start_time: evt.start_time || '',
+          end_time: evt.end_time || ''
+        }
+      })
+
+      return normalizedEvents
+
+    } catch (restError: any) {
+      console.error('[EVENTS] Both MongoDB and REST API fallback failed:', restError.message || restError)
+      return []
+    }
   }
 }
 
