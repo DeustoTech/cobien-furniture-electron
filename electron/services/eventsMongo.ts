@@ -119,11 +119,12 @@ export async function getEvents(configPath: string) {
         title: event.title || event.titulo || 'Sin título',
         description: event.description || event.descripcion || 'Sin descripción',
         location: loc || locationName,
+        venue: event.venue || '',
         audience: audience,
         color: color,
         target_device: event.target_device || '',
         created_by: event.created_by || '',
-        all_day: event.all_day !== false,
+        all_day: event.all_day === true || (event.all_day !== false && event.all_day !== 'false' && !event.start_time),
         start_time: event.start_time || '',
         end_time: event.end_time || ''
       }
@@ -172,11 +173,12 @@ export async function getEvents(configPath: string) {
           title: evt.title || 'Sin título',
           description: evt.description || '',
           location: evt.location || locationName,
+          venue: evt.venue || '',
           audience: audience,
           color: audience === 'device' ? '#FF3B30' : '#1E90FF',
           target_device: evt.target_device || '',
           created_by: evt.created_by || '',
-          all_day: evt.all_day !== false,
+          all_day: evt.all_day === true || (evt.all_day !== false && evt.all_day !== 'false' && !evt.start_time),
           start_time: evt.start_time || '',
           end_time: evt.end_time || ''
         }

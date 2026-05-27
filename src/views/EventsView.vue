@@ -500,7 +500,12 @@ function goBack() {
                 <h3 class="e-title">{{ evt.title }}</h3>
                 <p class="e-desc">{{ evt.description }}</p>
                 <div class="e-footer">
-                  <span class="e-loc" v-if="evt.location && evt.location.trim().length > 0">📍 {{ evt.location }}</span>
+                  <span class="e-loc" v-if="evt.location && evt.location.trim().length > 0">
+                    📍 {{ evt.location }}{{ evt.venue && evt.venue.trim().length > 0 ? ' - ' + evt.venue : '' }}
+                  </span>
+                  <span class="e-loc" v-else-if="evt.venue && evt.venue.trim().length > 0">
+                    📍 {{ evt.venue }}
+                  </span>
                   <span class="e-loc" v-else></span> <!-- Spacer -->
                   <div class="e-badges">
                     <span class="badge" :class="evt.audience">{{ evt.audience === 'device' ? t('events.personal') : t('events.public') }}</span>

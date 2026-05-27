@@ -122,11 +122,12 @@ async function ne(e) {
 				title: e.title || e.titulo || "Sin título",
 				description: e.description || e.descripcion || "Sin descripción",
 				location: r || c,
+				venue: e.venue || "",
 				audience: t,
 				color: n,
 				target_device: e.target_device || "",
 				created_by: e.created_by || "",
-				all_day: e.all_day !== !1,
+				all_day: e.all_day === !0 || e.all_day !== !1 && e.all_day !== "false" && !e.start_time,
 				start_time: e.start_time || "",
 				end_time: e.end_time || ""
 			};
@@ -151,11 +152,12 @@ async function ne(e) {
 					title: e.title || "Sin título",
 					description: e.description || "",
 					location: e.location || i,
+					venue: e.venue || "",
 					audience: t,
 					color: t === "device" ? "#FF3B30" : "#1E90FF",
 					target_device: e.target_device || "",
 					created_by: e.created_by || "",
-					all_day: e.all_day !== !1,
+					all_day: e.all_day === !0 || e.all_day !== !1 && e.all_day !== "false" && !e.start_time,
 					start_time: e.start_time || "",
 					end_time: e.end_time || ""
 				};
