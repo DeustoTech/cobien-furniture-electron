@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { startListening, stopListening } from '../services/voiceRecognizer'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -80,13 +81,27 @@ async function speak(text: string) {
 
 async function listenWithVosk(language: string = locale.value.split('-')[0]): Promise<string | null> {
   voiceFlowStep.value = 'listening'
-  try {
-    const text = await (window as any).config.sttListen(language)
-    return text || null
-  } catch (e) {
-    console.error('STT Error:', e)
-    return null
-  }
+  return new Promise((resolve) => {
+    startListening(
+      language,
+      // onResult
+      (text) => {
+        stopListening()
+        resolve(text || null)
+      },
+      // onPartial
+      (partialText) => {
+        if (partialText) {
+          voiceFlowMessage.value = `🎤 ${partialText}...`
+        }
+      },
+      // onLevel
+      () => {}
+    ).catch((err) => {
+      console.error('ASR start error in calendar events:', err)
+      resolve(null)
+    })
+  })
 }
 
 async function startVoiceAddFlow(dateStr: string) {
@@ -165,6 +180,9 @@ async function startVoiceAddFlow(dateStr: string) {
 function cancelVoiceFlow() {
   voiceFlowActive.value = false
   voiceFlowStep.value = 'idle'
+  try {
+    stopListening()
+  } catch(e) {}
 }
 
 function startVoiceAdd() {
