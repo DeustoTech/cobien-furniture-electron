@@ -26,7 +26,12 @@ function setEngine(engine: 'piper') {
 
 
 async function previewVoice(l: string, g: 'male' | 'female') {
-  const text = 'Hello! This will be my voice'
+  let text = 'Hello! This will be my voice'
+  if (l === 'es') {
+    text = '¡Hola! Esta será mi voz'
+  } else if (l === 'fr') {
+    text = 'Bonjour ! Ce sera ma voix'
+  }
 
   try {
     const buffer = await (window as any).config.ttsSpeak(text, l, g, ttsEngine.value)
