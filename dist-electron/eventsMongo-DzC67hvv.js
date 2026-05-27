@@ -11,14 +11,14 @@ var a = Object.defineProperty, o = /* @__PURE__ */ ((e, t) => {
 	});
 	return t || a(n, Symbol.toStringTag, { value: "Module" }), n;
 })({
-	addPersonalEvent: () => v,
-	deleteEvent: () => b,
-	getEvents: () => _,
-	updatePersonalEvent: () => y
-}), s = null, c = () => t(e.getPath("userData"), "events.local.json"), l = () => t(e.getPath("userData"), "events.pending.json");
-async function u() {
+	addPersonalEvent: () => b,
+	deleteEvent: () => S,
+	getEvents: () => y,
+	updatePersonalEvent: () => x
+}), s = null, c = 0, l = 15e3, u = () => t(e.getPath("userData"), "events.local.json"), d = () => t(e.getPath("userData"), "events.pending.json");
+async function f() {
 	try {
-		let e = await n.readFile(c(), "utf-8"), t = JSON.parse(e), r = (await f()).map((e) => {
+		let e = await n.readFile(u(), "utf-8"), t = JSON.parse(e), r = (await m()).map((e) => {
 			let t = e.audience || "all";
 			return t = typeof t == "string" && t.toLowerCase() === "device" ? "device" : "public", {
 				id: e.id || e._id?.toString() || String(Math.random()),
@@ -40,32 +40,32 @@ async function u() {
 		for (let e of r) i.some((t) => t.id === e.id) || i.push(e);
 		return i;
 	} catch {
-		return await f();
+		return await m();
 	}
 }
-async function d(e) {
+async function p(e) {
 	try {
-		await n.writeFile(c(), JSON.stringify(e, null, 2));
+		await n.writeFile(u(), JSON.stringify(e, null, 2));
 	} catch (e) {
 		console.error("[EVENTS] Error writing local cache:", e);
 	}
 }
-async function f() {
+async function m() {
 	try {
-		let e = await n.readFile(l(), "utf-8");
+		let e = await n.readFile(d(), "utf-8");
 		return JSON.parse(e);
 	} catch {
 		return [];
 	}
 }
-async function p(e) {
+async function h(e) {
 	try {
-		await n.writeFile(l(), JSON.stringify(e, null, 2));
+		await n.writeFile(d(), JSON.stringify(e, null, 2));
 	} catch (e) {
 		console.error("[EVENTS] Error writing pending events:", e);
 	}
 }
-async function m() {
+async function g() {
 	if (s) return s;
 	let e = process.env.MONGO_URI || "";
 	if (!e) throw Error("MONGO_URI is missing");
@@ -79,11 +79,11 @@ async function m() {
 		throw s = null, e;
 	}
 }
-async function h() {
-	let e = await f();
+async function _() {
+	let e = await m();
 	if (e.length === 0) return;
 	console.log(`[EVENTS] Found ${e.length} pending events to sync...`);
-	let t = (await m()).db("LabasAppDB").collection("eventos"), n = [];
+	let t = (await g()).db("LabasAppDB").collection("eventos"), n = [];
 	for (let r of e) try {
 		let [e, n, a] = r.date.split("-").map(Number), o = new Date(a, n - 1, e), s = {
 			_id: new i(r.id),
@@ -103,15 +103,15 @@ async function h() {
 	} catch (e) {
 		e.code === 11e3 ? console.log(`[EVENTS] Event ${r.title} already exists in DB. Discarding from queue.`) : (console.warn(`[EVENTS] Failed to sync event ${r.title}, will retry next time:`, e.message || e), n.push(r));
 	}
-	await p(n);
+	await h(n);
 }
-async function g(e, t, n) {
-	await h().catch((e) => {
+async function v(e, t, n) {
+	await _().catch((e) => {
 		console.warn("[EVENTS] Failed to sync pending events:", e.message || e);
 	});
 	let r = [], i = [], a = !1;
 	try {
-		let e = (await m()).db("LabasAppDB"), o = e.collection("eventos"), s = await e.collection("devices").findOne({ device_id: t }) || {}, c = String(s.event_visibility_scope || "all").trim().toLowerCase(), l = [], u = s.event_regions || [];
+		let e = (await g()).db("LabasAppDB"), o = e.collection("eventos"), s = await e.collection("devices").findOne({ device_id: t }) || {}, c = String(s.event_visibility_scope || "all").trim().toLowerCase(), l = [], u = s.event_regions || [];
 		typeof u == "string" ? l = u.split(/\r?\n/).map((e) => e.trim().toLowerCase()).filter(Boolean) : Array.isArray(u) && (l = u.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
 		let d = process.env.COBIEN_DEVICE_LOCATION || s.location || n.settings?.device_location || "Bilbao", f = { $or: [{ $or: [
 			{ audience: "all" },
@@ -187,26 +187,26 @@ async function g(e, t, n) {
 		}
 	}
 	if (a) {
-		await d(i), console.log(`[EVENTS] Background fetch and cache update complete. Found ${i.length} events.`);
+		await p(i), console.log(`[EVENTS] Background fetch and cache update complete. Found ${i.length} events.`), c = Date.now();
 		let { BrowserWindow: e } = await import("electron");
 		e.getAllWindows().forEach((e) => {
 			e.webContents.send("events:changed");
 		});
 	}
 }
-async function _(e) {
+async function y(e) {
 	let t = {}, r = "CoBien6";
 	try {
 		t = JSON.parse(await n.readFile(e, "utf-8")), r = process.env.COBIEN_DEVICE_ID || t.settings?.device_id || "CoBien6";
 	} catch (e) {
 		console.error("[EVENTS] Error loading settings config:", e);
 	}
-	let i = await u();
-	return setTimeout(() => {
-		g(e, r, t).catch(console.error);
-	}, 10), i;
+	let i = await f(), a = Date.now();
+	return a - c > l ? (c = a, setTimeout(() => {
+		v(e, r, t).catch(console.error);
+	}, 10)) : console.log("[EVENTS] Skipping background fetch (rate-limited)"), i;
 }
-async function v(e) {
+async function b(e) {
 	let t = new i(), n = {
 		id: t.toString(),
 		title: e.title,
@@ -221,7 +221,7 @@ async function v(e) {
 		created_at: /* @__PURE__ */ new Date()
 	};
 	try {
-		let r = (await m()).db("LabasAppDB").collection("eventos"), [i, a, o] = e.date.split("-").map(Number), s = new Date(o, a - 1, i);
+		let r = (await g()).db("LabasAppDB").collection("eventos"), [i, a, o] = e.date.split("-").map(Number), s = new Date(o, a - 1, i);
 		if (isNaN(s.getTime())) return console.error("[EVENTS] Invalid date provided:", e.date), !1;
 		let c = {
 			_id: t,
@@ -238,44 +238,53 @@ async function v(e) {
 			created_at: /* @__PURE__ */ new Date()
 		};
 		await r.insertOne(c), console.log(`[EVENTS] Personal event added to DB: ${e.title}`);
-		let l = await u();
-		return l.push(n), await d(l), !0;
+		let l = await f();
+		return l.push(n), await p(l), !0;
 	} catch (t) {
 		console.warn("[EVENTS] MongoDB offline/failed, queuing personal event for sync:", t.message || t), s = null;
 		try {
-			let t = await f();
-			t.push(n), await p(t);
-			let r = await u();
-			return r.push(n), await d(r), console.log(`[EVENTS] Offline event saved locally: ${e.title}`), !0;
+			let t = await m();
+			t.push(n), await h(t);
+			let r = await f();
+			return r.push(n), await p(r), console.log(`[EVENTS] Offline event saved locally: ${e.title}`), !0;
 		} catch (e) {
 			return console.error("[EVENTS] Failed to save offline event locally:", e), !1;
 		}
 	}
 }
-async function y(e) {
+async function x(e) {
+	let t = !1;
 	try {
-		let t = await (await m()).db("LabasAppDB").collection("eventos").updateOne({ _id: new i(e.id) }, { $set: {
+		let n = (await g()).db("LabasAppDB").collection("eventos"), r = i.isValid(e.id) ? new i(e.id) : e.id, a = await n.updateOne({ _id: r }, { $set: {
 			title: e.title,
 			description: e.description,
 			location: e.location
 		} });
-		console.log(`[EVENTS] Personal event updated: ${e.id}`);
-		try {
-			let t = await u(), n = t.findIndex((t) => t.id === e.id);
-			n !== -1 && (t[n].title = e.title, t[n].description = e.description, t[n].location = e.location, await d(t));
-		} catch (e) {
-			console.error("[EVENTS] Failed to update local cache:", e);
-		}
-		return t.modifiedCount > 0;
+		console.log(`[EVENTS] Personal event update query completed. Matched: ${a.matchedCount}, Modified: ${a.modifiedCount}`), t = a.matchedCount > 0;
 	} catch (e) {
-		return console.error("[EVENTS] Error updating personal event:", e.message || e), s = null, !1;
+		console.warn("[EVENTS] MongoDB update query failed, falling back to local edit:", e.message || e), s = null;
 	}
-}
-async function b(e) {
+	let n = !1;
 	try {
-		let t = await (await m()).db("LabasAppDB").collection("eventos").deleteOne({ _id: new i(e) });
+		let t = await f(), r = t.findIndex((t) => t.id === e.id);
+		r !== -1 && (t[r].title = e.title, t[r].description = e.description, t[r].location = e.location, await p(t), n = !0);
+	} catch (e) {
+		console.error("[EVENTS] Failed to update local cache:", e);
+	}
+	let r = !1;
+	try {
+		let t = await m(), n = t.findIndex((t) => t.id === e.id);
+		n !== -1 && (t[n].title = e.title, t[n].description = e.description, t[n].location = e.location, await h(t), r = !0, console.log(`[EVENTS] Offline pending event updated locally: ${e.title}`));
+	} catch (e) {
+		console.error("[EVENTS] Failed to update pending queue:", e);
+	}
+	return t || n || r;
+}
+async function S(e) {
+	try {
+		let t = await (await g()).db("LabasAppDB").collection("eventos").deleteOne({ _id: new i(e) });
 		try {
-			await d((await u()).filter((t) => t.id !== e));
+			await p((await f()).filter((t) => t.id !== e));
 		} catch (e) {
 			console.error("[EVENTS] Failed to remove from local cache:", e);
 		}
@@ -285,4 +294,4 @@ async function b(e) {
 	}
 }
 //#endregion
-export { y as a, _ as i, b as n, o as r, v as t };
+export { x as a, y as i, S as n, o as r, b as t };

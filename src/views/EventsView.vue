@@ -1137,14 +1137,27 @@ function goBack() {
   min-height: 5rem;
 }
 
+.voice-modal-footer {
+  width: 100%;
+}
+
 .cancel-voice-btn {
-  background: #eee;
+  width: 100%;
+  padding: 2.5rem;
+  border-radius: 20px;
+  border: 4px solid #000;
+  background: #fff;
+  font-size: 2.4rem;
+  font-weight: 900;
   color: #000;
-  border: none;
-  border-radius: 15px;
-  padding: 0.8rem 2.5rem;
-  font-size: 1.2rem;
-  font-weight: 800;
   cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.cancel-voice-btn:hover {
+  background: #000;
+  color: #fff;
 }
 </style>

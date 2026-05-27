@@ -1,4 +1,4 @@
-import { a as e, i as t, n, t as r } from "./eventsMongo-BM_eHlBl.js";
+import { a as e, i as t, n, t as r } from "./eventsMongo-DzC67hvv.js";
 import i from "dotenv";
 import { BrowserWindow as a, app as o, ipcMain as s, net as c, protocol as l, session as u } from "electron";
 import { dirname as d, join as f } from "node:path";
@@ -67,7 +67,7 @@ async function w(e, t, n) {
 					e.webContents.send("backend:notification", t);
 					let n = (t.type || "").toLowerCase();
 					(n === "new_event" || n === "events_reload") && (r = !0);
-				}), r && (console.log("[POLL] Event notification received. Refreshing local events cache..."), import("./eventsMongo-BM_eHlBl.js").then((e) => e.r).then(({ getEvents: e }) => {
+				}), r && (console.log("[POLL] Event notification received. Refreshing local events cache..."), import("./eventsMongo-DzC67hvv.js").then((e) => e.r).then(({ getEvents: e }) => {
 					e(t).catch((e) => console.error("[POLL] Failed to background-refresh events:", e));
 				}).catch((e) => console.error("[POLL] Failed to dynamically import eventsMongo:", e)));
 			}

@@ -197,7 +197,7 @@ export function stopListening(): void {
     mediaStream = null
   }
   if (currentRecognizer) {
-    currentRecognizer.destroy()
+    currentRecognizer.remove()
     currentRecognizer = null
   }
 }
@@ -291,7 +291,7 @@ export function stopWakeWordDetection(): void {
     mediaStream = null
   }
   if (currentRecognizer) {
-    currentRecognizer.destroy()
+    currentRecognizer.remove()
     currentRecognizer = null
   }
 }

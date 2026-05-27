@@ -4,6 +4,8 @@ import { app } from 'electron'
 import { join } from 'node:path'
 
 let cachedClient: MongoClient | null = null
+let lastFetchTime = 0
+const FETCH_COOLDOWN_MS = 15000 // 15 seconds
 
 // Helper functions for local caching and offline pending sync queue
 const getCachePath = () => join(app.getPath('userData'), 'events.local.json')
@@ -299,6 +301,9 @@ async function fetchAndUpdateEvents(configPath: string, deviceId: string, defaul
     await writeLocalCache(fetchedEvents)
     console.log(`[EVENTS] Background fetch and cache update complete. Found ${fetchedEvents.length} events.`)
     
+    // Update fetch timestamp
+    lastFetchTime = Date.now()
+
     // Notify frontend to reload silently
     const { BrowserWindow } = await import('electron')
     BrowserWindow.getAllWindows().forEach(win => {
@@ -321,10 +326,17 @@ export async function getEvents(configPath: string) {
   const cachedEvents = await readLocalCache()
   
   // 2. Perform database fetch asynchronously in the background
-  // to update the cache and notify the frontend when done
-  setTimeout(() => {
-    fetchAndUpdateEvents(configPath, deviceId, defaultData).catch(console.error)
-  }, 10)
+  // to update the cache and notify the frontend when done,
+  // but rate-limit it to prevent infinite update loops!
+  const now = Date.now()
+  if (now - lastFetchTime > FETCH_COOLDOWN_MS) {
+    lastFetchTime = now
+    setTimeout(() => {
+      fetchAndUpdateEvents(configPath, deviceId, defaultData).catch(console.error)
+    }, 10)
+  } else {
+    console.log('[EVENTS] Skipping background fetch (rate-limited)')
+  }
 
   return cachedEvents
 }
@@ -422,13 +434,18 @@ export async function updatePersonalEvent(payload: {
   description: string
   location: string
 }) {
+  let matchedInDb = false
+
   try {
     const client = await getClient()
     const db = client.db('LabasAppDB')
     const collection = db.collection('eventos')
 
+    // Safeguard for ObjectId
+    const queryId = ObjectId.isValid(payload.id) ? new ObjectId(payload.id) : payload.id
+
     const result = await collection.updateOne(
-      { _id: new ObjectId(payload.id) },
+      { _id: queryId },
       {
         $set: {
           title: payload.title,
@@ -437,28 +454,50 @@ export async function updatePersonalEvent(payload: {
         }
       }
     )
-    console.log(`[EVENTS] Personal event updated: ${payload.id}`)
+    console.log(`[EVENTS] Personal event update query completed. Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`)
     
-    // Update local cache as well if found
-    try {
-      const cache = await readLocalCache()
-      const idx = cache.findIndex(e => e.id === payload.id)
-      if (idx !== -1) {
-        cache[idx].title = payload.title
-        cache[idx].description = payload.description
-        cache[idx].location = payload.location
-        await writeLocalCache(cache)
-      }
-    } catch (err) {
-      console.error('[EVENTS] Failed to update local cache:', err)
-    }
-
-    return result.modifiedCount > 0
+    // If it matched in MongoDB, we consider it a success
+    matchedInDb = result.matchedCount > 0
   } catch(e: any) {
-    console.error('[EVENTS] Error updating personal event:', e.message || e)
+    console.warn('[EVENTS] MongoDB update query failed, falling back to local edit:', e.message || e)
     cachedClient = null
-    return false
   }
+
+  // Update local cache as well so it's consistent
+  let updatedLocal = false
+  try {
+    const cache = await readLocalCache()
+    const idx = cache.findIndex(e => e.id === payload.id)
+    if (idx !== -1) {
+      cache[idx].title = payload.title
+      cache[idx].description = payload.description
+      cache[idx].location = payload.location
+      await writeLocalCache(cache)
+      updatedLocal = true
+    }
+  } catch (err) {
+    console.error('[EVENTS] Failed to update local cache:', err)
+  }
+
+  // Check if it's a pending offline event and update it in the pending queue
+  let updatedPending = false
+  try {
+    const pending = await readPendingEvents()
+    const pIdx = pending.findIndex(e => e.id === payload.id)
+    if (pIdx !== -1) {
+      pending[pIdx].title = payload.title
+      pending[pIdx].description = payload.description
+      pending[pIdx].location = payload.location
+      await writePendingEvents(pending)
+      updatedPending = true
+      console.log(`[EVENTS] Offline pending event updated locally: ${payload.title}`)
+    }
+  } catch (err) {
+    console.error('[EVENTS] Failed to update pending queue:', err)
+  }
+
+  // We return success if it was matched in MongoDB OR if we successfully updated it locally (cache or pending queue)
+  return matchedInDb || updatedLocal || updatedPending
 }
 
 export async function deleteEvent(id: string) {
