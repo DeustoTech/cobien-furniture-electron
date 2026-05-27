@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('config', {
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
   getEvents: () => ipcRenderer.invoke('events:get'),
   addPersonalEvent: (payload: any) => ipcRenderer.invoke('events:addPersonal', payload),
+  updatePersonalEvent: (payload: any) => ipcRenderer.invoke('events:updatePersonal', payload),
   deleteEvent: (id: string) => ipcRenderer.invoke('events:delete', id),
   fetchWeather: (city: string, lang = 'es') => ipcRenderer.invoke('weather:fetch', city, lang),
   getRandomJoke: (lang = 'es') => ipcRenderer.invoke('jokes:getRandom', lang),

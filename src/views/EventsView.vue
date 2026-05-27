@@ -167,6 +167,14 @@ function cancelVoiceFlow() {
   voiceFlowStep.value = 'idle'
 }
 
+function startVoiceAdd() {
+  const d = selectedDate.value
+  const day = d.getDate().toString().padStart(2, '0')
+  const m = (d.getMonth() + 1).toString().padStart(2, '0')
+  const dateStr = `${day}-${m}-${d.getFullYear()}`
+  startVoiceAddFlow(dateStr)
+}
+
 onMounted(async () => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000 * 30) // update every 30s
@@ -476,7 +484,7 @@ function goBack() {
 
         <div class="detail-body">
           <div class="detail-actions">
-            <button class="voice-add-btn-large" @click="startVoiceAddFlow((() => { const d = selectedDate!; const day = d.getDate().toString().padStart(2,'0'); const m = (d.getMonth()+1).toString().padStart(2,'0'); return `${day}-${m}-${d.getFullYear()}` })())">
+            <button class="voice-add-btn-large" @click="startVoiceAdd">
               <img src="/svg/plus.svg" alt="+" />
               <span>{{ t('events.add_event_btn') }}</span>
             </button>

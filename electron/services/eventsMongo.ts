@@ -119,6 +119,7 @@ export async function addPersonalEvent(payload: {
       fecha_inicio: dateObj,
       audience: 'device',
       target_device: payload.deviceId,
+      target_devices: [payload.deviceId],
       location: payload.location,
       all_day: true,
       created_by: payload.deviceId,
@@ -134,6 +135,37 @@ export async function addPersonalEvent(payload: {
     return false
   }
 }
+
+export async function updatePersonalEvent(payload: {
+  id: string
+  title: string
+  description: string
+  location: string
+}) {
+  try {
+    const client = await getClient()
+    const db = client.db('LabasAppDB')
+    const collection = db.collection('eventos')
+
+    const result = await collection.updateOne(
+      { _id: new ObjectId(payload.id) },
+      {
+        $set: {
+          title: payload.title,
+          description: payload.description,
+          location: payload.location
+        }
+      }
+    )
+    console.log(`[EVENTS] Personal event updated: ${payload.id}`)
+    return result.modifiedCount > 0
+  } catch(e: any) {
+    console.error('[EVENTS] Error updating personal event:', e.message || e)
+    if (e.stack) console.error(e.stack)
+    return false
+  }
+}
+
 
 export async function deleteEvent(id: string) {
   try {

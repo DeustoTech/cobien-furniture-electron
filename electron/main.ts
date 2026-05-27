@@ -8,7 +8,7 @@ import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
 import { startBackendSync } from './services/backendSync'
-import { getEvents, addPersonalEvent, deleteEvent } from './services/eventsMongo'
+import { getEvents, addPersonalEvent, updatePersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 import { fetchWeatherBundle } from './services/weatherService'
 import { getRandomJoke } from './services/jokesService'
@@ -256,6 +256,10 @@ function setupIPC() {
     // Ensure we don't override payload.location if it exists
     const location = payload.location || defaultLocation
     return await addPersonalEvent({ ...payload, location, deviceId })
+  })
+
+  ipcMain.handle('events:updatePersonal', async (_, payload: any) => {
+    return await updatePersonalEvent(payload)
   })
   
   ipcMain.handle('events:delete', async (_, id: string) => {
