@@ -16,6 +16,7 @@ interface NotificationItem {
   date?: string
   time?: string
   audio?: HTMLAudioElement | null
+  autoDismissTimer?: ReturnType<typeof setTimeout> | null
 }
 
 const activeNotifications = ref<NotificationItem[]>([])
@@ -39,11 +40,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Stop all active audios on destroy
+  // Stop all active audios and timers on destroy
   activeNotifications.value.forEach(item => {
-    if (item.audio) {
-      item.audio.pause()
-    }
+    if (item.audio) item.audio.pause()
+    if (item.autoDismissTimer) clearTimeout(item.autoDismissTimer)
   })
 })
 
@@ -110,6 +110,14 @@ async function handleIncomingNotification(notif: any) {
     item.title = notif.title || t('notification.new_event')
     item.date = notif.date || ''
     ringtoneFile = settings?.notifications?.nuevo_evento?.ringtone || 'ringtone2.mp3'
+  } else if (type === 'events_reload') {
+    // Backend signals that events were updated — show a subtle new_event notification if title provided
+    console.log('[NOTIF] events_reload received — reloading event list')
+    // Re-use new_event type for display so the user sees something
+    item.type = 'new_event'
+    item.title = notif.title || t('notification.new_event')
+    item.date = notif.date || ''
+    ringtoneFile = settings?.notifications?.nuevo_evento?.ringtone || 'ringtone2.mp3'
   } else if (type === 'missed_call') {
     item.caller = sender
     item.time = formatTime(notif.timestamp) || t('common.loading')
@@ -134,6 +142,14 @@ async function handleIncomingNotification(notif: any) {
   }
 
   item.audio = audio
+
+  // Auto-dismiss after 12s for non-call notifications
+  if (item.type === 'new_message' || item.type === 'new_event') {
+    item.autoDismissTimer = setTimeout(() => {
+      dismissNotification(item.id)
+    }, 12000)
+  }
+
   activeNotifications.value.push(item)
 }
 
@@ -142,9 +158,10 @@ function dismissNotification(id: string) {
   if (index !== -1) {
     const item = activeNotifications.value[index]
     if (item.audio) {
-      try {
-        item.audio.pause()
-      } catch (e) {}
+      try { item.audio.pause() } catch (e) {}
+    }
+    if (item.autoDismissTimer) {
+      clearTimeout(item.autoDismissTimer)
     }
     activeNotifications.value.splice(index, 1)
   }

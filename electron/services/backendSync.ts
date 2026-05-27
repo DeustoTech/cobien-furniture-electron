@@ -45,7 +45,7 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
         'X-API-KEY': apiKey
       },
       body: JSON.stringify({
-        device_id: 'CoBien6',
+        device_id: process.env.COBIEN_DEVICE_ID || 'CoBien6',
         screen: currentScreen,
         sent_at: new Date().toISOString(),
         software_version: 'Electron-v1.0'
@@ -68,7 +68,8 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
   const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || ''
 
   try {
-    const res = await fetch(`${url}?device_id=CoBien6`, {
+    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const res = await fetch(`${url}?device_id=${deviceId}`, {
       method: 'GET',
       headers: {
         'X-API-KEY': apiKey

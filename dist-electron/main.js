@@ -40,7 +40,7 @@ async function x(e, t) {
 				"X-API-KEY": i
 			},
 			body: JSON.stringify({
-				device_id: "CoBien6",
+				device_id: process.env.COBIEN_DEVICE_ID || "CoBien6",
 				screen: y,
 				sent_at: (/* @__PURE__ */ new Date()).toISOString(),
 				software_version: "Electron-v1.0"
@@ -54,13 +54,13 @@ async function x(e, t) {
 async function S(e, t, n) {
 	let r = await b(t, n), i = r.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/", a = process.env.NOTIFY_API_KEY || r.notify_api_key || "";
 	try {
-		let t = await fetch(`${i}?device_id=CoBien6`, {
+		let t = process.env.COBIEN_DEVICE_ID || "CoBien6", n = await fetch(`${i}?device_id=${t}`, {
 			method: "GET",
 			headers: { "X-API-KEY": a }
 		});
-		if (t.ok) {
-			let n = (await t.json()).notifications || [];
-			n.length > 0 && (console.log(`[POLL] Received ${n.length} notifications`), n.forEach((t) => {
+		if (n.ok) {
+			let t = (await n.json()).notifications || [];
+			t.length > 0 && (console.log(`[POLL] Received ${t.length} notifications`), t.forEach((t) => {
 				e.webContents.send("backend:notification", t);
 			}));
 		}
