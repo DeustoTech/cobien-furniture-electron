@@ -88,7 +88,7 @@ export async function initModel(lang: string = 'es'): Promise<any> {
   console.log(`[ASR] Loading model for ${normalizedLang} from ${modelUrl}...`)
   
   try {
-    const model = await createModel(modelUrl)
+    const model = await createModel(modelUrl, -1)
     loadedModels[normalizedLang] = model
     currentModel = model
     console.log(`[ASR] Model for ${normalizedLang} loaded successfully`)
