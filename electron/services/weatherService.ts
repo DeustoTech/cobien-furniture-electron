@@ -115,20 +115,56 @@ function amPmLabel(isoHour: string): string {
 }
 
 async function geocodeCity(cityName: string): Promise<{ lat: number; lon: number; tz: string } | null> {
+  const owmKey = process.env.OWM_API_KEY ?? ''
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`
     const res = await fetch(url, { headers: { 'User-Agent': 'CoBien6-Furniture' } })
+    if (!res.ok) throw new Error(`Nominatim returned status ${res.status}`)
     const data = await res.json()
-    if (!data.length) return null
+    if (!data.length) throw new Error('No Nominatim results')
     const lat = parseFloat(data[0].lat)
     const lon = parseFloat(data[0].lon)
-
-    const tzRes = await fetch(`https://api.open-meteo.com/v1/timezone?latitude=${lat}&longitude=${lon}`)
-    const tzData = await tzRes.json()
-    return { lat, lon, tz: tzData.timezone ?? 'Europe/Madrid' }
+    return { lat, lon, tz: 'auto' }
   } catch (e) {
-    console.error('[WEATHER] Geocode error:', e)
+    console.warn('[WEATHER] Nominatim geocode failed, trying OWM fallback:', e)
+    if (owmKey) {
+      try {
+        const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=1&appid=${owmKey}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`OWM Geo returned status ${res.status}`)
+        const data = await res.json()
+        if (data && data.length > 0) {
+          return { lat: data[0].lat, lon: data[0].lon, tz: 'auto' }
+        }
+      } catch (owmErr) {
+        console.error('[WEATHER] OWM geocode fallback also failed:', owmErr)
+      }
+    }
     return null
+  }
+}
+
+function owmIconToLocal(owmIcon: string): string {
+  const prefix = owmIcon.substring(0, 2)
+  const isNight = owmIcon.endsWith('n')
+  switch (prefix) {
+    case '01': // clear sky
+      return isNight ? '/svg/noche.svg' : '/images/sol.png'
+    case '02': // few clouds
+    case '03': // scattered clouds
+      return '/svg/parcial.svg'
+    case '04': // broken clouds / overcast
+      return '/svg/nubes.svg'
+    case '09': // shower rain
+    case '10': // rain
+    case '11': // thunderstorm
+      return prefix === '11' ? '/images/tormenta.png' : '/images/lluvia.png'
+    case '13': // snow
+      return '/svg/nieve.svg'
+    case '50': // mist/fog
+      return '/images/neblina.png'
+    default:
+      return '/svg/nubes.svg'
   }
 }
 
@@ -138,13 +174,15 @@ export async function fetchWeatherBundle(cityName: string, lang: string = 'es'):
     temp: '—°',
     description: lang === 'en' ? 'Not available' : lang === 'fr' ? 'Non disponible' : 'No disponible',
     icon: '/svg/nubes.svg',
-    tempMin: lang === 'en' ? 'Min —°' : lang === 'fr' ? 'Min —°' : 'Min —°', // Labels are handled in UI usually, but let's be consistent
+    tempMin: lang === 'en' ? 'Min —°' : lang === 'fr' ? 'Min —°' : 'Min —°',
     tempMax: lang === 'en' ? 'Max —°' : lang === 'fr' ? 'Max —°' : 'Max —°',
     todayPop: 0,
     todayWind: 0,
     hourly: [],
     daily: [],
   }
+
+  const owmKey = process.env.OWM_API_KEY ?? ''
 
   try {
     const geo = await geocodeCity(cityName)
@@ -155,93 +193,185 @@ export async function fetchWeatherBundle(cityName: string, lang: string = 'es'):
 
     const { lat, lon, tz } = geo
 
-    // Open-Meteo: current + hourly + daily
-    const omUrl = [
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`,
-      `&timezone=${encodeURIComponent(tz)}`,
-      `&current=temperature_2m,weathercode,is_day`,
-      `&hourly=temperature_2m,weathercode`,
-      `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,wind_speed_10m_max`,
-      `&forecast_days=7`,
-    ].join('')
+    try {
+      // 1. Try Open-Meteo
+      const omUrl = [
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`,
+        `&timezone=${encodeURIComponent(tz)}`,
+        `&current=temperature_2m,weathercode,is_day`,
+        `&hourly=temperature_2m,weathercode`,
+        `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,wind_speed_10m_max`,
+        `&forecast_days=7`,
+      ].join('')
 
-    const omRes = await fetch(omUrl)
-    const om = await omRes.json()
+      const omRes = await fetch(omUrl)
+      if (!omRes.ok) throw new Error(`Open-Meteo returned status ${omRes.status}`)
+      const om = await omRes.json()
 
-    // ── Current ──────────────────────────────────────
-    const currentCode: number = om.current?.weathercode ?? 0
-    const isDay: boolean = (om.current?.is_day ?? 1) === 1
-    base.temp = `${Math.round(om.current?.temperature_2m ?? 0)}°`
-    base.icon = wmoIcon(currentCode, isDay)
+      // ── Current ──────────────────────────────────────
+      const currentCode: number = om.current?.weathercode ?? 0
+      const isDay: boolean = (om.current?.is_day ?? 1) === 1
+      base.temp = `${Math.round(om.current?.temperature_2m ?? 0)}°`
+      base.icon = wmoIcon(currentCode, isDay)
 
-    // OWM description (optional)
-    const owmKey = process.env.OWM_API_KEY ?? ''
-    if (owmKey) {
-      try {
-        const owmUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
-        const owmRes = await fetch(owmUrl)
-        const owm = await owmRes.json()
-        base.description = owm.weather?.[0]?.description ?? wmoDesc(currentCode, lang)
-        // Capitalize first letter
-        base.description = base.description.charAt(0).toUpperCase() + base.description.slice(1)
-      } catch {
+      // OWM description (optional enrichment)
+      if (owmKey) {
+        try {
+          const owmUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
+          const owmRes = await fetch(owmUrl)
+          const owm = await owmRes.json()
+          base.description = owm.weather?.[0]?.description ?? wmoDesc(currentCode, lang)
+          base.description = base.description.charAt(0).toUpperCase() + base.description.slice(1)
+        } catch {
+          base.description = wmoDesc(currentCode, lang)
+        }
+      } else {
         base.description = wmoDesc(currentCode, lang)
       }
-    } else {
-      base.description = wmoDesc(currentCode, lang)
+
+      // ── Daily min/max for today ───────────────────────
+      const todayMin = Math.round(om.daily?.temperature_2m_min?.[0] ?? 0)
+      const todayMax = Math.round(om.daily?.temperature_2m_max?.[0] ?? 0)
+      base.tempMin = `Min ${todayMin}°`
+      base.tempMax = `Max ${todayMax}°`
+      base.todayPop = om.daily?.precipitation_probability_max?.[0] ?? 0
+      base.todayWind = Math.round(om.daily?.wind_speed_10m_max?.[0] ?? 0)
+
+      // ── Hourly (next 12 hours from now) ──────────────
+      const nowHour = new Date().getHours()
+      const hourlyTimes: string[] = om.hourly?.time ?? []
+      const hourlyTemps: number[] = om.hourly?.temperature_2m ?? []
+      const hourlyCodes: number[] = om.hourly?.weathercode ?? []
+
+      const todayStr = new Date().toISOString().slice(0, 10)
+      let startIdx = hourlyTimes.findIndex(t => t.startsWith(todayStr) && new Date(t).getHours() >= nowHour)
+      if (startIdx < 0) startIdx = 0
+
+      base.hourly = hourlyTimes.slice(startIdx, startIdx + 12).map((t, i) => {
+        const h = new Date(t).getHours()
+        return {
+          time: amPmLabel(t),
+          icon: wmoIcon(hourlyCodes[startIdx + i] ?? 0, h >= 6 && h < 20),
+          temp: `${Math.round(hourlyTemps[startIdx + i] ?? 0)}°`,
+        }
+      })
+
+      // ── Daily forecast (next 6 days, skip today) ─────
+      const dailyTimes: string[] = om.daily?.time ?? []
+      const dailyMaxArr: number[] = om.daily?.temperature_2m_max ?? []
+      const dailyMinArr: number[] = om.daily?.temperature_2m_min ?? []
+      const dailyCodesArr: number[] = om.daily?.weathercode ?? []
+      const dailyPopArr: number[] = om.daily?.precipitation_probability_max ?? []
+      const dailyWindArr: number[] = om.daily?.wind_speed_10m_max ?? []
+
+      base.daily = dailyTimes.slice(1, 7).map((t, i) => {
+        const d = new Date(t)
+        const day = d.getDate()
+        const localeStr = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'es-ES'
+        const month = d.toLocaleDateString(localeStr, { month: 'long' })
+        const dayName = d.toLocaleDateString(localeStr, { weekday: 'long' })
+        return {
+          name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+          date: lang === 'en' ? `${month} ${day}` : `${day} de ${month}`,
+          icon: wmoIcon(dailyCodesArr[i + 1] ?? 0),
+          tmin: `${Math.round(dailyMinArr[i + 1] ?? 0)}°`,
+          tmax: `${Math.round(dailyMaxArr[i + 1] ?? 0)}°`,
+          pop: dailyPopArr[i + 1] ?? 0,
+          wind: Math.round(dailyWindArr[i + 1] ?? 0),
+        }
+      })
+
+    } catch (omError: any) {
+      // 2. Fall back to OpenWeatherMap if OWM key is configured
+      if (!owmKey) throw omError
+      console.warn('[WEATHER] Open-Meteo failed, executing OpenWeatherMap fallback:', omError.message || omError)
+
+      const owmCurrentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
+      const owmForecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
+
+      const [currentRes, forecastRes] = await Promise.all([
+        fetch(owmCurrentUrl),
+        fetch(owmForecastUrl)
+      ])
+
+      if (!currentRes.ok) throw new Error(`OWM current weather returned status ${currentRes.status}`)
+      if (!forecastRes.ok) throw new Error(`OWM forecast returned status ${forecastRes.status}`)
+
+      const owmCurrent = await currentRes.json()
+      const owmForecast = await forecastRes.json()
+
+      // ── Current ──────────────────────────────────────
+      base.temp = `${Math.round(owmCurrent.main.temp)}°`
+      base.icon = owmIconToLocal(owmCurrent.weather[0].icon)
+      base.description = owmCurrent.weather[0].description
+      base.description = base.description.charAt(0).toUpperCase() + base.description.slice(1)
+
+      // ── Daily min/max for today ───────────────────────
+      base.tempMin = `Min ${Math.round(owmCurrent.main.temp_min)}°`
+      base.tempMax = `Max ${Math.round(owmCurrent.main.temp_max)}°`
+      base.todayPop = 0
+      base.todayWind = Math.round(owmCurrent.wind.speed * 3.6) // m/s to km/h
+
+      // ── Hourly (next 12 hours) ────────────────────────
+      const hourlyItems = owmForecast.list.slice(0, 4) // 4 items = 12 hours (3-hourly slots)
+      base.hourly = hourlyItems.map((item: any) => {
+        return {
+          time: amPmLabel(item.dt_txt),
+          icon: owmIconToLocal(item.weather[0].icon),
+          temp: `${Math.round(item.main.temp)}°`,
+        }
+      })
+
+      // ── Daily forecast (next 6 days) ──────────────────
+      const dailyGroups: Record<string, any[]> = {}
+      const todayStr = new Date().toISOString().slice(0, 10)
+      for (const item of owmForecast.list) {
+        const dayStr = item.dt_txt.slice(0, 10)
+        if (dayStr === todayStr) {
+          if (base.todayPop === 0 && item.pop !== undefined) {
+            base.todayPop = Math.round(item.pop * 100)
+          }
+          continue
+        }
+        if (!dailyGroups[dayStr]) dailyGroups[dayStr] = []
+        dailyGroups[dayStr].push(item)
+      }
+
+      const days = Object.keys(dailyGroups).sort()
+      base.daily = days.slice(0, 6).map(dayStr => {
+        const items = dailyGroups[dayStr]
+        let tmin = 999
+        let tmax = -999
+        let maxPop = 0
+        let maxWind = 0
+        let midItem = items[Math.floor(items.length / 2)]
+        for (const it of items) {
+          if (it.main.temp_min < tmin) tmin = it.main.temp_min
+          if (it.main.temp_max > tmax) tmax = it.main.temp_max
+          if (it.pop && it.pop > maxPop) maxPop = it.pop
+          if (it.wind && it.wind.speed > maxWind) maxWind = it.wind.speed
+          if (it.dt_txt.endsWith('12:00:00')) {
+            midItem = it
+          }
+        }
+
+        const d = new Date(dayStr)
+        const localeStr = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'es-ES'
+        const dayName = d.toLocaleDateString(localeStr, { weekday: 'long' })
+        const month = d.toLocaleDateString(localeStr, { month: 'long' })
+        const dayNum = d.getDate()
+
+        return {
+          name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+          date: lang === 'en' ? `${month} ${dayNum}` : `${dayNum} de ${month}`,
+          icon: owmIconToLocal(midItem.weather[0].icon),
+          tmin: `${Math.round(tmin)}°`,
+          tmax: `${Math.round(tmax)}°`,
+          pop: Math.round(maxPop * 100),
+          wind: Math.round(maxWind * 3.6),
+        }
+      })
     }
-
-    // ── Daily min/max for today ───────────────────────
-    const todayMin = Math.round(om.daily?.temperature_2m_min?.[0] ?? 0)
-    const todayMax = Math.round(om.daily?.temperature_2m_max?.[0] ?? 0)
-    base.tempMin = `Min ${todayMin}°`
-    base.tempMax = `Max ${todayMax}°`
-    base.todayPop = om.daily?.precipitation_probability_max?.[0] ?? 0
-    base.todayWind = Math.round(om.daily?.wind_speed_10m_max?.[0] ?? 0)
-
-    // ── Hourly (next 12 hours from now) ──────────────
-    const nowHour = new Date().getHours()
-    const hourlyTimes: string[] = om.hourly?.time ?? []
-    const hourlyTemps: number[] = om.hourly?.temperature_2m ?? []
-    const hourlyCodes: number[] = om.hourly?.weathercode ?? []
-
-    const todayStr = new Date().toISOString().slice(0, 10)
-    let startIdx = hourlyTimes.findIndex(t => t.startsWith(todayStr) && new Date(t).getHours() >= nowHour)
-    if (startIdx < 0) startIdx = 0
-
-    base.hourly = hourlyTimes.slice(startIdx, startIdx + 12).map((t, i) => {
-      const h = new Date(t).getHours()
-      return {
-        time: amPmLabel(t),
-        icon: wmoIcon(hourlyCodes[startIdx + i] ?? 0, h >= 6 && h < 20),
-        temp: `${Math.round(hourlyTemps[startIdx + i] ?? 0)}°`,
-      }
-    })
-
-    // ── Daily forecast (next 6 days, skip today) ─────
-    const dailyTimes: string[] = om.daily?.time ?? []
-    const dailyMaxArr: number[] = om.daily?.temperature_2m_max ?? []
-    const dailyMinArr: number[] = om.daily?.temperature_2m_min ?? []
-    const dailyCodesArr: number[] = om.daily?.weathercode ?? []
-    const dailyPopArr: number[] = om.daily?.precipitation_probability_max ?? []
-    const dailyWindArr: number[] = om.daily?.wind_speed_10m_max ?? []
-
-    base.daily = dailyTimes.slice(1, 7).map((t, i) => {
-      const d = new Date(t)
-      const day = d.getDate()
-      const localeStr = lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'es-ES'
-      const month = d.toLocaleDateString(localeStr, { month: 'long' })
-      const dayName = d.toLocaleDateString(localeStr, { weekday: 'long' })
-      return {
-        name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-        date: lang === 'en' ? `${month} ${day}` : `${day} de ${month}`, // Simplified date formatting
-        icon: wmoIcon(dailyCodesArr[i + 1] ?? 0),
-        tmin: `${Math.round(dailyMinArr[i + 1] ?? 0)}°`,
-        tmax: `${Math.round(dailyMaxArr[i + 1] ?? 0)}°`,
-        pop: dailyPopArr[i + 1] ?? 0,
-        wind: Math.round(dailyWindArr[i + 1] ?? 0),
-      }
-    })
 
     return base
   } catch (e) {
