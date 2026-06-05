@@ -588,6 +588,9 @@ function handleWheel(e: WheelEvent) {
   font-weight: 600;
   cursor: pointer;
   margin-top: 0.5rem;
+}
+
+/* Missed Calls */
 .missed-calls-container {
   height: 10rem;
   display: flex;
