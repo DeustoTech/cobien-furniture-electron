@@ -150,7 +150,19 @@ async function handleIncomingNotification(notif: any) {
       if (type === 'videocall') {
         audio.loop = true
       }
-      audio.play().catch(err => console.warn('[NOTIF] Failed to play audio:', err))
+      
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // If dismissed before play resolved, pause it immediately!
+          const exists = activeNotifications.value.some(n => n.id === item.id)
+          if (!exists && audio) {
+            audio.pause()
+            audio.removeAttribute('src')
+            audio.load()
+          }
+        }).catch(err => console.warn('[NOTIF] Failed to play audio:', err))
+      }
     } catch (err) {
       console.error('[NOTIF] Error creating audio element:', err)
     }
@@ -181,7 +193,8 @@ function dismissNotification(id: string) {
     if (item.audio) {
       try { 
         item.audio.pause() 
-        item.audio.src = ''
+        item.audio.removeAttribute('src')
+        item.audio.load()
       } catch (e) {}
     }
     if (item.autoDismissTimer) {
@@ -207,17 +220,16 @@ function viewBoard(item: NotificationItem) {
   router.push('/board')
 }
 
+function acceptCall(item: NotificationItem) {
+  dismissNotification(item.id)
+  if (item.room) {
+    router.push({ path: '/videocall', query: { autostart: '1', room: item.room, to: item.caller } })
+  }
+}
+
 function viewCalendar(item: NotificationItem) {
   dismissNotification(item.id)
   router.push('/events')
-}
-
-async function callbackMissedCall(item: NotificationItem) {
-  dismissNotification(item.id)
-  if (item.caller) {
-    // Open contacts view or trigger call request directly
-    router.push('/call')
-  }
 }
 
 function declineCall(item: NotificationItem) {
@@ -300,12 +312,9 @@ function declineCall(item: NotificationItem) {
         <template v-else-if="item.type === 'missed_call'">
           <h2 class="title">{{ t('notification.missed_call') }}</h2>
           <p class="desc">{{ t('notification.missed_call_from', { caller: item.caller, time: item.time }) }}</p>
-          <div class="actions">
+          <div class="actions" style="justify-content: center;">
             <button class="btn decline" @click="dismissNotification(item.id)">
               {{ t('notification.close') }}
-            </button>
-            <button class="btn accept" @click="callbackMissedCall(item)">
-              {{ t('notification.request_call') }}
             </button>
           </div>
         </template>
