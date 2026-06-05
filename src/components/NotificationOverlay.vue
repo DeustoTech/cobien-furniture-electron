@@ -72,6 +72,9 @@ async function handleIncomingNotification(notif: any) {
 
   // Avoid duplicates
   const isDuplicate = activeNotifications.value.some(item => {
+    // If we receive a videocall but we already have a missed_call from the same sender (because we just rejected it), ignore it
+    if (type === 'videocall' && item.type === 'missed_call' && item.caller === sender) return true
+    
     if (item.type !== type) return false
     if (type === 'videocall' && item.caller === sender) return true
     if (type === 'new_message' && item.sender === sender) return true
@@ -171,7 +174,10 @@ function dismissNotification(id: string) {
   if (index !== -1) {
     const item = activeNotifications.value[index]
     if (item.audio) {
-      try { item.audio.pause() } catch (e) {}
+      try { 
+        item.audio.pause() 
+        item.audio.src = ''
+      } catch (e) {}
     }
     if (item.autoDismissTimer) {
       clearTimeout(item.autoDismissTimer)
