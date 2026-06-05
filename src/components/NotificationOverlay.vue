@@ -208,6 +208,20 @@ async function callbackMissedCall(item: NotificationItem) {
     router.push('/call')
   }
 }
+
+function declineCall(item: NotificationItem) {
+  dismissNotification(item.id)
+  
+  // Register locally as missed call
+  const missedItem: NotificationItem = {
+    id: `missed-${Date.now()}`,
+    type: 'missed_call',
+    caller: item.caller,
+    time: formatTime(new Date().toISOString())
+  }
+  
+  activeNotifications.value.push(missedItem)
+}
 </script>
 
 <template>
@@ -230,7 +244,7 @@ async function callbackMissedCall(item: NotificationItem) {
           <h2 class="title">{{ t('notification.incoming_call') }}</h2>
           <p class="desc">{{ t('notification.incoming_call_from', { caller: item.caller }) }}</p>
           <div class="actions">
-            <button class="btn decline" @click="dismissNotification(item.id)">
+            <button class="btn decline" @click="declineCall(item)">
               {{ t('notification.decline') }}
             </button>
             <button class="btn accept" @click="acceptCall(item)">
