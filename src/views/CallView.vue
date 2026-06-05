@@ -2,9 +2,11 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useMissedCalls } from '../composables/useMissedCalls'
 
 const router = useRouter()
 const { t, locale } = useI18n()
+const { missedCalls, removeMissedCall } = useMissedCalls()
 
 interface Contact {
   displayName: string
@@ -14,7 +16,6 @@ interface Contact {
 }
 
 const contacts = ref<Contact[]>([])
-const missedCalls = ref<any[]>([])
 const callStatus = ref<'idle' | 'sending' | 'sent' | 'error'>('idle')
 const callMessage = ref('')
 const callingContact = ref<Contact | null>(null)
@@ -50,8 +51,6 @@ onMounted(async () => {
       ...fetched,
       ...mockContacts
     ]
-    missedCalls.value = [] // Clear demo mock
-
   } catch (e) {
     console.error('[CONTACTS] Error loading:', e)
   }
@@ -70,6 +69,8 @@ const formattedDate = computed(() => {
   const str = currentTime.value.toLocaleDateString(locale.value, options)
   return str.charAt(0).toUpperCase() + str.slice(1)
 })
+
+const latestMissedCall = computed(() => missedCalls.value[0] || null)
 
 const formattedTime = computed(() => {
   return currentTime.value.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -238,16 +239,19 @@ function handleWheel(e: WheelEvent) {
 
     <!-- Missed Calls Section -->
     <div class="missed-calls-container">
-      <div v-if="missedCalls.length > 0" class="missed-calls-panel glass-panel shadow-lg">
+      <div v-if="latestMissedCall" class="missed-calls-panel glass-panel shadow-lg">
         <div class="missed-title">{{ t('call.missed_calls') }}</div>
         <div class="missed-list">
-          <div v-for="call in missedCalls" :key="call.id" class="missed-item">
+          <div class="missed-item">
             <div class="missed-info">
-              <span class="missed-author">{{ call.author }}</span>
-              <span class="missed-time">{{ call.time }}</span>
+              <span class="missed-author">{{ latestMissedCall.author }}</span>
+              <span class="missed-time">{{ latestMissedCall.time }}</span>
             </div>
-            <button class="callback-btn" @click="requestCall({ displayName: call.author, userName: call.userName, callable: true } as any)">
+            <button class="callback-btn" @click="requestCall({ displayName: latestMissedCall.author, userName: latestMissedCall.userName, callable: true } as any)">
               {{ t('call.request_call') }}
+            </button>
+            <button class="close-btn" @click="removeMissedCall(latestMissedCall.id)">
+              ✖
             </button>
           </div>
         </div>
@@ -660,6 +664,25 @@ function handleWheel(e: WheelEvent) {
 }
 
 .callback-btn:active { transform: scale(0.95); }
+
+.close-btn {
+  background: transparent;
+  color: #aaa;
+  border: 3px solid rgba(0,0,0,0.1);
+  padding: 1.2rem 1.8rem;
+  border-radius: 18px;
+  font-weight: 900;
+  font-size: 1.8rem;
+  cursor: pointer;
+  margin-left: 1.5rem;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #ff4d4d;
+  color: white;
+  border-color: #ff4d4d;
+}
 
 .no-missed-calls {
   font-size: 1.8rem;

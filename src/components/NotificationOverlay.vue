@@ -2,9 +2,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useMissedCalls } from '../composables/useMissedCalls'
 
 const router = useRouter()
 const { t } = useI18n()
+const { addMissedCall } = useMissedCalls()
 
 interface NotificationItem {
   id: string
@@ -132,6 +134,9 @@ async function handleIncomingNotification(notif: any) {
       console.log(`[NOTIF] Dismissing active videocall from ${sender} due to missed_call signal`)
       dismissNotification(activeNotifications.value[activeCallIndex].id)
     }
+    
+    // Register it globally for the Contacts view
+    addMissedCall({ author: sender, userName: sender, time: item.time })
   } else {
     // Unknown notification type
     return
@@ -218,15 +223,19 @@ async function callbackMissedCall(item: NotificationItem) {
 function declineCall(item: NotificationItem) {
   dismissNotification(item.id)
   
-  // Register locally as missed call
+  const timeStr = formatTime(new Date().toISOString())
+  // Register locally as missed call in overlay
   const missedItem: NotificationItem = {
     id: `missed-${Date.now()}`,
     type: 'missed_call',
     caller: item.caller,
-    time: formatTime(new Date().toISOString())
+    time: timeStr
   }
   
   activeNotifications.value.push(missedItem)
+  
+  // Register globally for the Contacts view
+  addMissedCall({ author: item.caller || 'Desconocido', userName: item.caller || 'unknown', time: timeStr })
 }
 </script>
 
