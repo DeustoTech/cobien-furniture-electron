@@ -588,9 +588,8 @@ function handleWheel(e: WheelEvent) {
   font-weight: 600;
   cursor: pointer;
   margin-top: 0.5rem;
-}/* Missed Calls */
 .missed-calls-container {
-  height: 18rem; /* Larger */
+  height: 10rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -599,12 +598,12 @@ function handleWheel(e: WheelEvent) {
 
 .missed-calls-panel {
   background: white;
-  padding: 2.5rem 5rem;
-  border-radius: 32px;
+  padding: 1.5rem 2.5rem;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  gap: 4rem;
-  border: 4px solid #ff4d4d;
+  gap: 2rem;
+  border: 3px solid #ff4d4d;
   animation: slideUp 0.5s ease-out;
 }
 
@@ -614,23 +613,23 @@ function handleWheel(e: WheelEvent) {
 }
 
 .missed-title {
-  font-size: 3rem; /* Doubled */
-  font-weight: 900;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: #ff4d4d;
   text-transform: uppercase;
 }
 
 .missed-list {
   display: flex;
-  gap: 3rem;
+  gap: 1.5rem;
 }
 
 .missed-item {
   display: flex;
   align-items: center;
-  gap: 3rem;
-  padding-left: 3rem;
-  border-left: 4px solid rgba(0,0,0,0.1);
+  gap: 1.5rem;
+  padding-left: 1.5rem;
+  border-left: 3px solid rgba(0,0,0,0.1);
 }
 
 .missed-info {
@@ -639,14 +638,14 @@ function handleWheel(e: WheelEvent) {
 }
 
 .missed-author {
-  font-size: 2.8rem; /* Doubled */
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #000;
 }
 
 .missed-time {
-  font-size: 1.8rem; /* Doubled */
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 500;
   color: #666;
 }
 
@@ -654,13 +653,13 @@ function handleWheel(e: WheelEvent) {
   background: #4CAF50; /* Green */
   color: white;
   border: none;
-  padding: 1.5rem 3rem; /* Doubled */
-  border-radius: 18px;
-  font-weight: 800;
-  font-size: 1.8rem; /* Doubled */
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: transform 0.2s;
-  box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
 }
 
 .callback-btn:active { transform: scale(0.95); }
@@ -668,13 +667,13 @@ function handleWheel(e: WheelEvent) {
 .close-btn {
   background: transparent;
   color: #aaa;
-  border: 3px solid rgba(0,0,0,0.1);
-  padding: 1.2rem 1.8rem;
-  border-radius: 18px;
+  border: 2px solid rgba(0,0,0,0.1);
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
   font-weight: 900;
-  font-size: 1.8rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  margin-left: 1.5rem;
+  margin-left: 0.5rem;
   transition: all 0.2s;
 }
 
