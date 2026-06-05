@@ -122,6 +122,13 @@ async function handleIncomingNotification(notif: any) {
     item.caller = sender
     item.time = formatTime(notif.timestamp) || t('common.loading')
     ringtoneFile = '' // Typically missed calls don't play a continuous ringtone
+    
+    // Si llega un missed_call, cerramos la llamada entrante que esté sonando de ese mismo sender
+    const activeCallIndex = activeNotifications.value.findIndex(n => n.type === 'videocall' && n.caller === sender)
+    if (activeCallIndex !== -1) {
+      console.log(`[NOTIF] Dismissing active videocall from ${sender} due to missed_call signal`)
+      dismissNotification(activeNotifications.value[activeCallIndex].id)
+    }
   } else {
     // Unknown notification type
     return
@@ -148,6 +155,12 @@ async function handleIncomingNotification(notif: any) {
     item.autoDismissTimer = setTimeout(() => {
       dismissNotification(item.id)
     }, 12000)
+  } else if (item.type === 'videocall') {
+    // Auto-dismiss calls after 60s as a fallback in case network fails
+    item.autoDismissTimer = setTimeout(() => {
+      console.log(`[NOTIF] Auto-dismissing videocall from ${sender} due to 60s timeout`)
+      dismissNotification(item.id)
+    }, 60000)
   }
 
   activeNotifications.value.push(item)
