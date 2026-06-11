@@ -204,14 +204,10 @@ function dismissNotification(id: string) {
   }
 }
 
-async function acceptCall(item: NotificationItem) {
+function acceptCall(item: NotificationItem) {
   dismissNotification(item.id)
-  if (item.caller) {
-    try {
-      await (window as any).config.openCall(item.room || item.caller)
-    } catch (e) {
-      console.error('[NOTIF] Failed to open call:', e)
-    }
+  if (item.room) {
+    router.push({ path: '/videocall', query: { autostart: '1', room: item.room, to: item.caller } })
   }
 }
 
@@ -220,12 +216,7 @@ function viewBoard(item: NotificationItem) {
   router.push('/board')
 }
 
-function acceptCall(item: NotificationItem) {
-  dismissNotification(item.id)
-  if (item.room) {
-    router.push({ path: '/videocall', query: { autostart: '1', room: item.room, to: item.caller } })
-  }
-}
+
 
 function viewCalendar(item: NotificationItem) {
   dismissNotification(item.id)

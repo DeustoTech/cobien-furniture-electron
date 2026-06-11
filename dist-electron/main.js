@@ -1390,7 +1390,7 @@ function createWindow() {
 	mainWindow = new BrowserWindow({
 		width: 1024,
 		height: 768,
-		fullscreen: false,
+		fullscreen: true,
 		webPreferences: {
 			preload: join(_dirname, "preload.mjs"),
 			nodeIntegration: false,
@@ -1398,10 +1398,8 @@ function createWindow() {
 		}
 	});
 	mainWindow.setBackgroundColor("#ffffff");
-	if (process.env.VITE_DEV_SERVER_URL) {
-		mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-		mainWindow.webContents.openDevTools();
-	} else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
+	if (process.env.VITE_DEV_SERVER_URL) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+	else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
 }
 app.whenReady().then(() => {
 	session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {

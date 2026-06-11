@@ -15,7 +15,7 @@
             "Toulouse",
             "Logroño"
         ],
-        "weather_primary_city": "Bilbao",
+        "weather_primary_city": "Logroño",
         "button_colors": {},
         "rfid_actions": {},
         "microphone_device": "",
@@ -64,7 +64,7 @@
         "owm_api_key": "",
         "news_api_key": "",
         "mongo_uri": "",
-        "http_timeout_sec": 8.0,
+        "http_timeout_sec": 8,
         "tts_engine": "pyttsx3",
         "tts_rate": 155,
         "tts_volume": 0.85,
