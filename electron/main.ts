@@ -409,9 +409,20 @@ app.whenReady().then(() => {
   
   // Initial Syncs
   const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
-  const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
-  const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
-  const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+  const localConfigPath = join(app.getPath('userData'), 'config.local.json')
+  let localData: any = {}
+  try {
+    if (fsSync.existsSync(localConfigPath)) {
+      localData = JSON.parse(fsSync.readFileSync(localConfigPath, 'utf-8'))
+    }
+  } catch (e) {}
+
+  const services = { ...data.services, ...localData.services }
+  const settings = { ...data.settings, ...localData.settings }
+
+  const baseUrl = (services.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+  const apiKey = process.env.COBIEN_NOTIFY_API_KEY || services.notify_api_key || ''
+  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || 'CoBien6'
   syncContacts(deviceId, apiKey, baseUrl).catch(console.error)
  
   createWindow()
