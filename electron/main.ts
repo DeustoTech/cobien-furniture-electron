@@ -1,6 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron'
+// Disable login keyring popups in kiosk environment
+app.commandLine.appendSwitch('password-store', 'basic')
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
