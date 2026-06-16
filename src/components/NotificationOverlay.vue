@@ -204,10 +204,14 @@ function dismissNotification(id: string) {
   }
 }
 
-function acceptCall(item: NotificationItem) {
+async function acceptCall(item: NotificationItem) {
   dismissNotification(item.id)
-  if (item.room) {
-    router.push({ path: '/videocall', query: { autostart: '1', room: item.room, to: item.caller } })
+  if (item.caller) {
+    try {
+      await (window as any).config.openCall(item.room || item.caller)
+    } catch (e) {
+      console.error('[NOTIF] Failed to open call:', e)
+    }
   }
 }
 
