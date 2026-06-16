@@ -226,12 +226,21 @@ function setupIPC() {
     callWin.webContents.on('will-navigate', (event, url) => {
       if (url.startsWith('cobien://call-ended')) {
         event.preventDefault()
+        callWin.hide()
         callWin.close()
       }
     })
     callWin.webContents.on('did-start-navigation', (event, url) => {
       if (url.startsWith('cobien://call-ended')) {
         event.preventDefault()
+        callWin.hide()
+        callWin.close()
+      }
+    })
+    callWin.webContents.on('will-frame-navigate', (event) => {
+      if (event.url.startsWith('cobien://call-ended')) {
+        event.preventDefault()
+        callWin.hide()
         callWin.close()
       }
     })
