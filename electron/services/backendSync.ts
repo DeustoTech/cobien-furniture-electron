@@ -1,5 +1,7 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, app } from 'electron'
 import { promises as fs } from 'node:fs'
+import * as net from 'node:net'
+import { exec } from 'node:child_process'
 
 let currentScreen = 'home'
 
@@ -21,21 +23,154 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
 async function getConfig(configPath: string, localConfigPath: string) {
   try {
     const defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-    let localData = {}
+    let localData: any = {}
     try {
       localData = JSON.parse(await fs.readFile(localConfigPath, 'utf-8'))
     } catch(e) {}
     
-    return { ...defaultData.services, ...localData.services }
+    return {
+      services: { ...defaultData.services, ...localData.services },
+      settings: { ...defaultData.settings, ...localData.settings }
+    }
   } catch(e) {
-    return {}
+    return { services: {}, settings: {} }
   }
 }
 
+function isProcessRunning(pattern: string, exact: boolean): Promise<boolean> {
+  return new Promise((resolve) => {
+    const cmd = exact ? `pgrep -x "${pattern}"` : `pgrep -f "${pattern}"`
+    exec(cmd, (error) => {
+      resolve(!error)
+    })
+  })
+}
+
+function checkTcpPort(port: number, host: string, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    let resolved = false
+    
+    socket.setTimeout(timeoutMs)
+    
+    socket.once('connect', () => {
+      if (!resolved) {
+        resolved = true;
+        socket.destroy()
+        resolve(true)
+      }
+    })
+    
+    socket.once('timeout', () => {
+      if (!resolved) {
+        resolved = true;
+        socket.destroy()
+        resolve(false)
+      }
+    })
+    
+    socket.once('error', () => {
+      if (!resolved) {
+        resolved = true;
+        socket.destroy()
+        resolve(false)
+      }
+    })
+    
+    socket.connect(port, host)
+  })
+}
+
+async function readSysFile(path: string): Promise<string> {
+  try {
+    return (await fs.readFile(path, 'utf-8')).trim()
+  } catch (e) {
+    return ''
+  }
+}
+
+async function checkMosquitto(): Promise<string> {
+  try {
+    const running = await isProcessRunning('mosquitto', true)
+    if (!running) return 'error'
+    const portOpen = await checkTcpPort(1883, 'localhost', 2000)
+    return portOpen ? 'ok' : 'warn'
+  } catch (e) {
+    return 'unknown'
+  }
+}
+
+async function checkBridge(): Promise<string> {
+  try {
+    const running = await isProcessRunning('cobien_bridge', false)
+    if (!running) return 'error'
+    const portOpen = await checkTcpPort(1883, 'localhost', 2000)
+    return portOpen ? 'ok' : 'warn'
+  } catch (e) {
+    return 'unknown'
+  }
+}
+
+function checkCan(canStatus: any): string {
+  if (!canStatus || canStatus.operstate !== 'up') {
+    return 'error'
+  }
+  const totalPackets = canStatus.rx_packets + canStatus.tx_packets
+  return totalPackets > 0 ? 'ok' : 'warn'
+}
+
 async function sendHeartbeat(configPath: string, localConfigPath: string) {
-  const services = await getConfig(configPath, localConfigPath)
+  const { services, settings } = await getConfig(configPath, localConfigPath)
   const url = services.device_heartbeat_url || 'https://portal.co-bien.eu/pizarra/api/devices/heartbeat/'
-  const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || ''
+  const apiKey = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || services.notify_api_key || ''
+  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || 'CoBien6'
+
+  // Build CAN status
+  let canStatus: any = null
+  try {
+    const operstate = await readSysFile('/sys/class/net/can0/operstate')
+    if (operstate) {
+      const carrier = await readSysFile('/sys/class/net/can0/carrier')
+      const rxPackets = parseInt(await readSysFile('/sys/class/net/can0/statistics/rx_packets') || '0', 10)
+      const txPackets = parseInt(await readSysFile('/sys/class/net/can0/statistics/tx_packets') || '0', 10)
+      const rxErrors = parseInt(await readSysFile('/sys/class/net/can0/statistics/rx_errors') || '0', 10)
+      const txErrors = parseInt(await readSysFile('/sys/class/net/can0/statistics/tx_errors') || '0', 10)
+      canStatus = {
+        present: true,
+        operstate,
+        carrier,
+        rx_packets: isNaN(rxPackets) ? 0 : rxPackets,
+        tx_packets: isNaN(txPackets) ? 0 : txPackets,
+        rx_errors: isNaN(rxErrors) ? 0 : rxErrors,
+        tx_errors: isNaN(txErrors) ? 0 : txErrors,
+      }
+    }
+  } catch (e) {
+    // Best effort
+  }
+
+  // Build services status
+  const mosquittoStatus = await checkMosquitto()
+  const bridgeStatus = await checkBridge()
+  const canInterfaceStatus = checkCan(canStatus)
+
+  const payload: any = {
+    device_id: deviceId,
+    screen: currentScreen,
+    sent_at: new Date().toISOString(),
+    software_version: `Electron-v${app.getVersion()}`,
+    services_status: {
+      app: 'ok',
+      mosquitto: mosquittoStatus,
+      mqtt_can_bridge: bridgeStatus,
+      can_interface: canInterfaceStatus,
+      checked_at: new Date().toISOString()
+    }
+  }
+
+  if (canStatus) {
+    payload.can_status = canStatus
+  }
 
   try {
     const res = await fetch(url, {
@@ -44,12 +179,7 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
         'Content-Type': 'application/json',
         'X-API-KEY': apiKey
       },
-      body: JSON.stringify({
-        device_id: process.env.COBIEN_DEVICE_ID || 'CoBien6',
-        screen: currentScreen,
-        sent_at: new Date().toISOString(),
-        software_version: 'Electron-v1.0'
-      })
+      body: JSON.stringify(payload)
     })
     
     if (!res.ok) {
@@ -63,12 +193,12 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
 }
 
 async function pollNotifications(mainWindow: BrowserWindow, configPath: string, localConfigPath: string) {
-  const services = await getConfig(configPath, localConfigPath)
+  const { services, settings } = await getConfig(configPath, localConfigPath)
   const url = services.device_poll_url || 'https://portal.co-bien.eu/pizarra/api/device/poll/'
-  const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || ''
+  const apiKey = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || services.notify_api_key || ''
+  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || 'CoBien6'
 
   try {
-    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
     const res = await fetch(`${url}?device_id=${deviceId}`, {
       method: 'GET',
       headers: {
@@ -103,3 +233,4 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
     // Silent fail for polling to avoid spamming the console too much
   }
 }
+

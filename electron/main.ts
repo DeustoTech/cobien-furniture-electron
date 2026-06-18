@@ -1,11 +1,18 @@
 import dotenv from 'dotenv'
 dotenv.config()
+
+// Restore VITE_DEV_SERVER_URL on relaunch if passed as command-line arg
+const devUrlArg = process.argv.find(arg => arg.startsWith('--vite-dev-url='))
+if (devUrlArg) {
+  process.env.VITE_DEV_SERVER_URL = devUrlArg.split('=')[1]
+}
+
 import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron'
 // Disable login keyring popups in kiosk environment
 app.commandLine.appendSwitch('password-store', 'basic')
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execFile } from 'node:child_process'
+import { execFile, exec } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
@@ -31,24 +38,24 @@ function getPiperConfig(lang = 'es', gender = 'male') {
   try {
     const configPath = join(_dirname, '../config/config.default.json')
     const localPath = join(app.getPath('userData'), 'config.local.json')
-    
+
     const defaultData = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
     let localData = {}
     try {
       localData = JSON.parse(fsSync.readFileSync(localPath, 'utf-8'))
-    } catch(e) {}
-    
+    } catch (e) { }
+
     const services = { ...defaultData.services, ...localData.services }
-    
+
     const internalBin = join(_dirname, '../public/models/piper/bin/piper')
     const defaultModel = join(_dirname, '../public/models/piper/es_ES-davefx-medium.onnx')
 
     const bin = services.tts_piper_bin || internalBin
-    
+
     // Determine model based on lang and gender
     let modelKey = `tts_piper_model_${lang}_${gender}`
     let modelName = services[modelKey] || services[`tts_piper_model_${lang}`]
-    
+
     let model = ''
 
     if (modelName) {
@@ -57,7 +64,7 @@ function getPiperConfig(lang = 'es', gender = 'male') {
       } else {
         // Try Electron public path
         const elPath = join(_dirname, '../public/models/piper', modelName)
-        
+
         if (fsSync.existsSync(elPath)) {
           model = elPath
         } else {
@@ -70,9 +77,9 @@ function getPiperConfig(lang = 'es', gender = 'male') {
       else if (lang === 'en') model = join(_dirname, '../public/models/piper/en_US-amy-medium.onnx')
       else model = defaultModel
     }
-    
+
     return { bin, model }
-  } catch(e) {
+  } catch (e) {
     console.error('Error reading piper config:', e)
     const internalBin = join(_dirname, '../public/models/piper/bin/piper')
     const internalModel = join(_dirname, '../public/models/piper/es_ES-davefx-medium.onnx')
@@ -92,7 +99,7 @@ function setupIPC() {
         active: data.settings.weather_cities || [],
         primary: data.settings.weather_primary_city || ''
       }
-    } catch(e) {
+    } catch (e) {
       console.error('Error reading config:', e)
       return { catalog: [], active: [], primary: '' }
     }
@@ -102,7 +109,7 @@ function setupIPC() {
     try {
       const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
       return data.settings || {}
-    } catch(e) {
+    } catch (e) {
       return {}
     }
   })
@@ -115,7 +122,7 @@ function setupIPC() {
       data.settings.weather_primary_city = payload.primary
       await fs.writeFile(configPath, JSON.stringify(data, null, 4))
       return true
-    } catch(e) {
+    } catch (e) {
       console.error('Error saving config:', e)
       return false
     }
@@ -139,7 +146,11 @@ function setupIPC() {
 
   ipcMain.handle('contacts:sync', async () => {
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
-    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const deviceId = process.env.COBIEN_DEVICE_ID
+    if (!deviceId) {
+      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
+      process.exit(1);
+    }
     const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
     const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
     return await syncContacts(deviceId, apiKey, baseUrl)
@@ -148,14 +159,22 @@ function setupIPC() {
 
   ipcMain.handle('contacts:requestCall', async (_, userName: string) => {
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
-    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const deviceId = process.env.COBIEN_DEVICE_ID
+    if (!deviceId) {
+      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
+      process.exit(1);
+    }
     const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
     const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
     return await requestCall(userName, deviceId, apiKey, baseUrl)
   })
 
   ipcMain.handle('contacts:openCall', async (_, userName: string) => {
-    const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
+    const deviceId = process.env.COBIEN_DEVICE_ID
+    if (!deviceId) {
+      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
+      process.exit(1);
+    }
     const deviceApiKey = process.env.COBIEN_VIDEOCALL_DEVICE_API_KEY || ''
     const sessionUrl = process.env.COBIEN_DEVICE_VIDEOCALL_SESSION_URL || 'https://portal.co-bien.eu/api/device-videocall-session/'
     const devicePortalUrl = process.env.COBIEN_PORTAL_VIDEOCALL_DEVICE_URL || 'https://portal.co-bien.eu/videocall/device/'
@@ -184,7 +203,7 @@ function setupIPC() {
         if (sessionRes.ok) {
           const sessionData = await sessionRes.json()
           const { token, room_name, identity, call_answered_url } = sessionData
-          
+
           if (token) {
             // Notify backend that the call is answered
             const targetAnsweredUrl = call_answered_url || answeredUrl
@@ -272,7 +291,7 @@ function setupIPC() {
   ipcMain.handle('events:updatePersonal', async (_, payload: any) => {
     return await updatePersonalEvent(payload)
   })
-  
+
   ipcMain.handle('events:delete', async (_, id: string) => {
     return await deleteEvent(id)
   })
@@ -292,19 +311,52 @@ function setupIPC() {
   })
 
   ipcMain.handle('app:restart', () => {
-    app.relaunch()
-    app.exit()
+    console.log('[Main] Restarting application via window reload...')
+    if (process.env.VITE_DEV_SERVER_URL) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+      }
+    } else {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.loadFile(join(_dirname, '../dist/index.html'))
+      } else {
+        app.relaunch()
+        app.exit(0)
+      }
+    }
   })
 
   ipcMain.handle('app:exit', () => {
     app.quit()
   })
 
+  ipcMain.handle('app:uninstall', async () => {
+    const username = os.userInfo().username
+    const homeDir = os.homedir()
+    const scriptPath = join(homeDir, 'cobien/cobien-furniture-app-launcher/uninstall-cobien-furniture-environment.sh')
+    console.log(`[Uninstall] Target script path: ${scriptPath} (resolving for user: ${username})`)
+
+    return new Promise((resolve, reject) => {
+      const cmd = `echo "cobien" | sudo -S systemd-run --system --collect --setenv=COBIEN_SETUP_USER=${username} --setenv=COBIEN_NON_INTERACTIVE=1 --setenv=COBIEN_AUTO_CONFIRM=1 --setenv=COBIEN_AUTO_REBOOT_AFTER_UNINSTALL=1 bash "${scriptPath}"`
+      console.log(`[Uninstall] Running command: ${cmd}`)
+      exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[Uninstall] Script error:`, error)
+          console.error(`[Uninstall] Script stderr:`, stderr)
+          reject(error)
+        } else {
+          console.log(`[Uninstall] Script stdout:`, stdout)
+          resolve(true)
+        }
+      })
+    })
+  })
+
   let currentTtsProcess: any = null
 
   ipcMain.handle('tts:stop', () => {
     if (currentTtsProcess) {
-      try { currentTtsProcess.kill() } catch(e) {}
+      try { currentTtsProcess.kill() } catch (e) { }
       currentTtsProcess = null
     }
   })
@@ -313,10 +365,10 @@ function setupIPC() {
     console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`)
 
     if (currentTtsProcess) {
-      try { currentTtsProcess.kill() } catch(e) {}
+      try { currentTtsProcess.kill() } catch (e) { }
       currentTtsProcess = null
     }
-    
+
     const tempWav = join(os.tmpdir(), `tts_${Date.now()}.wav`)
 
 
@@ -326,7 +378,7 @@ function setupIPC() {
     // Default: Piper
     const { bin, model } = getPiperConfig(lang, gender)
     console.log(`[TTS] Piper Config: bin=${bin}, model=${model}`)
-    
+
     if (!model) {
       console.error('TTS: No Piper model configured.')
       return null
@@ -339,18 +391,18 @@ function setupIPC() {
           resolve(null)
           return
         }
-        
+
         try {
           const buffer = await fs.readFile(tempWav)
           await fs.unlink(tempWav)
           console.log(`[TTS] Generated WAV: ${buffer.length} bytes`)
           resolve(buffer)
-        } catch(e) {
+        } catch (e) {
           console.error('[TTS] Error reading temp wav:', e)
           resolve(null)
         }
       })
-      
+
       child.stdin?.write(text)
       child.stdin?.end()
     })
@@ -363,36 +415,46 @@ function setupIPC() {
   ipcMain.handle('hardware:adjustBrightness', async (_, value?: number) => {
     return await adjustBrightness(value)
   })
- 
+
   ipcMain.handle('hardware:getVolume', async () => {
     return await getVolume()
   })
- 
+
 }
- 
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
     fullscreen: true,
- 
+
     webPreferences: {
       preload: join(_dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
   })
- 
+
   mainWindow.setBackgroundColor('#ffffff')
- 
+
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      if (process.env.VITE_DEV_SERVER_URL && validatedURL.startsWith(process.env.VITE_DEV_SERVER_URL)) {
+        console.log(`[Main] Failed to load dev URL (error: ${errorDescription}). Retrying in 1s...`)
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL!)
+          }
+        }, 1000)
+      }
+    })
     // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(_dirname, '../dist/index.html'))
   }
 }
- 
+
 app.whenReady().then(() => {
   // Automatically grant camera/microphone/media permissions
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -403,7 +465,7 @@ app.whenReady().then(() => {
       callback(false)
     }
   })
-  
+
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
     const allowed = ['media', 'geolocation', 'notifications', 'midiSysex', 'openExternal']
     return allowed.includes(permission)
@@ -413,9 +475,9 @@ app.whenReady().then(() => {
     const url = request.url.replace('cobien-media://', '')
     return net.fetch('file://' + url)
   })
- 
+
   setupIPC()
-  
+
   // Initial Syncs
   const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
   const localConfigPath = join(app.getPath('userData'), 'config.local.json')
@@ -424,25 +486,48 @@ app.whenReady().then(() => {
     if (fsSync.existsSync(localConfigPath)) {
       localData = JSON.parse(fsSync.readFileSync(localConfigPath, 'utf-8'))
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const services = { ...data.services, ...localData.services }
   const settings = { ...data.settings, ...localData.settings }
 
   const baseUrl = (services.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
   const apiKey = process.env.COBIEN_NOTIFY_API_KEY || services.notify_api_key || ''
-  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || 'CoBien6'
-  syncContacts(deviceId, apiKey, baseUrl).catch(console.error)
- 
+  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id
+  // Verify device ID is present
+  if (!deviceId) {
+    console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
+    process.exit(1);
+  }
+
+  // Initial contacts sync
+  syncContacts(deviceId, apiKey, baseUrl).catch(console.error);
+
+  // Periodic contacts sync (default every 5 minutes, configurable via COBIEN_DEVICE_POLL_INTERVAL_SEC)
+  const pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '300', 10);
+  if (pollIntervalSec > 0) {
+    setInterval(() => {
+      console.log('[CONTACTS] Periodic sync started');
+      syncContacts(deviceId, apiKey, baseUrl)
+        .then(() => {
+          // Notify renderer to refresh contacts UI if needed
+          if (mainWindow) {
+            mainWindow.webContents.send('contacts:updated');
+          }
+        })
+        .catch(console.error);
+    }, pollIntervalSec * 1000);
+  }
+
   createWindow()
- 
+
   // Load pending reminders and wire notification to renderer
   loadPendingReminders((reminder) => {
     if (mainWindow) {
       mainWindow.webContents.send('reminder:fire', reminder)
     }
   })
- 
+
   if (mainWindow) {
     const localPath = join(app.getPath('userData'), 'config.local.json')
     startBackendSync(mainWindow, configPath, localPath)

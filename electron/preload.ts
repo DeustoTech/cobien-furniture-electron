@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('config', {
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
   restartApp: () => ipcRenderer.invoke('app:restart'),
   exitApp: () => ipcRenderer.invoke('app:exit'),
+  uninstallSystem: () => ipcRenderer.invoke('app:uninstall'),
   adjustVolume: (value: number, isAbsolute = false) => ipcRenderer.invoke('hardware:adjustVolume', value, isAbsolute),
   getVolume: () => ipcRenderer.invoke('hardware:getVolume'),
   adjustBrightness: (value?: number) => ipcRenderer.invoke('hardware:adjustBrightness', value),

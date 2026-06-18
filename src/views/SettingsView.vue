@@ -12,6 +12,7 @@ const version = ref('...')
 const deviceId = ref('...')
 const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
+const showUninstallConfirm = ref(false)
 
 onMounted(async () => {
   const sys = await (window as any).config.getSystemInfo()
@@ -41,6 +42,19 @@ function handleExit() {
   (window as any).config.exitApp()
 }
 
+function triggerUninstall() {
+  showUninstallConfirm.value = true
+}
+
+async function handleUninstall() {
+  showUninstallConfirm.value = false
+  try {
+    await (window as any).config.uninstallSystem()
+  } catch (err) {
+    console.error('Uninstall failed:', err)
+  }
+}
+
 const settingsButtons = [
   { id: 'lang', icon: '/images/language.png', path: '/settings/language' },
   { id: 'cities', icon: '/images/weather.png', path: '/settings/weather' },
@@ -64,6 +78,7 @@ const settingsButtons = [
       <div class="header-actions">
         <button class="action-btn reboot" @click="triggerRestart">{{ t('settings.restart') }}</button>
         <button class="action-btn exit" @click="triggerExit">{{ t('settings.exit') }}</button>
+        <button class="action-btn uninstall" @click="triggerUninstall">{{ t('settings.uninstall') }}</button>
         <button class="back-btn" @click="goBack">
           <img src="/images/back.png" :alt="t('common.back')" />
         </button>
@@ -101,6 +116,14 @@ const settingsButtons = [
       confirm-class="exit"
       @confirm="handleExit"
       @cancel="showExitConfirm = false"
+    />
+    <ConfirmModal
+      v-if="showUninstallConfirm"
+      :title="t('settings.uninstall')"
+      :message="t('settings.uninstall_confirm')"
+      confirm-class="uninstall"
+      @confirm="handleUninstall"
+      @cancel="showUninstallConfirm = false"
     />
   </div>
 </template>
@@ -156,6 +179,7 @@ const settingsButtons = [
 
 .action-btn.reboot { background: #e3920c; }
 .action-btn.exit { background: #d92e2e; }
+.action-btn.uninstall { background: #6b11b1; }
 
 .back-btn {
   width: 5.5rem;

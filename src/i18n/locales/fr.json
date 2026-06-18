@@ -53,7 +53,11 @@
     "enter_pin": "Entrez le code d'accès",
     "engine": "Moteur Vocal",
     "engine_desc": "Sélectionnez le moteur pour générer la voix de l'assistant",
-    "piper": "Piper (Rapide/Local)"
+    "piper": "Piper (Rapide/Local)",
+    "restart_confirm": "Redémarrer l'application?",
+    "exit_confirm": "Quitter vers le système?",
+    "uninstall": "Désinstaller",
+    "uninstall_confirm": "Voulez-vous vraiment désinstaller l'environnement CoBien? Cette action est irréversible, supprimera toute la configuration et redémarrera le système."
   },
   "assistant": {
     "title": "Assistant CoBien",

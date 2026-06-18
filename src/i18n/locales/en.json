@@ -53,7 +53,9 @@
     "engine_desc": "Select the engine for the assistant's voice",
     "piper": "Piper (Fast/Local)",
     "restart_confirm": "Restart application?",
-    "exit_confirm": "Exit to system?"
+    "exit_confirm": "Exit to system?",
+    "uninstall": "Uninstall",
+    "uninstall_confirm": "Are you sure you want to completely uninstall the CoBien environment? This action is irreversible, will delete all configuration, and reboot the system."
   },
   "assistant": {
     "title": "CoBien Assistant",

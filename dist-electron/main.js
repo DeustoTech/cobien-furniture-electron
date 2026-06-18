@@ -1109,6 +1109,9 @@ async function adjustBrightness(value) {
 //#endregion
 //#region electron/main.ts
 dotenv.config();
+var devUrlArg = process.argv.find((arg) => arg.startsWith("--vite-dev-url="));
+if (devUrlArg) process.env.VITE_DEV_SERVER_URL = devUrlArg.split("=")[1];
+app.commandLine.appendSwitch("password-store", "basic");
 var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 var mainWindow = null;
 var configPath = join(_dirname, "../config/config.default.json");
@@ -1203,14 +1206,28 @@ function setupIPC() {
 	});
 	ipcMain.handle("contacts:sync", async () => {
 		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+		const deviceId = process.env.COBIEN_DEVICE_ID;
+		if (!deviceId) {
+			console.error("ERROR: COBIEN_DEVICE_ID not set. Exiting.");
+			process.exit(1);
+		}
+		return await syncContacts(deviceId, apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
 	});
 	ipcMain.handle("contacts:requestCall", async (_, userName) => {
 		const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
-		return await requestCall(userName, process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
+		const deviceId = process.env.COBIEN_DEVICE_ID;
+		if (!deviceId) {
+			console.error("ERROR: COBIEN_DEVICE_ID not set. Exiting.");
+			process.exit(1);
+		}
+		return await requestCall(userName, deviceId, apiKey, (JSON.parse(await promises.readFile(configPath, "utf-8")).services?.portal_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""));
 	});
 	ipcMain.handle("contacts:openCall", async (_, userName) => {
-		const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
+		const deviceId = process.env.COBIEN_DEVICE_ID;
+		if (!deviceId) {
+			console.error("ERROR: COBIEN_DEVICE_ID not set. Exiting.");
+			process.exit(1);
+		}
 		const deviceApiKey = process.env.COBIEN_VIDEOCALL_DEVICE_API_KEY || "";
 		const sessionUrl = process.env.COBIEN_DEVICE_VIDEOCALL_SESSION_URL || "https://portal.co-bien.eu/api/device-videocall-session/";
 		const devicePortalUrl = process.env.COBIEN_PORTAL_VIDEOCALL_DEVICE_URL || "https://portal.co-bien.eu/videocall/device/";
@@ -1270,12 +1287,21 @@ function setupIPC() {
 		callWin.webContents.on("will-navigate", (event, url) => {
 			if (url.startsWith("cobien://call-ended")) {
 				event.preventDefault();
+				callWin.hide();
 				callWin.close();
 			}
 		});
 		callWin.webContents.on("did-start-navigation", (event, url) => {
 			if (url.startsWith("cobien://call-ended")) {
 				event.preventDefault();
+				callWin.hide();
+				callWin.close();
+			}
+		});
+		callWin.webContents.on("will-frame-navigate", (event) => {
+			if (event.url.startsWith("cobien://call-ended")) {
+				event.preventDefault();
+				callWin.hide();
 				callWin.close();
 			}
 		});
@@ -1320,11 +1346,35 @@ function setupIPC() {
 		};
 	});
 	ipcMain.handle("app:restart", () => {
-		app.relaunch();
-		app.exit();
+		console.log("[Main] Restarting application via window reload...");
+		if (process.env.VITE_DEV_SERVER_URL) {
+			if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+		} else if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadFile(join(_dirname, "../dist/index.html"));
+		else {
+			app.relaunch();
+			app.exit(0);
+		}
 	});
 	ipcMain.handle("app:exit", () => {
 		app.quit();
+	});
+	ipcMain.handle("app:uninstall", async () => {
+		const scriptPath = join(os.homedir(), "cobien/cobien-furniture-app-launcher/uninstall-cobien-furniture-environment.sh");
+		console.log(`[Uninstall] Target script path: ${scriptPath}`);
+		return new Promise((resolve, reject) => {
+			const cmd = `echo "cobien" | sudo -S COBIEN_NON_INTERACTIVE=1 COBIEN_AUTO_CONFIRM=1 COBIEN_AUTO_REBOOT_AFTER_UNINSTALL=1 bash "${scriptPath}"`;
+			console.log(`[Uninstall] Running command: ${cmd}`);
+			exec(cmd, (error, stdout, stderr) => {
+				if (error) {
+					console.error(`[Uninstall] Script error:`, error);
+					console.error(`[Uninstall] Script stderr:`, stderr);
+					reject(error);
+				} else {
+					console.log(`[Uninstall] Script stdout:`, stdout);
+					resolve(true);
+				}
+			});
+		});
 	});
 	let currentTtsProcess = null;
 	ipcMain.handle("tts:stop", () => {
@@ -1398,8 +1448,17 @@ function createWindow() {
 		}
 	});
 	mainWindow.setBackgroundColor("#ffffff");
-	if (process.env.VITE_DEV_SERVER_URL) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-	else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
+	if (process.env.VITE_DEV_SERVER_URL) {
+		mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+		mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+			if (process.env.VITE_DEV_SERVER_URL && validatedURL.startsWith(process.env.VITE_DEV_SERVER_URL)) {
+				console.log(`[Main] Failed to load dev URL (error: ${errorDescription}). Retrying in 1s...`);
+				setTimeout(() => {
+					if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+				}, 1e3);
+			}
+		});
+	} else mainWindow.loadFile(join(_dirname, "../dist/index.html"));
 }
 app.whenReady().then(() => {
 	session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -1426,9 +1485,35 @@ app.whenReady().then(() => {
 		return net.fetch("file://" + url);
 	});
 	setupIPC();
-	const baseUrl = (JSON.parse(fsSync.readFileSync(configPath, "utf-8")).services?.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, "");
-	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || "";
-	syncContacts(process.env.COBIEN_DEVICE_ID || "CoBien6", apiKey, baseUrl).catch(console.error);
+	const data = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+	const localConfigPath = join(app.getPath("userData"), "config.local.json");
+	let localData = {};
+	try {
+		if (fsSync.existsSync(localConfigPath)) localData = JSON.parse(fsSync.readFileSync(localConfigPath, "utf-8"));
+	} catch (e) {}
+	const services = {
+		...data.services,
+		...localData.services
+	};
+	const settings = {
+		...data.settings,
+		...localData.settings
+	};
+	const baseUrl = (services.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, "");
+	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || services.notify_api_key || "";
+	const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id;
+	if (!deviceId) {
+		console.error("ERROR: COBIEN_DEVICE_ID not set. Exiting.");
+		process.exit(1);
+	}
+	syncContacts(deviceId, apiKey, baseUrl).catch(console.error);
+	const pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || "300", 10);
+	if (pollIntervalSec > 0) setInterval(() => {
+		console.log("[CONTACTS] Periodic sync started");
+		syncContacts(deviceId, apiKey, baseUrl).then(() => {
+			if (mainWindow) mainWindow.webContents.send("contacts:updated");
+		}).catch(console.error);
+	}, pollIntervalSec * 1e3);
 	createWindow();
 	loadPendingReminders((reminder) => {
 		if (mainWindow) mainWindow.webContents.send("reminder:fire", reminder);
