@@ -10,6 +10,7 @@ const { t } = useI18n()
 
 const version = ref('...')
 const deviceId = ref('...')
+const rustdeskId = ref('')
 const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
 const showUninstallConfirm = ref(false)
@@ -18,6 +19,7 @@ onMounted(async () => {
   const sys = await (window as any).config.getSystemInfo()
   version.value = sys.version
   deviceId.value = sys.deviceId
+  rustdeskId.value = sys.rustdeskId || ''
 })
 
 function goBack() {
@@ -73,6 +75,11 @@ const settingsButtons = [
     <div class="header glass-panel">
       <div class="header-left">
         <h1 class="header-title">{{ t('settings.title') }} <span class="version-tag">v{{ version }}</span></h1>
+        <div class="device-info-tag">
+          <span class="info-label">Device:</span> <span class="info-value">{{ deviceId }}</span>
+          <span v-if="rustdeskId" class="info-separator">|</span>
+          <span v-if="rustdeskId" class="info-label">RustDesk:</span> <span v-if="rustdeskId" class="info-value">{{ rustdeskId }}</span>
+        </div>
       </div>
 
       <div class="header-actions">
@@ -144,6 +151,41 @@ const settingsButtons = [
   align-items: center;
   padding: 1.2rem 2rem;
   border-radius: 20px;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.device-info-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.info-label {
+  color: #777;
+  font-size: 1.1rem;
+}
+
+.info-value {
+  color: #0b57d0;
+  background: rgba(11, 87, 208, 0.08);
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 1.15rem;
+}
+
+.info-separator {
+  color: #ddd;
+  font-weight: 300;
+  margin: 0 0.2rem;
 }
 
 .header-title {

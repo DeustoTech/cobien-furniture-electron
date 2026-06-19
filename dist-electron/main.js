@@ -7,6 +7,7 @@ import { exec, execFile } from "node:child_process";
 import * as fsSync from "node:fs";
 import { createWriteStream, promises } from "node:fs";
 import * as os from "node:os";
+import * as net$1 from "node:net";
 import mqtt from "mqtt";
 import { promisify } from "node:util";
 //#region electron/services/backendSync.ts
@@ -28,17 +29,127 @@ async function getConfig(configPath, localConfigPath) {
 			localData = JSON.parse(await promises.readFile(localConfigPath, "utf-8"));
 		} catch (e) {}
 		return {
-			...defaultData.services,
-			...localData.services
+			services: {
+				...defaultData.services,
+				...localData.services
+			},
+			settings: {
+				...defaultData.settings,
+				...localData.settings
+			}
 		};
 	} catch (e) {
-		return {};
+		return {
+			services: {},
+			settings: {}
+		};
 	}
 }
+function isProcessRunning(pattern, exact) {
+	return new Promise((resolve) => {
+		exec(exact ? `pgrep -x "${pattern}"` : `pgrep -f "${pattern}"`, (error) => {
+			resolve(!error);
+		});
+	});
+}
+function checkTcpPort(port, host, timeoutMs) {
+	return new Promise((resolve) => {
+		const socket = new net$1.Socket();
+		let resolved = false;
+		socket.setTimeout(timeoutMs);
+		socket.once("connect", () => {
+			if (!resolved) {
+				resolved = true;
+				socket.destroy();
+				resolve(true);
+			}
+		});
+		socket.once("timeout", () => {
+			if (!resolved) {
+				resolved = true;
+				socket.destroy();
+				resolve(false);
+			}
+		});
+		socket.once("error", () => {
+			if (!resolved) {
+				resolved = true;
+				socket.destroy();
+				resolve(false);
+			}
+		});
+		socket.connect(port, host);
+	});
+}
+async function readSysFile(path) {
+	try {
+		return (await promises.readFile(path, "utf-8")).trim();
+	} catch (e) {
+		return "";
+	}
+}
+async function checkMosquitto() {
+	try {
+		if (!await isProcessRunning("mosquitto", true)) return "error";
+		return await checkTcpPort(1883, "localhost", 2e3) ? "ok" : "warn";
+	} catch (e) {
+		return "unknown";
+	}
+}
+async function checkBridge() {
+	try {
+		if (!await isProcessRunning("cobien_bridge", false)) return "error";
+		return await checkTcpPort(1883, "localhost", 2e3) ? "ok" : "warn";
+	} catch (e) {
+		return "unknown";
+	}
+}
+function checkCan(canStatus) {
+	if (!canStatus || canStatus.operstate !== "up") return "error";
+	return canStatus.rx_packets + canStatus.tx_packets > 0 ? "ok" : "warn";
+}
 async function sendHeartbeat(configPath, localConfigPath) {
-	const services = await getConfig(configPath, localConfigPath);
+	const { services, settings } = await getConfig(configPath, localConfigPath);
 	const url = services.device_heartbeat_url || "https://portal.co-bien.eu/pizarra/api/devices/heartbeat/";
-	const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || "";
+	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || services.notify_api_key || "";
+	const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || "CoBien6";
+	let canStatus = null;
+	try {
+		const operstate = await readSysFile("/sys/class/net/can0/operstate");
+		if (operstate) {
+			const carrier = await readSysFile("/sys/class/net/can0/carrier");
+			const rxPackets = parseInt(await readSysFile("/sys/class/net/can0/statistics/rx_packets") || "0", 10);
+			const txPackets = parseInt(await readSysFile("/sys/class/net/can0/statistics/tx_packets") || "0", 10);
+			const rxErrors = parseInt(await readSysFile("/sys/class/net/can0/statistics/rx_errors") || "0", 10);
+			const txErrors = parseInt(await readSysFile("/sys/class/net/can0/statistics/tx_errors") || "0", 10);
+			canStatus = {
+				present: true,
+				operstate,
+				carrier,
+				rx_packets: isNaN(rxPackets) ? 0 : rxPackets,
+				tx_packets: isNaN(txPackets) ? 0 : txPackets,
+				rx_errors: isNaN(rxErrors) ? 0 : rxErrors,
+				tx_errors: isNaN(txErrors) ? 0 : txErrors
+			};
+		}
+	} catch (e) {}
+	const mosquittoStatus = await checkMosquitto();
+	const bridgeStatus = await checkBridge();
+	const canInterfaceStatus = checkCan(canStatus);
+	const payload = {
+		device_id: deviceId,
+		screen: currentScreen,
+		sent_at: (/* @__PURE__ */ new Date()).toISOString(),
+		software_version: `Electron-v${app.getVersion()}`,
+		services_status: {
+			app: "ok",
+			mosquitto: mosquittoStatus,
+			mqtt_can_bridge: bridgeStatus,
+			can_interface: canInterfaceStatus,
+			checked_at: (/* @__PURE__ */ new Date()).toISOString()
+		}
+	};
+	if (canStatus) payload.can_status = canStatus;
 	try {
 		const res = await fetch(url, {
 			method: "POST",
@@ -46,12 +157,7 @@ async function sendHeartbeat(configPath, localConfigPath) {
 				"Content-Type": "application/json",
 				"X-API-KEY": apiKey
 			},
-			body: JSON.stringify({
-				device_id: process.env.COBIEN_DEVICE_ID || "CoBien6",
-				screen: currentScreen,
-				sent_at: (/* @__PURE__ */ new Date()).toISOString(),
-				software_version: "Electron-v1.0"
-			})
+			body: JSON.stringify(payload)
 		});
 		if (!res.ok) console.warn(`[HEARTBEAT] Failed with status: ${res.status}`);
 		else console.log(`[HEARTBEAT] Sent (Screen: ${currentScreen})`);
@@ -60,11 +166,11 @@ async function sendHeartbeat(configPath, localConfigPath) {
 	}
 }
 async function pollNotifications(mainWindow, configPath, localConfigPath) {
-	const services = await getConfig(configPath, localConfigPath);
+	const { services, settings } = await getConfig(configPath, localConfigPath);
 	const url = services.device_poll_url || "https://portal.co-bien.eu/pizarra/api/device/poll/";
-	const apiKey = process.env.NOTIFY_API_KEY || services.notify_api_key || "";
+	const apiKey = process.env.COBIEN_NOTIFY_API_KEY || process.env.NOTIFY_API_KEY || services.notify_api_key || "";
+	const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || "CoBien6";
 	try {
-		const deviceId = process.env.COBIEN_DEVICE_ID || "CoBien6";
 		const res = await fetch(`${url}?device_id=${deviceId}`, {
 			method: "GET",
 			headers: { "X-API-KEY": apiKey }
@@ -1337,12 +1443,22 @@ function setupIPC() {
 	ipcMain.handle("board:delete", async (_, id) => await deleteMessage(id));
 	ipcMain.handle("board:read", async (_, id) => await markMessageRead(id));
 	ipcMain.handle("board:reply", async (_, id, text) => await submitQuickReply(id, text));
-	ipcMain.handle("config:getSystemInfo", () => {
+	ipcMain.handle("config:getSystemInfo", async () => {
+		let rustdeskId = "";
+		try {
+			rustdeskId = await new Promise((resolve) => {
+				exec("rustdesk --get-id", (error, stdout) => {
+					if (error) resolve("");
+					else resolve(stdout.trim());
+				});
+			});
+		} catch (e) {}
 		return {
 			version: app.getVersion(),
 			deviceId: process.env.COBIEN_DEVICE_ID || "CoBienX",
 			contactsPath: join(app.getPath("userData"), "contacts/list_contacts.txt"),
-			defaultLanguage: process.env.COBIEN_APP_LANGUAGE || "en"
+			defaultLanguage: process.env.COBIEN_APP_LANGUAGE || "en",
+			rustdeskId
 		};
 	});
 	ipcMain.handle("app:restart", () => {
@@ -1359,10 +1475,11 @@ function setupIPC() {
 		app.quit();
 	});
 	ipcMain.handle("app:uninstall", async () => {
+		const username = os.userInfo().username;
 		const scriptPath = join(os.homedir(), "cobien/cobien-furniture-app-launcher/uninstall-cobien-furniture-environment.sh");
-		console.log(`[Uninstall] Target script path: ${scriptPath}`);
+		console.log(`[Uninstall] Target script path: ${scriptPath} (resolving for user: ${username})`);
 		return new Promise((resolve, reject) => {
-			const cmd = `echo "cobien" | sudo -S COBIEN_NON_INTERACTIVE=1 COBIEN_AUTO_CONFIRM=1 COBIEN_AUTO_REBOOT_AFTER_UNINSTALL=1 bash "${scriptPath}"`;
+			const cmd = `echo "cobien" | sudo -S systemd-run --system --collect --setenv=COBIEN_SETUP_USER=${username} --setenv=COBIEN_NON_INTERACTIVE=1 --setenv=COBIEN_AUTO_CONFIRM=1 --setenv=COBIEN_AUTO_REBOOT_AFTER_UNINSTALL=1 bash "${scriptPath}"`;
 			console.log(`[Uninstall] Running command: ${cmd}`);
 			exec(cmd, (error, stdout, stderr) => {
 				if (error) {

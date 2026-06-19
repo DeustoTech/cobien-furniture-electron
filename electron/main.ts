@@ -301,12 +301,27 @@ function setupIPC() {
   ipcMain.handle('board:read', async (_, id) => await markMessageRead(id))
   ipcMain.handle('board:reply', async (_, id, text) => await submitQuickReply(id, text))
 
-  ipcMain.handle('config:getSystemInfo', () => {
+  ipcMain.handle('config:getSystemInfo', async () => {
+    let rustdeskId = ''
+    try {
+      rustdeskId = await new Promise<string>((resolve) => {
+        exec('rustdesk --get-id', (error, stdout) => {
+          if (error) {
+            resolve('')
+          } else {
+            resolve(stdout.trim())
+          }
+        })
+      })
+    } catch (e) {
+      // Ignore
+    }
     return {
       version: app.getVersion(),
       deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
       contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
-      defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en'
+      defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en',
+      rustdeskId
     }
   })
 
