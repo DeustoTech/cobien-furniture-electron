@@ -154,11 +154,25 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
   const bridgeStatus = await checkBridge()
   const canInterfaceStatus = checkCan(canStatus)
 
+  // Get RustDesk ID if available
+  let rustdeskId = ''
+  try {
+    rustdeskId = await new Promise<string>((resolve) => {
+      exec('rustdesk --get-id', (error, stdout) => {
+        if (error) resolve('')
+        else resolve(stdout.trim())
+      })
+    })
+  } catch (e) {
+    // Ignore
+  }
+
   const payload: any = {
     device_id: deviceId,
     screen: currentScreen,
     sent_at: new Date().toISOString(),
     software_version: `Electron-v${app.getVersion()}`,
+    rustdesk_id: rustdeskId,
     services_status: {
       app: 'ok',
       mosquitto: mosquittoStatus,

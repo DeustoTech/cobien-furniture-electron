@@ -136,11 +136,21 @@ async function sendHeartbeat(configPath, localConfigPath) {
 	const mosquittoStatus = await checkMosquitto();
 	const bridgeStatus = await checkBridge();
 	const canInterfaceStatus = checkCan(canStatus);
+	let rustdeskId = "";
+	try {
+		rustdeskId = await new Promise((resolve) => {
+			exec("rustdesk --get-id", (error, stdout) => {
+				if (error) resolve("");
+				else resolve(stdout.trim());
+			});
+		});
+	} catch (e) {}
 	const payload = {
 		device_id: deviceId,
 		screen: currentScreen,
 		sent_at: (/* @__PURE__ */ new Date()).toISOString(),
 		software_version: `Electron-v${app.getVersion()}`,
+		rustdesk_id: rustdeskId,
 		services_status: {
 			app: "ok",
 			mosquitto: mosquittoStatus,
