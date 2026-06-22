@@ -4,6 +4,17 @@ import * as net from 'node:net'
 import { exec } from 'node:child_process'
 
 let currentScreen = 'home'
+let lastNetworkSpeedKbps: number | null = null
+
+/** Called from main.ts after a speed measurement so heartbeat picks it up. */
+export function setNetworkSpeed(kbps: number | null) {
+  lastNetworkSpeedKbps = kbps
+}
+
+/** Fire a heartbeat immediately (e.g. after updating speed). */
+export async function triggerHeartbeat(configPath: string, localConfigPath: string) {
+  return sendHeartbeat(configPath, localConfigPath)
+}
 
 export async function startBackendSync(mainWindow: BrowserWindow, configPath: string, localConfigPath: string) {
   // Listen for route changes from Vue Router
@@ -173,6 +184,7 @@ async function sendHeartbeat(configPath: string, localConfigPath: string) {
     sent_at: new Date().toISOString(),
     software_version: `Electron-v${app.getVersion()}`,
     rustdesk_id: rustdeskId,
+    ...(lastNetworkSpeedKbps !== null ? { network_speed_kbps: lastNetworkSpeedKbps } : {}),
     services_status: {
       app: 'ok',
       mosquitto: mosquittoStatus,

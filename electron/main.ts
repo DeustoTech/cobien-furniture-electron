@@ -16,7 +16,7 @@ import { execFile, exec } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import * as os from 'node:os'
 import * as fsSync from 'node:fs'
-import { startBackendSync } from './services/backendSync'
+import { startBackendSync, setNetworkSpeed, triggerHeartbeat } from './services/backendSync'
 import { getEvents, addPersonalEvent, updatePersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 import { fetchWeatherBundle } from './services/weatherService'
@@ -32,6 +32,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLT
 let mainWindow: BrowserWindow | null = null
 
 const configPath = join(_dirname, '../config/config.default.json')
+let _localConfigPath = ''  // set once app is ready
 
 
 function getPiperConfig(lang = 'es', gender = 'male') {
@@ -387,6 +388,17 @@ function setupIPC() {
     }
   })
 
+  ipcMain.handle('config:measureNetworkSpeed', async () => {
+    const kbps = await measureNetworkSpeed()
+    // Persist the result so the next (and immediate) heartbeat includes it
+    setNetworkSpeed(kbps)
+    // Fire a heartbeat right away so the portal sees the fresh value immediately
+    if (_localConfigPath) {
+      triggerHeartbeat(configPath, _localConfigPath).catch(() => {})
+    }
+    return kbps
+  })
+
   ipcMain.handle('app:restart', () => {
     console.log('[Main] Restarting application via window reload...')
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -635,6 +647,7 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     const localPath = join(app.getPath('userData'), 'config.local.json')
+    _localConfigPath = localPath
     startBackendSync(mainWindow, configPath, localPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)

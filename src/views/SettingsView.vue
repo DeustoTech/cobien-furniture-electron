@@ -12,6 +12,7 @@ const version = ref('...')
 const deviceId = ref('...')
 const rustdeskId = ref('')
 const networkSpeedKbps = ref<number | null | 'loading'>('loading')
+const remeasuring = ref(false)
 const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
 const showUninstallConfirm = ref(false)
@@ -24,6 +25,20 @@ onMounted(async () => {
   rustdeskId.value = sys.rustdeskId || ''
   networkSpeedKbps.value = sys.networkSpeedKbps ?? null
 })
+
+async function refreshSpeed() {
+  if (remeasuring.value) return
+  remeasuring.value = true
+  networkSpeedKbps.value = 'loading'
+  try {
+    const kbps = await (window as any).config.measureNetworkSpeed()
+    networkSpeedKbps.value = kbps ?? null
+  } catch {
+    networkSpeedKbps.value = null
+  } finally {
+    remeasuring.value = false
+  }
+}
 
 function goBack() {
   router.push('/')
@@ -98,17 +113,25 @@ const settingsButtons = [
           <span class="info-separator">|</span>
           <span class="info-label">Red:</span>
           <span v-if="networkSpeedKbps === 'loading'" class="info-value speed-loading">⏳ midiendo…</span>
-          <span v-else-if="networkSpeedKbps === null" class="info-value speed-offline">Sin conexión</span>
+          <span
+            v-else-if="networkSpeedKbps === null"
+            class="info-value speed-offline speed-clickable"
+            title="Pulsa para volver a medir"
+            @click="refreshSpeed"
+          >Sin conexión 🔄</span>
           <span
             v-else
-            class="info-value speed-badge"
+            class="info-value speed-badge speed-clickable"
             :class="{
               'speed-fast':   networkSpeedKbps >= 5000,
               'speed-medium': networkSpeedKbps >= 1000 && networkSpeedKbps < 5000,
               'speed-slow':   networkSpeedKbps < 1000
             }"
+            title="Pulsa para volver a medir"
+            @click="refreshSpeed"
           >
             {{ networkSpeedKbps >= 1000 ? (networkSpeedKbps / 1000).toFixed(1) + ' Mbps' : networkSpeedKbps + ' kbps' }}
+            <span class="speed-refresh-icon">🔄</span>
           </span>
         </div>
       </div>
@@ -359,5 +382,26 @@ const settingsButtons = [
 .speed-slow {
   color: #cf222e;
   background: rgba(207, 34, 46, 0.1);
+}
+.speed-clickable {
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  user-select: none;
+}
+
+.speed-clickable:hover {
+  opacity: 0.75;
+  transform: scale(1.05);
+}
+
+.speed-refresh-icon {
+  font-size: 0.85em;
+  margin-left: 0.3rem;
+  opacity: 0.5;
+  vertical-align: middle;
+}
+
+.speed-clickable:hover .speed-refresh-icon {
+  opacity: 1;
 }
 </style>
