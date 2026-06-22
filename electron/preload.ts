@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('config', {
   restartApp: () => ipcRenderer.invoke('app:restart'),
   exitApp: () => ipcRenderer.invoke('app:exit'),
   uninstallSystem: () => ipcRenderer.invoke('app:uninstall'),
+  updateSystem: () => ipcRenderer.invoke('app:update'),
   adjustVolume: (value: number, isAbsolute = false) => ipcRenderer.invoke('hardware:adjustVolume', value, isAbsolute),
   getVolume: () => ipcRenderer.invoke('hardware:getVolume'),
   adjustBrightness: (value?: number) => ipcRenderer.invoke('hardware:adjustBrightness', value),

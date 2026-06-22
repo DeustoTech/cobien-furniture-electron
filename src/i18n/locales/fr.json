@@ -57,7 +57,9 @@
     "restart_confirm": "Redémarrer l'application?",
     "exit_confirm": "Quitter vers le système?",
     "uninstall": "Désinstaller",
-    "uninstall_confirm": "Voulez-vous vraiment désinstaller l'environnement CoBien? Cette action est irréversible, supprimera toute la configuration et redémarrera le système."
+    "uninstall_confirm": "Voulez-vous vraiment désinstaller l'environnement CoBien? Cette action est irréversible, supprimera toute la configuration et redémarrera le système.",
+    "update": "Mettre à jour",
+    "update_confirm": "Rechercher et appliquer les mises à jour pour CoBien ? L'appareil verifiera si une nouvelle version existe sur GitHub et redémarrera si nécessaire."
   },
   "assistant": {
     "title": "Assistant CoBien",

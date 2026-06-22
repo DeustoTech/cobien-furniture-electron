@@ -58,7 +58,9 @@
     "restart_confirm": "¿Reiniciar aplicación?",
     "exit_confirm": "¿Salir al sistema?",
     "uninstall": "Desinstalar",
-    "uninstall_confirm": "¿Seguro que quieres desinstalar CoBien? Esta acción es irreversible, eliminará toda la configuración y reiniciará el equipo."
+    "uninstall_confirm": "¿Seguro que quieres desinstalar CoBien? Esta acción es irreversible, eliminará toda la configuración y reiniciará el equipo.",
+    "update": "Actualizar",
+    "update_confirm": "¿Buscar y aplicar actualizaciones de CoBien? El equipo comprobará si hay nueva versión en GitHub y se reiniciará si es necesario."
   },
   "assistant": {
     "title": "Asistente CoBien",

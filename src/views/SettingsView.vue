@@ -14,6 +14,7 @@ const rustdeskId = ref('')
 const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
 const showUninstallConfirm = ref(false)
+const showUpdateConfirm = ref(false)
 
 onMounted(async () => {
   const sys = await (window as any).config.getSystemInfo()
@@ -57,6 +58,19 @@ async function handleUninstall() {
   }
 }
 
+function triggerUpdate() {
+  showUpdateConfirm.value = true
+}
+
+async function handleUpdate() {
+  showUpdateConfirm.value = false
+  try {
+    await (window as any).config.updateSystem()
+  } catch (err) {
+    console.error('Update failed:', err)
+  }
+}
+
 const settingsButtons = [
   { id: 'lang', icon: '/images/language.png', path: '/settings/language' },
   { id: 'cities', icon: '/images/weather.png', path: '/settings/weather' },
@@ -83,6 +97,7 @@ const settingsButtons = [
       </div>
 
       <div class="header-actions">
+        <button class="action-btn update" @click="triggerUpdate">{{ t('settings.update') }}</button>
         <button class="action-btn reboot" @click="triggerRestart">{{ t('settings.restart') }}</button>
         <button class="action-btn exit" @click="triggerExit">{{ t('settings.exit') }}</button>
         <button class="action-btn uninstall" @click="triggerUninstall">{{ t('settings.uninstall') }}</button>
@@ -108,6 +123,14 @@ const settingsButtons = [
 
       </button>
     </div>
+    <ConfirmModal
+      v-if="showUpdateConfirm"
+      :title="t('settings.update')"
+      :message="t('settings.update_confirm')"
+      confirm-class="update"
+      @confirm="handleUpdate"
+      @cancel="showUpdateConfirm = false"
+    />
     <ConfirmModal
       v-if="showRestartConfirm"
       :title="t('settings.restart')"
@@ -219,6 +242,7 @@ const settingsButtons = [
   cursor: pointer;
 }
 
+.action-btn.update { background: #0b57d0; }
 .action-btn.reboot { background: #e3920c; }
 .action-btn.exit { background: #d92e2e; }
 .action-btn.uninstall { background: #6b11b1; }

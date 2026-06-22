@@ -345,6 +345,34 @@ function setupIPC() {
     app.quit()
   })
 
+  ipcMain.handle('app:update', async () => {
+    console.log('[Main] Manual update requested from GUI.')
+    const runtimeStateDir = process.env.COBIEN_RUNTIME_STATE_DIR || join(os.homedir(), '.local/state/cobien/runtime')
+    const flagPath = join(runtimeStateDir, 'manual_update_reload.flag')
+    
+    try {
+      await fs.mkdir(runtimeStateDir, { recursive: true })
+      await fs.writeFile(flagPath, JSON.stringify({ requested_at: new Date().toISOString() }))
+      console.log(`[Main] Created manual update reload flag at: ${flagPath}`)
+    } catch (e: any) {
+      console.error('[Main] Failed to write manual update reload flag:', e.message || e)
+    }
+
+    return new Promise((resolve, reject) => {
+      const cmd = 'systemctl --user start cobien-update.service'
+      console.log(`[Main] Executing update command: ${cmd}`)
+      exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[Main] Failed to start update service:`, error)
+          reject(error)
+        } else {
+          console.log(`[Main] Update service started successfully:`, stdout)
+          resolve(true)
+        }
+      })
+    })
+  })
+
   ipcMain.handle('app:uninstall', async () => {
     const username = os.userInfo().username
     const homeDir = os.homedir()
