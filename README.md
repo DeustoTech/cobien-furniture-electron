@@ -61,4 +61,3 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ---
 Developed with ❤️ by **DeustoTech** for the CoBien project.
-# test commit lun 22 jun 2026 10:54:15 CEST
