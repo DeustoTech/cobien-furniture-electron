@@ -11,6 +11,7 @@ const { t } = useI18n()
 const version = ref('...')
 const deviceId = ref('...')
 const rustdeskId = ref('')
+const networkSpeedKbps = ref<number | null | 'loading'>('loading')
 const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
 const showUninstallConfirm = ref(false)
@@ -21,6 +22,7 @@ onMounted(async () => {
   version.value = sys.version
   deviceId.value = sys.deviceId
   rustdeskId.value = sys.rustdeskId || ''
+  networkSpeedKbps.value = sys.networkSpeedKbps ?? null
 })
 
 function goBack() {
@@ -93,6 +95,21 @@ const settingsButtons = [
           <span class="info-label">Device:</span> <span class="info-value">{{ deviceId }}</span>
           <span v-if="rustdeskId" class="info-separator">|</span>
           <span v-if="rustdeskId" class="info-label">RustDesk:</span> <span v-if="rustdeskId" class="info-value">{{ rustdeskId }}</span>
+          <span class="info-separator">|</span>
+          <span class="info-label">Red:</span>
+          <span v-if="networkSpeedKbps === 'loading'" class="info-value speed-loading">⏳ midiendo…</span>
+          <span v-else-if="networkSpeedKbps === null" class="info-value speed-offline">Sin conexión</span>
+          <span
+            v-else
+            class="info-value speed-badge"
+            :class="{
+              'speed-fast':   networkSpeedKbps >= 5000,
+              'speed-medium': networkSpeedKbps >= 1000 && networkSpeedKbps < 5000,
+              'speed-slow':   networkSpeedKbps < 1000
+            }"
+          >
+            {{ networkSpeedKbps >= 1000 ? (networkSpeedKbps / 1000).toFixed(1) + ' Mbps' : networkSpeedKbps + ' kbps' }}
+          </span>
         </div>
       </div>
 
@@ -313,4 +330,34 @@ const settingsButtons = [
   text-align: left;
 }
 
+.speed-loading {
+  color: #888;
+  font-style: italic;
+  background: rgba(0,0,0,0.05);
+}
+
+.speed-offline {
+  color: #999;
+  background: rgba(0,0,0,0.06);
+}
+
+.speed-badge {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.speed-fast {
+  color: #1a7f37;
+  background: rgba(26, 127, 55, 0.1);
+}
+
+.speed-medium {
+  color: #9a6700;
+  background: rgba(154, 103, 0, 0.1);
+}
+
+.speed-slow {
+  color: #cf222e;
+  background: rgba(207, 34, 46, 0.1);
+}
 </style>

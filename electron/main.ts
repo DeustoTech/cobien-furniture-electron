@@ -88,6 +88,64 @@ function getPiperConfig(lang = 'es', gender = 'male') {
 }
 
 
+/**
+ * Download ~500 KB from a stable CDN and return the speed in kbps.
+ * Uses Electron's net.request so it goes through the Chromium network stack
+ * (proxy settings, SSL, etc. are all handled automatically).
+ * Returns null on error or timeout.
+ */
+async function measureNetworkSpeed(): Promise<number | null> {
+  // ~500 KB file hosted on a globally distributed CDN
+  const TEST_URL = 'https://speed.cloudflare.com/__down?bytes=512000'
+  const TIMEOUT_MS = 8000
+
+  return new Promise((resolve) => {
+    let byteCount = 0
+    const startMs = Date.now()
+    let settled = false
+
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      // Partial result is still useful — use what we received
+      const elapsedSec = (Date.now() - startMs) / 1000
+      if (byteCount > 0 && elapsedSec > 0) {
+        resolve(Math.round((byteCount * 8) / elapsedSec / 1000))
+      } else {
+        resolve(null)
+      }
+    }, TIMEOUT_MS)
+
+    try {
+      const request = net.request(TEST_URL)
+      request.on('response', (response) => {
+        response.on('data', (chunk: Buffer) => {
+          byteCount += chunk.length
+        })
+        response.on('end', () => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          const elapsedSec = (Date.now() - startMs) / 1000
+          if (elapsedSec > 0) {
+            resolve(Math.round((byteCount * 8) / elapsedSec / 1000))
+          } else {
+            resolve(null)
+          }
+        })
+        response.on('error', () => {
+          if (!settled) { settled = true; clearTimeout(timer); resolve(null) }
+        })
+      })
+      request.on('error', () => {
+        if (!settled) { settled = true; clearTimeout(timer); resolve(null) }
+      })
+      request.end()
+    } catch {
+      if (!settled) { settled = true; clearTimeout(timer); resolve(null) }
+    }
+  })
+}
 
 function setupIPC() {
 
@@ -316,12 +374,16 @@ function setupIPC() {
     } catch (e) {
       // Ignore
     }
+
+    const networkSpeedKbps = await measureNetworkSpeed()
+
     return {
       version: app.getVersion(),
       deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
       contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
       defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en',
-      rustdeskId
+      rustdeskId,
+      networkSpeedKbps
     }
   })
 
