@@ -620,8 +620,11 @@ app.whenReady().then(() => {
   // Initial contacts sync
   syncContacts(deviceId, apiKey, baseUrl).catch(console.error);
 
-  // Periodic contacts sync (default every 5 minutes, configurable via COBIEN_DEVICE_POLL_INTERVAL_SEC)
-  const pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '300', 10);
+  // Periodic contacts sync (default every 5 minutes, configurable via COBIEN_CONTACTS_SYNC_INTERVAL_SEC)
+  let pollIntervalSec = parseInt(process.env.COBIEN_CONTACTS_SYNC_INTERVAL_SEC || '300', 10);
+  if (pollIntervalSec < 60) {
+    pollIntervalSec = 300; // Enforce a safe minimum of 5 minutes to prevent overloading the server
+  }
   if (pollIntervalSec > 0) {
     setInterval(() => {
       console.log('[CONTACTS] Periodic sync started');
