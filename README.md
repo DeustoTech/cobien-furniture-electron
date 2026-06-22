@@ -1,4 +1,4 @@
-# CoBien Furniture Interface (v1.0.0-1)
+# CoBien Furniture Interface (v1.1.0-2)
 
 ![CoBien Logo](/public/images/logo.png)
 
@@ -6,7 +6,7 @@
 
 **CoBien Furniture Interface** is the next-generation control interface for the CoBien smart furniture system. Designed with a high-fidelity **glassmorphic** aesthetic, this application provides a premium, fluid, and highly ergonomic user experience specifically optimized for touchscreens integrated into furniture.
 
-This version (**v1.0.0-1**) represents the culmination of the visual and functional redesign, prioritizing voice accessibility and intuitive touch navigation.
+This version (**v1.1.0-2**) represents the culmination of the visual and functional redesign, prioritizing voice accessibility and intuitive touch navigation.
 
 ## 🚀 Key Features
 
