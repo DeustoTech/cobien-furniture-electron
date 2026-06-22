@@ -2,6 +2,8 @@ import { BrowserWindow, ipcMain, app } from 'electron'
 import { promises as fs } from 'node:fs'
 import * as net from 'node:net'
 import { exec } from 'node:child_process'
+import { join } from 'node:path'
+import * as os from 'node:os'
 
 let currentScreen = 'home'
 let lastNetworkSpeedKbps: number | null = null
@@ -244,6 +246,35 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
           const type = (notif.type || '').toLowerCase()
           if (type === 'new_event' || type === 'events_reload') {
             reloadEvents = true
+          }
+          if (type === 'force_update') {
+            console.log('[POLL] Force update notification received. Triggering manual update...')
+            const runtimeStateDir = process.env.COBIEN_RUNTIME_STATE_DIR || join(os.homedir(), '.local/state/cobien/runtime')
+            const flagPath = join(runtimeStateDir, 'manual_update_reload.flag')
+            fs.mkdir(runtimeStateDir, { recursive: true })
+              .then(() => fs.writeFile(flagPath, JSON.stringify({ requested_at: new Date().toISOString() })))
+              .then(() => {
+                console.log(`[POLL] Created manual update reload flag at: ${flagPath}`)
+                exec('systemctl --user start cobien-update.service', (error, stdout, stderr) => {
+                  if (error) {
+                    console.error('[POLL] Failed to start update service:', error)
+                  } else {
+                    console.log('[POLL] Update service started successfully:', stdout)
+                  }
+                })
+              })
+              .catch((err) => {
+                console.error('[POLL] Failed to prepare manual update reload flag:', err)
+              })
+          } else if (type === 'restart') {
+            console.log('[POLL] Restart notification received. Rebooting device...')
+            exec('systemctl reboot -i || echo cobien | sudo -S systemctl reboot -i || echo cobien | sudo -S reboot -f || reboot', (error, stdout, stderr) => {
+              if (error) {
+                console.error('[POLL] Failed to reboot device:', error)
+              } else {
+                console.log('[POLL] Reboot command executed successfully:', stdout)
+              }
+            })
           }
         })
 
