@@ -25,11 +25,16 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
   })
 
   // Start background intervals
-  setInterval(() => sendHeartbeat(configPath, localConfigPath), 60000)
+  let heartbeatIntervalSec = parseInt(process.env.COBIEN_DEVICE_HEARTBEAT_INTERVAL_SEC || '300', 10)
+  if (isNaN(heartbeatIntervalSec) || heartbeatIntervalSec < 120) {
+    heartbeatIntervalSec = 300 // default to 5 minutes to reduce server load
+  }
+  console.log(`[SYNC] Heartbeat interval set to ${heartbeatIntervalSec}s`)
+  setInterval(() => sendHeartbeat(configPath, localConfigPath), heartbeatIntervalSec * 1000)
   
   let pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '15', 10)
-  if (isNaN(pollIntervalSec) || pollIntervalSec < 5) {
-    pollIntervalSec = 15
+  if (isNaN(pollIntervalSec) || pollIntervalSec < 15) {
+    pollIntervalSec = 15 // Enforce a safe minimum of 15 seconds to reduce server load
   }
   console.log(`[SYNC] Notification polling interval set to ${pollIntervalSec}s`)
   setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), pollIntervalSec * 1000)
