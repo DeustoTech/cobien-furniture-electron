@@ -26,7 +26,13 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
 
   // Start background intervals
   setInterval(() => sendHeartbeat(configPath, localConfigPath), 60000)
-  setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), 5000)
+  
+  let pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '15', 10)
+  if (isNaN(pollIntervalSec) || pollIntervalSec < 5) {
+    pollIntervalSec = 15
+  }
+  console.log(`[SYNC] Notification polling interval set to ${pollIntervalSec}s`)
+  setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), pollIntervalSec * 1000)
 
   // Fire immediately on start
   sendHeartbeat(configPath, localConfigPath)
@@ -275,6 +281,18 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
                 console.log('[POLL] Reboot command executed successfully:', stdout)
               }
             })
+          } else if (type === 'contacts_updated') {
+            console.log('[POLL] Contacts updated notification received. Syncing contacts...')
+            const baseUrl = (services.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
+            import('./contactsService').then(({ syncContacts }) => {
+              syncContacts(deviceId, apiKey, baseUrl)
+                .then(() => {
+                  if (mainWindow) {
+                    mainWindow.webContents.send('contacts:updated');
+                  }
+                })
+                .catch(err => console.error('[POLL] Failed to sync contacts on notification:', err))
+            }).catch(err => console.error('[POLL] Failed to dynamically import contactsService:', err))
           }
         })
 
