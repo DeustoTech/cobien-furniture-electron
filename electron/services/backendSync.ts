@@ -32,9 +32,9 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
   console.log(`[SYNC] Heartbeat interval set to ${heartbeatIntervalSec}s`)
   setInterval(() => sendHeartbeat(configPath, localConfigPath), heartbeatIntervalSec * 1000)
   
-  let pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '15', 10)
-  if (isNaN(pollIntervalSec) || pollIntervalSec < 15) {
-    pollIntervalSec = 15 // Enforce a safe minimum of 15 seconds to reduce server load
+  let pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '10', 10)
+  if (isNaN(pollIntervalSec) || pollIntervalSec < 5) {
+    pollIntervalSec = 10 // Enforce a safe minimum of 5 seconds to reduce server load
   }
   console.log(`[SYNC] Notification polling interval set to ${pollIntervalSec}s`)
   setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), pollIntervalSec * 1000)
