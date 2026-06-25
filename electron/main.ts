@@ -24,7 +24,7 @@ import { getRandomJoke } from './services/jokesService'
 import { loadContacts, requestCall, syncContacts } from './services/contactsService'
 
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
-import { startMqtt, stopMqtt } from './services/mqttService'
+import { startMqtt, stopMqtt, publishButtonConfig } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -183,6 +183,35 @@ function setupIPC() {
       return true
     } catch (e) {
       console.error('Error saving config:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:saveButtonColors', async (event, payload: any) => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      if (!data.settings) data.settings = {}
+      data.settings.button_colors = payload
+      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
+
+      try {
+        if (_localConfigPath) {
+          let localData: any = {}
+          try {
+            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+          } catch(e) {}
+          if (!localData.settings) localData.settings = {}
+          localData.settings.button_colors = payload
+          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        }
+      } catch(err) {
+        console.error('Error writing local config:', err)
+      }
+
+      publishButtonConfig(payload)
+      return true
+    } catch (e) {
+      console.error('Error saving button colors:', e)
       return false
     }
   })

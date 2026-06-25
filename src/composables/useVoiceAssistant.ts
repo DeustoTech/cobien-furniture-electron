@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettings } from './useSettings'
 import { startListening, stopListening, startWakeWordDetection, stopWakeWordDetection } from '../services/voiceRecognizer'
+import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 const lastGreetingIndex = ref(-1)
 
 export function useVoiceAssistant() {
@@ -32,20 +33,7 @@ export function useVoiceAssistant() {
 
 
       if (buffer) {
-        const audioCtx = new AudioContext()
-        await audioCtx.resume()
-
-        const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-        const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-        const source = audioCtx.createBufferSource()
-
-        source.buffer = decoded
-        source.connect(audioCtx.destination)
-        await new Promise<void>(resolve => {
-          source.onended = () => resolve()
-          source.start()
-        })
-
+        await playTtsAudio(buffer)
       } else {
         await new Promise(r => setTimeout(r, 1500))
       }
@@ -208,6 +196,7 @@ export function useVoiceAssistant() {
     step.value = 'idle'
     try {
       stopListening()
+      stopTtsAudio()
       // Force restart wake word listening
       setTimeout(() => {
         startWakeWordDetection(locale.value, () => {

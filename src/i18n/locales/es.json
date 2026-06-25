@@ -60,7 +60,31 @@
     "uninstall": "Desinstalar",
     "uninstall_confirm": "¿Seguro que quieres desinstalar CoBien? Esta acción es irreversible, eliminará toda la configuración y reiniciará el equipo.",
     "update": "Actualizar",
-    "update_confirm": "¿Buscar y aplicar actualizaciones de CoBien? El equipo comprobará si hay nueva versión en GitHub y se reiniciará si es necesario."
+    "update_confirm": "¿Buscar y aplicar actualizaciones de CoBien? El equipo comprobará si hay nueva versión en GitHub y se reiniciará si es necesario.",
+    "colors_pic1": "Colores PIC1 (Botón de Inicio)",
+    "colors_pic2": "Colores PIC2 (Asistente Vocal)",
+    "color_label": "Color del LED",
+    "shape_label": "Forma geométrica",
+    "mode_label": "Modo de iluminación",
+    "intensity_label": "Intensidad de luz",
+    "update_pic1": "Actualizar PIC1",
+    "update_pic2": "Actualizar PIC2",
+    "update_all": "Actualizar Ambos Botones",
+    "colors_saved_success": "Configuración de luces guardada y enviada correctamente.",
+    "shapes": {
+      "all": "Todo encendido",
+      "square": "Cuadrado",
+      "diamond": "Diamante",
+      "plus": "Cruz (+)",
+      "x": "Aspa (X)",
+      "only_center": "Solo centro"
+    },
+    "modes": {
+      "on": "Encendido continuo",
+      "off": "Apagado",
+      "blink": "Parpadeo",
+      "fading_blink": "Parpadeo suave (Fading)"
+    }
   },
   "assistant": {
     "title": "Asistente CoBien",

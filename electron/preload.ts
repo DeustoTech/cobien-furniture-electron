@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('config', {
   getWeather: () => ipcRenderer.invoke('config:getWeather'),
   getSettings: () => ipcRenderer.invoke('config:getSettings'),
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
+  saveButtonColors: (payload: any) => ipcRenderer.invoke('config:saveButtonColors', payload),
   getEvents: () => ipcRenderer.invoke('events:get'),
   addPersonalEvent: (payload: any) => ipcRenderer.invoke('events:addPersonal', payload),
   updatePersonalEvent: (payload: any) => ipcRenderer.invoke('events:updatePersonal', payload),

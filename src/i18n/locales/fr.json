@@ -59,7 +59,31 @@
     "uninstall": "Désinstaller",
     "uninstall_confirm": "Voulez-vous vraiment désinstaller l'environnement CoBien? Cette action est irréversible, supprimera toute la configuration et redémarrera le système.",
     "update": "Mettre à jour",
-    "update_confirm": "Rechercher et appliquer les mises à jour pour CoBien ? L'appareil verifiera si une nouvelle version existe sur GitHub et redémarrera si nécessaire."
+    "update_confirm": "Rechercher et appliquer les mises à jour pour CoBien ? L'appareil verifiera si une nouvelle version existe sur GitHub et redémarrera si nécessaire.",
+    "colors_pic1": "Couleurs PIC1 (Bouton d'Accueil)",
+    "colors_pic2": "Couleurs PIC2 (Assistant Vocal)",
+    "color_label": "Couleur de la LED",
+    "shape_label": "Forme géométrique",
+    "mode_label": "Mode d'éclairage",
+    "intensity_label": "Intensité lumineuse",
+    "update_pic1": "Mettre à jour PIC1",
+    "update_pic2": "Mettre à jour PIC2",
+    "update_all": "Mettre à jour les deux boutons",
+    "colors_saved_success": "Configuration des LED enregistrée et envoyée avec succès.",
+    "shapes": {
+      "all": "Tous segments allumés",
+      "square": "Carré",
+      "diamond": "Losange",
+      "plus": "Plus (+)",
+      "x": "Croix (X)",
+      "only_center": "Centre uniquement"
+    },
+    "modes": {
+      "on": "Allumé en continu",
+      "off": "Éteint",
+      "blink": "Clignotement",
+      "fading_blink": "Clignotement progressif (Fading)"
+    }
   },
   "assistant": {
     "title": "Assistant CoBien",

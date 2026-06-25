@@ -3,6 +3,7 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { startListening, stopListening } from '../services/voiceRecognizer'
+import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -23,19 +24,7 @@ async function testSpeaker() {
     const text = t('audio.test_phrase')
     const buffer = await (window as any).config.ttsSpeak(text)
     if (buffer) {
-      const audioCtx = new AudioContext()
-      await audioCtx.resume()
-      
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-      const source = audioCtx.createBufferSource()
-
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      await new Promise<void>(resolve => {
-        source.onended = () => resolve()
-        source.start()
-      })
+      await playTtsAudio(buffer)
     }
   } catch (e) {
     console.error('TTS Test failed:', e)
@@ -80,6 +69,7 @@ async function testMicrophone() {
 
 onUnmounted(() => {
   stopListening()
+  stopTtsAudio()
 })
 </script>
 

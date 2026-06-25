@@ -231,3 +231,61 @@ export function stopMqtt(): void {
     console.log('[MQTT] Disconnected')
   }
 }
+
+const SHAPES: Record<string, number> = {
+  "all": 0,
+  "square": 1,
+  "diamond": 2,
+  "plus": 3,
+  "X": 4,
+  "only_center": 5
+}
+
+const MODES: Record<string, number> = {
+  "on": 0,
+  "off": 1,
+  "blink": 2,
+  "fading_blink": 3
+}
+
+export function encodeShapeMode(shape: string, mode: string): number {
+  const shapeCode = SHAPES[shape] ?? 0
+  const modeCode = MODES[mode] ?? 0
+  return (shapeCode << 4) | modeCode
+}
+
+export function publishButtonConfig(buttonColors: any) {
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot publish button config')
+    return
+  }
+
+  // Publish PIC1
+  if (buttonColors.PIC1) {
+    const pic1 = buttonColors.PIC1
+    const shapeMode1 = encodeShapeMode(pic1.shape || 'all', pic1.mode || 'on')
+    const payload1 = {
+      PIC: 0x01,
+      shape_mode: shapeMode1,
+      color: pic1.color || '#ffffff',
+      intensity: pic1.intensity !== undefined ? parseInt(pic1.intensity, 10) : 255
+    }
+    client.publish('button/config', JSON.stringify(payload1))
+    console.log('[MQTT] Published button config for PIC1:', payload1)
+  }
+
+  // Publish PIC2
+  if (buttonColors.PIC2) {
+    const pic2 = buttonColors.PIC2
+    const shapeMode2 = encodeShapeMode(pic2.shape || 'all', pic2.mode || 'on')
+    const payload2 = {
+      PIC: 0x02,
+      shape_mode: shapeMode2,
+      color: pic2.color || '#ffffff',
+      intensity: pic2.intensity !== undefined ? parseInt(pic2.intensity, 10) : 255
+    }
+    client.publish('button/config', JSON.stringify(payload2))
+    console.log('[MQTT] Published button config for PIC2:', payload2)
+  }
+}
+

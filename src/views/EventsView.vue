@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { startListening, stopListening } from '../services/voiceRecognizer'
+import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -42,12 +43,6 @@ const voiceFlowMessage = ref('')
 const voiceFlowStep = ref<'idle' | 'listening' | 'speaking'>('idle')
 const voiceTargetDay = ref<string>('') // DD-MM-YYYY
 
-let globalAudioCtx: AudioContext | null = null
-function getAudioCtx() {
-  if (!globalAudioCtx) globalAudioCtx = new AudioContext()
-  return globalAudioCtx
-}
-
 async function speak(text: string) {
   voiceFlowStep.value = 'speaking'
   voiceFlowMessage.value = text
@@ -55,21 +50,7 @@ async function speak(text: string) {
     const lang = locale.value.split('-')[0]
     const buffer = await (window as any).config.ttsSpeak(text, lang)
     if (buffer) {
-      const audioCtx = getAudioCtx()
-      await audioCtx.resume()
-      
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-      const source = audioCtx.createBufferSource()
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      
-      await new Promise<void>(resolve => {
-        source.onended = () => {
-          setTimeout(resolve, 500) // Increased delay to ensure audio is fully stopped
-        }
-        source.start()
-      })
+      await playTtsAudio(buffer)
     } else {
       await new Promise(r => setTimeout(r, 1500))
     }
@@ -217,6 +198,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
+  stopTtsAudio()
 })
 
 const currentMonthName = computed(() => {

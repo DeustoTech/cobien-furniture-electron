@@ -3,6 +3,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ConfirmModal from '../components/ConfirmModal.vue'
+import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -32,6 +33,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (clockInterval) clearInterval(clockInterval)
+  stopTtsAudio()
 })
 
 const formattedDate = computed(() => {
@@ -123,17 +125,7 @@ async function speak(text: string) {
     const lang = locale.value.split('-')[0]
     const buffer = await (window as any).config.ttsSpeak(text, lang)
     if (buffer) {
-      const audioCtx = new AudioContext()
-      await audioCtx.resume()
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-      const source = audioCtx.createBufferSource()
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      await new Promise<void>(resolve => {
-        source.onended = () => resolve()
-        source.start()
-      })
+      await playTtsAudio(buffer)
     }
   } catch(e) {
     console.error('TTS Error:', e)

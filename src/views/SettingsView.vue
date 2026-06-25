@@ -91,7 +91,7 @@ async function handleUpdate() {
 const settingsButtons = [
   { id: 'lang', icon: '/images/language.png', path: '/settings/language' },
   { id: 'cities', icon: '/images/weather.png', path: '/settings/weather' },
-  { id: 'colors', icon: '/images/color.png', path: '#' },
+  { id: 'colors', icon: '/images/color.png', path: '/settings/colors' },
   { id: 'notif', icon: '/svg/notif.svg', path: '#' },
   { id: 'rfid', icon: '/images/card.png', path: '#' },
   { id: 'audio', icon: '/images/audio.png', path: '/settings/audio' },

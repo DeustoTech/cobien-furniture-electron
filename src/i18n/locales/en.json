@@ -57,7 +57,31 @@
     "uninstall": "Uninstall",
     "uninstall_confirm": "Are you sure you want to completely uninstall the CoBien environment? This action is irreversible, will delete all configuration, and reboot the system.",
     "update": "Update",
-    "update_confirm": "Search and apply updates for CoBien? The device will check for a new version on GitHub and restart if necessary."
+    "update_confirm": "Search and apply updates for CoBien? The device will check for a new version on GitHub and restart if necessary.",
+    "colors_pic1": "PIC1 Colors (Home Button)",
+    "colors_pic2": "PIC2 Colors (Voice Assistant)",
+    "color_label": "LED Color",
+    "shape_label": "Geometric Shape",
+    "mode_label": "Illumination Mode",
+    "intensity_label": "Light Intensity",
+    "update_pic1": "Update PIC1",
+    "update_pic2": "Update PIC2",
+    "update_all": "Update Both Buttons",
+    "colors_saved_success": "LED configuration saved and sent successfully.",
+    "shapes": {
+      "all": "All segments ON",
+      "square": "Square",
+      "diamond": "Diamond",
+      "plus": "Plus (+)",
+      "x": "X (X)",
+      "only_center": "Center only"
+    },
+    "modes": {
+      "on": "Solid ON",
+      "off": "OFF",
+      "blink": "Blinking",
+      "fading_blink": "Smooth Fading"
+    }
   },
   "assistant": {
     "title": "CoBien Assistant",

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettings } from '../composables/useSettings'
 import { useI18n } from 'vue-i18n'
+import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 
 const router = useRouter()
 const { lang, ttsEngine } = useSettings()
@@ -37,19 +39,16 @@ async function previewVoice(l: string, g: 'male' | 'female') {
     const buffer = await (window as any).config.ttsSpeak(text, l, g, ttsEngine.value)
 
     if (buffer) {
-      const audioCtx = new AudioContext()
-      await audioCtx.resume()
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-      const source = audioCtx.createBufferSource()
-      source.buffer = decoded
-      source.connect(audioCtx.destination)
-      source.start()
+      await playTtsAudio(buffer)
     }
   } catch (e) {
     console.error('Preview error:', e)
   }
 }
+
+onUnmounted(() => {
+  stopTtsAudio()
+})
 
 </script>
 
