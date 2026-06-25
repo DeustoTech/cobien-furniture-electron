@@ -81,7 +81,16 @@
       "off": "OFF",
       "blink": "Blinking",
       "fading_blink": "Smooth Fading"
-    }
+    },
+    "notifications_title": "Notifications Settings",
+    "notifications_videollamada": "Video Call",
+    "notifications_nuevo_evento": "New Event",
+    "notifications_nueva_foto": "New Photo / Message",
+    "ringtone_label": "Ringtone",
+    "ringtone_none": "None",
+    "simulate_notif": "Simulate",
+    "update_notif": "Update Profile",
+    "notifications_saved_success": "Notification configuration saved and applied successfully."
   },
   "assistant": {
     "title": "CoBien Assistant",

@@ -289,3 +289,48 @@ export function publishButtonConfig(buttonColors: any) {
   }
 }
 
+const NOTIF_MODES: Record<string, number> = {
+  "OFF": 0,
+  "ON": 1,
+  "BLINK": 2,
+  "FADING_BLINK": 3
+}
+
+export function publishNotificationLed(params: any) {
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot publish notification LED')
+    return
+  }
+
+  const modeStr = (params.mode || 'ON').toUpperCase()
+  const modeInt = NOTIF_MODES[modeStr] ?? 1
+
+  const payload = {
+    group: 7,
+    color: params.color || '#FFFFFF',
+    intensity: params.intensity !== undefined ? parseInt(params.intensity, 10) : 255,
+    mode: modeInt
+  }
+
+  client.publish('ledstrip/config', JSON.stringify(payload))
+  console.log('[MQTT] Published notification LED config:', payload)
+}
+
+export function turnOffNotificationLed() {
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot turn off notification LED')
+    return
+  }
+
+  const payload = {
+    group: 7,
+    color: '#000000',
+    intensity: 0,
+    mode: 0
+  }
+
+  client.publish('ledstrip/config', JSON.stringify(payload))
+  console.log('[MQTT] Published LED turn-off config:', payload)
+}
+
+

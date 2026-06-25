@@ -84,7 +84,16 @@
       "off": "Apagado",
       "blink": "Parpadeo",
       "fading_blink": "Parpadeo suave (Fading)"
-    }
+    },
+    "notifications_title": "Configuración de Notificaciones",
+    "notifications_videollamada": "Videollamada",
+    "notifications_nuevo_evento": "Nuevo Evento",
+    "notifications_nueva_foto": "Nueva Foto / Mensaje",
+    "ringtone_label": "Tono de llamada",
+    "ringtone_none": "Ninguno",
+    "simulate_notif": "Simular",
+    "update_notif": "Actualizar Perfil",
+    "notifications_saved_success": "Configuración de notificaciones guardada y aplicada correctamente."
   },
   "assistant": {
     "title": "Asistente CoBien",

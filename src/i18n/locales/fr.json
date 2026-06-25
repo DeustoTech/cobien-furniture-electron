@@ -83,7 +83,16 @@
       "off": "Éteint",
       "blink": "Clignotement",
       "fading_blink": "Clignotement progressif (Fading)"
-    }
+    },
+    "notifications_title": "Configuration des Notifications",
+    "notifications_videollamada": "Appel Vidéo",
+    "notifications_nuevo_evento": "Nouvel Événement",
+    "notifications_nueva_foto": "Nouvelle Photo / Message",
+    "ringtone_label": "Sonnerie",
+    "ringtone_none": "Aucune",
+    "simulate_notif": "Simuler",
+    "update_notif": "Mettre à jour le profil",
+    "notifications_saved_success": "Configuration des notifications enregistrée et appliquée avec succès."
   },
   "assistant": {
     "title": "Assistant CoBien",

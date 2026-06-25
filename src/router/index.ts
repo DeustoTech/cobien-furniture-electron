@@ -10,6 +10,7 @@ import AudioSettingsView from '../views/AudioSettingsView.vue'
 import AdminLoginView from '../views/AdminLogin.vue'
 import LanguageSettingsView from '../views/LanguageSettingsView.vue'
 import ButtonColorsSettingsView from '../views/ButtonColorsSettingsView.vue'
+import NotificationsSettingsView from '../views/NotificationsSettingsView.vue'
 
 import SettingsView from '../views/SettingsView.vue'
 
@@ -53,6 +54,11 @@ const router = createRouter({
       path: '/settings/colors',
       name: 'settings-colors',
       component: ButtonColorsSettingsView
+    },
+    {
+      path: '/settings/notifications',
+      name: 'settings-notifications',
+      component: NotificationsSettingsView
     },
 
     {

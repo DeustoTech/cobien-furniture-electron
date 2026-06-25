@@ -24,7 +24,7 @@ import { getRandomJoke } from './services/jokesService'
 import { loadContacts, requestCall, syncContacts } from './services/contactsService'
 
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
-import { startMqtt, stopMqtt, publishButtonConfig } from './services/mqttService'
+import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -212,6 +212,111 @@ function setupIPC() {
       return true
     } catch (e) {
       console.error('Error saving button colors:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:getNotifications', async () => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      return data.notifications || {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  ipcMain.handle('config:saveNotifications', async (event, payload: any) => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      data.notifications = payload
+      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
+
+      try {
+        if (_localConfigPath) {
+          let localData: any = {}
+          try {
+            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+          } catch(e) {}
+          localData.notifications = payload
+          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        }
+      } catch(err) {
+        console.error('Error writing local config:', err)
+      }
+
+      return true
+    } catch (e) {
+      console.error('Error saving notifications config:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:getRingtones', async () => {
+    try {
+      const devPath = join(app.getAppPath(), 'public', 'audio', 'ringtones')
+      const prodPath = join(app.getAppPath(), 'dist', 'audio', 'ringtones')
+      
+      let ringtonesDir = devPath
+      try {
+        await fs.access(prodPath)
+        ringtonesDir = prodPath
+      } catch {
+        // Fallback to devPath
+      }
+
+      const files = await fs.readdir(ringtonesDir)
+      const supported = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac']
+      return files.filter(f => supported.some(ext => f.toLowerCase().endsWith(ext)))
+    } catch (e) {
+      console.error('Error reading ringtones:', e)
+      return []
+    }
+  })
+
+  ipcMain.handle('config:triggerNotificationLed', async (event, type: string) => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const notif = data.notifications?.[type]
+      if (notif) {
+        publishNotificationLed(notif)
+        return true
+      }
+      return false
+    } catch (e) {
+      console.error('Error triggering notification LED:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:turnOffNotificationLed', async () => {
+    try {
+      turnOffNotificationLed()
+      return true
+    } catch (e) {
+      console.error('Error turning off notification LED:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:simulateNotification', async (event, type: string) => {
+    try {
+      let notif: any = {}
+      if (type === 'videollamada') {
+        notif = { type: 'videocall', from: 'Test Caller', room: 'test-room' }
+      } else if (type === 'nuevo_evento') {
+        notif = { type: 'new_event', title: 'Reunión de prueba', date: '2026-06-25' }
+      } else if (type === 'nueva_foto') {
+        notif = { type: 'new_message', from: 'Test Sender' }
+      } else {
+        return false
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('backend:notification', notif)
+        return true
+      }
+      return false
+    } catch (e) {
+      console.error('Error simulating notification:', e)
       return false
     }
   })
