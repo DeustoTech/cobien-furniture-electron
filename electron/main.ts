@@ -444,11 +444,24 @@ function setupIPC() {
       })
     }
 
+    const hasWifiDevice = (): Promise<boolean> => {
+      return new Promise((resolve) => {
+        exec('nmcli -t -f TYPE device', (error, stdout) => {
+          if (error || !stdout) {
+            resolve(false)
+            return
+          }
+          resolve(stdout.split('\n').some(line => line.trim() === 'wifi'))
+        })
+      })
+    }
+
     const realList = await runScanWifi()
-    const isMockNetwork = !realList.some(r => r.ssid === ssid)
+    const hasWifi = await hasWifiDevice()
+    const isMockNetwork = !hasWifi || !realList.some(r => r.ssid === ssid)
 
     if (isMockNetwork) {
-      console.log(`[WIFI] Simulating connection to mock network: ${ssid}`)
+      console.log(`[WIFI] Simulating connection to mock/real network (no physical wifi interface or mock network): ${ssid}`)
       await new Promise(resolve => setTimeout(resolve, 2000))
       if (password === 'fail' || password === 'error') {
         return false
