@@ -30,6 +30,7 @@ import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareSe
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
+let activeMockSSID = 'CoBien_WiFi_5G'
 
 const configPath = join(_dirname, '../config/config.default.json')
 let _localConfigPath = ''  // set once app is ready
@@ -319,6 +320,144 @@ function setupIPC() {
       console.error('Error simulating notification:', e)
       return false
     }
+  })
+
+  ipcMain.handle('config:scanWifi', async () => {
+    const runScanWifi = (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+      return new Promise((resolve) => {
+        exec('nmcli device wifi rescan', () => {
+          exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
+            if (error || !stdout) {
+              resolve([])
+              return
+            }
+            const lines = stdout.split('\n')
+            const results: { ssid: string; signal: number; security: string; active: boolean }[] = []
+            for (const line of lines) {
+              if (!line.trim()) continue
+              const parts = line.split(/(?<!\\):/)
+              if (parts.length < 4) continue
+              const ssid = parts[0].replace(/\\:/g, ':').trim()
+              if (!ssid) continue
+              const signal = parseInt(parts[1], 10) || 0
+              const security = parts[2].replace(/\\:/g, ':').trim()
+              const active = parts[3].trim() === 'yes' || parts[3].trim() === '*'
+              const existing = results.find(r => r.ssid === ssid)
+              if (existing) {
+                if (signal > existing.signal) {
+                  existing.signal = signal
+                  existing.security = security
+                  if (active) existing.active = true
+                }
+              } else {
+                results.push({ ssid, signal, security, active })
+              }
+            }
+            resolve(results)
+          })
+        })
+      })
+    }
+
+    let list = await runScanWifi()
+    if (list.length === 0) {
+      list = [
+        { ssid: 'CoBien_WiFi_5G', signal: 95, security: 'WPA2', active: activeMockSSID === 'CoBien_WiFi_5G' },
+        { ssid: 'Deusto_Guest', signal: 72, security: 'WPA2', active: activeMockSSID === 'Deusto_Guest' },
+        { ssid: 'Euskaltel_WiFi', signal: 50, security: 'WPA/WPA2', active: activeMockSSID === 'Euskaltel_WiFi' },
+        { ssid: 'Library_Public', signal: 45, security: '', active: activeMockSSID === 'Library_Public' },
+        { ssid: 'IoT_Sensors', signal: 30, security: 'WPA2', active: activeMockSSID === 'IoT_Sensors' }
+      ]
+    }
+    return list
+  })
+
+  ipcMain.handle('config:connectWifi', async (event, ssid: string, password?: string) => {
+    const runScanWifi = (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+      return new Promise((resolve) => {
+        exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
+          if (error || !stdout) {
+            resolve([])
+            return
+          }
+          const lines = stdout.split('\n')
+          const results: { ssid: string; signal: number; security: string; active: boolean }[] = []
+          for (const line of lines) {
+            if (!line.trim()) continue
+            const parts = line.split(/(?<!\\):/)
+            if (parts.length < 4) continue
+            const ssidVal = parts[0].replace(/\\:/g, ':').trim()
+            if (ssidVal) {
+              results.push({ ssid: ssidVal, signal: 50, security: '', active: false })
+            }
+          }
+          resolve(results)
+        })
+      })
+    }
+
+    const runConnectWifi = (targetSsid: string, pass?: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        let cmd = `nmcli device wifi connect "${targetSsid.replace(/"/g, '\\"')}"`
+        if (pass) {
+          cmd += ` password "${pass.replace(/"/g, '\\"')}"`
+        }
+        exec(cmd, (error, stdout, stderr) => {
+          if (error) {
+            console.error('Error connecting to wifi:', error, stderr)
+            resolve(false)
+          } else {
+            resolve(true)
+          }
+        })
+      })
+    }
+
+    const realList = await runScanWifi()
+    const isMockNetwork = !realList.some(r => r.ssid === ssid)
+
+    if (isMockNetwork) {
+      console.log(`[WIFI] Simulating connection to mock network: ${ssid}`)
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (password === 'fail' || password === 'error') {
+        return false
+      }
+      activeMockSSID = ssid
+      return true
+    } else {
+      console.log(`[WIFI] Connecting to real network: ${ssid}`)
+      const success = await runConnectWifi(ssid, password)
+      if (success) {
+        activeMockSSID = ''
+      }
+      return success
+    }
+  })
+
+  ipcMain.handle('config:getCurrentWifi', async () => {
+    const runGetActiveWifi = (): Promise<string | null> => {
+      return new Promise((resolve) => {
+        exec("nmcli -t -f NAME,TYPE connection show --active", (error, stdout) => {
+          if (error || !stdout) {
+            resolve(null)
+            return
+          }
+          const lines = stdout.split('\n')
+          for (const line of lines) {
+            const parts = line.split(':')
+            if (parts.length >= 2 && parts[1].trim() === '802-11-wireless') {
+              resolve(parts[0].trim())
+              return
+            }
+          }
+          resolve(null)
+        })
+      })
+    }
+
+    const active = await runGetActiveWifi()
+    if (active) return active
+    return activeMockSSID
   })
 
   ipcMain.handle('events:get', async () => {

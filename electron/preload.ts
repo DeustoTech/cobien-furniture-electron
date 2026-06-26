@@ -68,6 +68,9 @@ contextBridge.exposeInMainWorld('config', {
   adjustVolume: (value: number, isAbsolute = false) => ipcRenderer.invoke('hardware:adjustVolume', value, isAbsolute),
   getVolume: () => ipcRenderer.invoke('hardware:getVolume'),
   adjustBrightness: (value?: number) => ipcRenderer.invoke('hardware:adjustBrightness', value),
+  scanWifi: () => ipcRenderer.invoke('config:scanWifi'),
+  connectWifi: (ssid: string, password?: string) => ipcRenderer.invoke('config:connectWifi', ssid, password),
+  getCurrentWifi: () => ipcRenderer.invoke('config:getCurrentWifi'),
 
 
 

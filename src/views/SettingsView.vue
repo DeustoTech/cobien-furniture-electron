@@ -97,6 +97,7 @@ const settingsButtons = [
   { id: 'audio', icon: '/images/audio.png', path: '/settings/audio' },
   { id: 'logs', icon: '/images/logs.png', path: '#' },
   { id: 'parameters', icon: '/images/settings.png', path: '#' },
+  { id: 'wifi', icon: '/svg/wifi.svg', path: '/settings/wifi' },
 ]
 </script>
 
