@@ -322,8 +322,47 @@ function setupIPC() {
     }
   })
 
+  const parseNmcliOutput = (stdout: string): { ssid: string; signal: number; security: string; active: boolean }[] => {
+    const lines = stdout.split('\n')
+    const results: { ssid: string; signal: number; security: string; active: boolean }[] = []
+    for (const line of lines) {
+      if (!line.trim()) continue
+      const parts = line.split(/(?<!\\):/)
+      if (parts.length < 4) continue
+      const ssid = parts[0].replace(/\\:/g, ':').trim()
+      if (!ssid) continue
+      const signal = parseInt(parts[1], 10) || 0
+      const security = parts[2].replace(/\\:/g, ':').trim()
+      const activeVal = parts[3].trim().toLowerCase()
+      const active = activeVal === 'yes' || activeVal === '*' || activeVal === 'sí' || activeVal === 'si'
+      const existing = results.find(r => r.ssid === ssid)
+      if (existing) {
+        if (active) existing.active = true
+        if (signal > existing.signal) {
+          existing.signal = signal
+          existing.security = security
+        }
+      } else {
+        results.push({ ssid, signal, security, active })
+      }
+    }
+    return results
+  }
+
   ipcMain.handle('config:scanWifi', async () => {
-    const runScanWifi = (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+    const runScanWifi = async (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+      const hostScanFile = '/tmp/host_wifi_list.txt'
+      try {
+        if (fsSync.existsSync(hostScanFile)) {
+          const content = await fs.readFile(hostScanFile, 'utf-8')
+          if (content.trim()) {
+            return parseNmcliOutput(content)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to read host wifi list:', err)
+      }
+
       return new Promise((resolve) => {
         exec('nmcli device wifi rescan', () => {
           exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
@@ -331,29 +370,7 @@ function setupIPC() {
               resolve([])
               return
             }
-            const lines = stdout.split('\n')
-            const results: { ssid: string; signal: number; security: string; active: boolean }[] = []
-            for (const line of lines) {
-              if (!line.trim()) continue
-              const parts = line.split(/(?<!\\):/)
-              if (parts.length < 4) continue
-              const ssid = parts[0].replace(/\\:/g, ':').trim()
-              if (!ssid) continue
-              const signal = parseInt(parts[1], 10) || 0
-              const security = parts[2].replace(/\\:/g, ':').trim()
-              const active = parts[3].trim() === 'yes' || parts[3].trim() === '*'
-              const existing = results.find(r => r.ssid === ssid)
-              if (existing) {
-                if (signal > existing.signal) {
-                  existing.signal = signal
-                  existing.security = security
-                  if (active) existing.active = true
-                }
-              } else {
-                results.push({ ssid, signal, security, active })
-              }
-            }
-            resolve(results)
+            resolve(parseNmcliOutput(stdout))
           })
         })
       })
@@ -373,25 +390,26 @@ function setupIPC() {
   })
 
   ipcMain.handle('config:connectWifi', async (event, ssid: string, password?: string) => {
-    const runScanWifi = (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+    const runScanWifi = async (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
+      const hostScanFile = '/tmp/host_wifi_list.txt'
+      try {
+        if (fsSync.existsSync(hostScanFile)) {
+          const content = await fs.readFile(hostScanFile, 'utf-8')
+          if (content.trim()) {
+            return parseNmcliOutput(content)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to read host wifi list:', err)
+      }
+
       return new Promise((resolve) => {
         exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
           if (error || !stdout) {
             resolve([])
             return
           }
-          const lines = stdout.split('\n')
-          const results: { ssid: string; signal: number; security: string; active: boolean }[] = []
-          for (const line of lines) {
-            if (!line.trim()) continue
-            const parts = line.split(/(?<!\\):/)
-            if (parts.length < 4) continue
-            const ssidVal = parts[0].replace(/\\:/g, ':').trim()
-            if (ssidVal) {
-              results.push({ ssid: ssidVal, signal: 50, security: '', active: false })
-            }
-          }
-          resolve(results)
+          resolve(parseNmcliOutput(stdout))
         })
       })
     }
@@ -436,6 +454,22 @@ function setupIPC() {
 
   ipcMain.handle('config:getCurrentWifi', async () => {
     const runGetActiveWifi = (): Promise<string | null> => {
+      const hostScanFile = '/tmp/host_wifi_list.txt'
+      try {
+        if (fsSync.existsSync(hostScanFile)) {
+          const content = fsSync.readFileSync(hostScanFile, 'utf-8')
+          if (content.trim()) {
+            const list = parseNmcliOutput(content)
+            const activeItem = list.find(item => item.active)
+            if (activeItem) {
+              return Promise.resolve(activeItem.ssid)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to read host active wifi:', err)
+      }
+
       return new Promise((resolve) => {
         exec("nmcli -t -f NAME,TYPE connection show --active", (error, stdout) => {
           if (error || !stdout) {
@@ -444,9 +478,9 @@ function setupIPC() {
           }
           const lines = stdout.split('\n')
           for (const line of lines) {
-            const parts = line.split(':')
+            const parts = line.split(/(?<!\\):/)
             if (parts.length >= 2 && parts[1].trim() === '802-11-wireless') {
-              resolve(parts[0].trim())
+              resolve(parts[0].replace(/\\:/g, ':').trim())
               return
             }
           }
