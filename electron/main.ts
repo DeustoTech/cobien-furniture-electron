@@ -8,6 +8,19 @@ if (devUrlArg) {
 }
 
 import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron'
+import { execSync } from 'node:child_process'
+
+// Disable hardware acceleration in virtual environments to prevent GPU crashes
+try {
+  const virt = execSync('systemd-detect-virt', { encoding: 'utf-8' }).trim()
+  if (virt && virt !== 'none') {
+    console.log(`[GPU] Virtual machine detected (${virt}). Disabling hardware acceleration.`)
+    app.disableHardwareAcceleration()
+  }
+} catch (e) {
+  // Ignored if systemd-detect-virt is missing or returns non-zero (none)
+}
+
 // Disable login keyring popups in kiosk environment
 app.commandLine.appendSwitch('password-store', 'basic')
 import { join, dirname } from 'node:path'
