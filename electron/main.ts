@@ -16,6 +16,7 @@ try {
   if (virt && virt !== 'none') {
     console.log(`[GPU] Virtual machine detected (${virt}). Disabling hardware acceleration.`)
     app.disableHardwareAcceleration()
+    app.commandLine.appendSwitch('disable-gpu')
   }
 } catch (e) {
   // Ignored if systemd-detect-virt is missing or returns non-zero (none)
