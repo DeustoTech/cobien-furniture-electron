@@ -301,6 +301,12 @@
     "missed_call_from": "Llamada perdida de {caller} a las {time}",
     "request_call": "Devolver llamada",
     "close": "Cerrar"
+  },
+  "offline": {
+    "title": "Sin conexión a Internet",
+    "message": "El mueble inteligente requiere estar conectado a internet. Por favor, configura tu conexión Wi-Fi.",
+    "redirect_btn": "Configurar Wi-Fi",
+    "redirecting": "Redirigiendo a Wi-Fi en {seconds} segundos..."
   }
 }
 

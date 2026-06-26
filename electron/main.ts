@@ -103,6 +103,8 @@ function getPiperConfig(lang = 'es', gender = 'male') {
 }
 
 
+let lastMeasuredSpeed: number | null = null
+
 /**
  * Download ~500 KB from a stable CDN and return the speed in kbps.
  * Uses Electron's net.request so it goes through the Chromium network stack
@@ -709,20 +711,19 @@ function setupIPC() {
       // Ignore
     }
 
-    const networkSpeedKbps = await measureNetworkSpeed()
-
     return {
       version: app.getVersion(),
       deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
       contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
       defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en',
       rustdeskId,
-      networkSpeedKbps
+      networkSpeedKbps: lastMeasuredSpeed
     }
   })
 
   ipcMain.handle('config:measureNetworkSpeed', async () => {
     const kbps = await measureNetworkSpeed()
+    lastMeasuredSpeed = kbps
     // Persist the result so the next (and immediate) heartbeat includes it
     setNetworkSpeed(kbps)
     // Fire a heartbeat right away so the portal sees the fresh value immediately

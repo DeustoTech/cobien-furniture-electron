@@ -42,7 +42,7 @@ async function downloadAndCacheImage(url: string, prefix: string, id: string): P
       headers['X-API-KEY'] = process.env.COBIEN_NOTIFY_API_KEY
     }
 
-    const res = await fetch(url, { headers })
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(4000) })
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`)
     
     // we use node streams to pipe the body straight to file
@@ -73,7 +73,7 @@ export async function fetchMessages() {
   }
 
   try {
-    const res = await fetch(url, { headers })
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(4000) })
     if (!res.ok) throw new Error(`API returned ${res.statusText}`)
     
     const data = await res.json()
@@ -122,7 +122,7 @@ export async function deleteMessage(id: string) {
   }
   
   try {
-    const res = await fetch(url, { method: 'POST', headers })
+    const res = await fetch(url, { method: 'POST', headers, signal: AbortSignal.timeout(4000) })
     return res.ok
   } catch(e) {
     console.error('[BOARD] Failed to delete message:', e)
@@ -144,7 +144,8 @@ export async function markMessageRead(id: string) {
     const res = await fetch(url, { 
       method: 'POST', 
       headers,
-      body: JSON.stringify({ device_id: deviceId })
+      body: JSON.stringify({ device_id: deviceId }),
+      signal: AbortSignal.timeout(4000)
     })
     return res.ok
   } catch(e) {
@@ -167,7 +168,8 @@ export async function submitQuickReply(id: string, replyText: string) {
     const res = await fetch(url, { 
       method: 'POST', 
       headers,
-      body: JSON.stringify({ device_id: deviceId, reply_text: replyText })
+      body: JSON.stringify({ device_id: deviceId, reply_text: replyText }),
+      signal: AbortSignal.timeout(4000)
     })
     return res.ok
   } catch(e) {

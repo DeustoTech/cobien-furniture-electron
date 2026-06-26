@@ -118,7 +118,10 @@ async function geocodeCity(cityName: string): Promise<{ lat: number; lon: number
   const owmKey = process.env.OWM_API_KEY ?? ''
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`
-    const res = await fetch(url, { headers: { 'User-Agent': 'CoBien6-Furniture' } })
+    const res = await fetch(url, { 
+      headers: { 'User-Agent': 'CoBien6-Furniture' },
+      signal: AbortSignal.timeout(4000)
+    })
     if (!res.ok) throw new Error(`Nominatim returned status ${res.status}`)
     const data = await res.json()
     if (!data.length) throw new Error('No Nominatim results')
@@ -130,7 +133,7 @@ async function geocodeCity(cityName: string): Promise<{ lat: number; lon: number
     if (owmKey) {
       try {
         const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=1&appid=${owmKey}`
-        const res = await fetch(url)
+        const res = await fetch(url, { signal: AbortSignal.timeout(4000) })
         if (!res.ok) throw new Error(`OWM Geo returned status ${res.status}`)
         const data = await res.json()
         if (data && data.length > 0) {
@@ -204,7 +207,7 @@ export async function fetchWeatherBundle(cityName: string, lang: string = 'es'):
         `&forecast_days=7`,
       ].join('')
 
-      const omRes = await fetch(omUrl)
+      const omRes = await fetch(omUrl, { signal: AbortSignal.timeout(4000) })
       if (!omRes.ok) throw new Error(`Open-Meteo returned status ${omRes.status}`)
       const om = await omRes.json()
 
@@ -218,7 +221,7 @@ export async function fetchWeatherBundle(cityName: string, lang: string = 'es'):
       if (owmKey) {
         try {
           const owmUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
-          const owmRes = await fetch(owmUrl)
+          const owmRes = await fetch(owmUrl, { signal: AbortSignal.timeout(4000) })
           const owm = await owmRes.json()
           base.description = owm.weather?.[0]?.description ?? wmoDesc(currentCode, lang)
           base.description = base.description.charAt(0).toUpperCase() + base.description.slice(1)
@@ -290,8 +293,8 @@ export async function fetchWeatherBundle(cityName: string, lang: string = 'es'):
       const owmForecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${owmKey}&units=metric&lang=${lang}`
 
       const [currentRes, forecastRes] = await Promise.all([
-        fetch(owmCurrentUrl),
-        fetch(owmForecastUrl)
+        fetch(owmCurrentUrl, { signal: AbortSignal.timeout(4000) }),
+        fetch(owmForecastUrl, { signal: AbortSignal.timeout(4000) })
       ])
 
       if (!currentRes.ok) throw new Error(`OWM current weather returned status ${currentRes.status}`)

@@ -261,7 +261,8 @@ async function fetchAndUpdateEvents(configPath: string, deviceId: string, defaul
         method: 'GET',
         headers: {
           'X-API-KEY': apiKey
-        }
+        },
+        signal: AbortSignal.timeout(5000)
       })
 
       if (res.ok) {

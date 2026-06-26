@@ -292,5 +292,11 @@
     "missed_call_from": "Missed call from {caller} at {time}",
     "request_call": "Request Call",
     "close": "Close"
+  },
+  "offline": {
+    "title": "No Internet Connection",
+    "message": "The smart furniture requires an internet connection. Please configure your Wi-Fi connection.",
+    "redirect_btn": "Configure Wi-Fi",
+    "redirecting": "Redirecting to Wi-Fi in {seconds} seconds..."
   }
 }

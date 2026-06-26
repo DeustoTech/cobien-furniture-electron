@@ -290,6 +290,12 @@
     "missed_call_from": "Appel manqué de {caller} à {time}",
     "request_call": "Rappeler",
     "close": "Fermer"
+  },
+  "offline": {
+    "title": "Pas de connexion Internet",
+    "message": "Le meuble intelligent nécessite une connexion Internet. Veuillez configurer votre connexion Wi-Fi.",
+    "redirect_btn": "Configurer le Wi-Fi",
+    "redirecting": "Redirection vers le Wi-Fi dans {seconds} secondes..."
   }
 }
 

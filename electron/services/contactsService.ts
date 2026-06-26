@@ -59,7 +59,7 @@ async function downloadImage(url: string, baseName: string, apiKey: string): Pro
   try {
     const res = await fetch(url, {
       headers: { 'X-Api-Key': apiKey },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) return null
 
@@ -95,7 +95,7 @@ export async function syncContacts(
 
     const res = await fetch(url, {
       headers: { 'X-Api-Key': apiKey },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(5000),
     })
 
     if (!res.ok) throw new Error(`API returned ${res.status}`)
@@ -179,7 +179,7 @@ export async function requestCall(
         message: '',
         ttl_hours: 12
       }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(5000),
     })
 
     if (!res.ok) {
