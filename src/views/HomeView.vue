@@ -148,6 +148,7 @@ async function openBrightnessPopup() {
         <div class="header-col col-time">
           <div class="date-text">{{ currentDate }}</div>
           <div class="time-display">{{ currentTime }}</div>
+          <div class="city-display">{{ cityName }}</div>
         </div>
 
         <div class="v-separator"></div>
@@ -313,6 +314,15 @@ async function openBrightnessPopup() {
   color: #000;
   line-height: 0.9;
   letter-spacing: -3px;
+}
+
+.city-display {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #555;
+  margin-top: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* Col 2: Weather */
