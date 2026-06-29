@@ -99,7 +99,7 @@ onMounted(async () => {
   } catch(e) {}
 
   try {
-    jokeText.value = await (window as any).config.getJoke(locale.value.split('-')[0])
+    jokeText.value = await (window as any).config.getRandomJoke(locale.value.split('-')[0])
   } catch(e) {}
 })
 
