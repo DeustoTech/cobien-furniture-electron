@@ -8,6 +8,21 @@ if (devUrlArg) {
 }
 
 import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron'
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'cobien-media',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+])
+
 import { execSync } from 'node:child_process'
 
 // Disable hardware acceleration in virtual environments to prevent GPU crashes

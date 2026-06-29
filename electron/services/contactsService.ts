@@ -25,7 +25,7 @@ function findContactImage(displayName: string): string {
     const p = join(CONTACTS_DIR, base + ext)
     if (fsSync.existsSync(p)) return p
   }
-  return DEFAULT_IMG
+  return ''
 }
 
 export interface Contact {
