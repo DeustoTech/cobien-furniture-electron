@@ -1,0 +1,55 @@
+{
+  "general": [
+    "The Earth is the third planet from the Sun",
+    "Water covers approximately 71% of the Earth's surface",
+    "The Sun is a G2V spectral type star",
+    "Continents drift slowly due to plate tectonics",
+    "The Amazon is the largest rainforest in the world",
+    "The Pacific Ocean is the deepest and largest ocean",
+    "Volcanoes release magma and gases from inside the Earth",
+    "Photosynthesis converts sunlight into chemical energy",
+    "Air is composed mainly of nitrogen and oxygen",
+    "Gravity keeps the planets in orbit around the Sun",
+    "Humans share about 98% of DNA with chimpanzees",
+    "Dinosaurs dominated the Earth for millions of years",
+    "Solar energy is renewable and sustainable"
+  ],
+  "sport": [
+    "Sport improves physical and mental health",
+    "Football is the most practiced sport in the world",
+    "Swimming works almost all the muscles of the body",
+    "Basketball was invented in the United States in 1891",
+    "Regular sports practice reduces stress",
+    "Sport promotes discipline and perseverance"
+  ],
+  "nature": [
+    "Earth is the only known planet that supports life",
+    "Forests produce much of the oxygen we breathe",
+    "Oceans cover more than 70% of the Earth's surface",
+    "Bees are essential for plant pollination",
+    "Glaciers store about 70% of the planet's fresh water",
+    "Rivers transport essential nutrients to the oceans"
+  ],
+  "animaux": [
+    "Animals are classified into species based on biological characteristics",
+    "Elephants have an exceptional memory",
+    "Dolphins use echolocation to navigate",
+    "Ants live in highly organized societies",
+    "Octopuses are capable of solving complex problems",
+    "Bats are the only mammals capable of flying"
+  ],
+  "nourriture": [
+    "Food provides the energy needed for body functions",
+    "A balanced diet contributes to good health",
+    "Fruits and vegetables are rich in antioxidants",
+    "Water is the most important element of nutrition",
+    "Mastication facilitates digestion"
+  ],
+  "jeux": [
+    "Play is an activity carried out for pleasure and learning",
+    "Chess is considered a complex strategy game",
+    "Games stimulate creativity and thinking",
+    "Sudoku is a number game popular worldwide",
+    "Video games can improve hand-eye coordination"
+  ]
+}

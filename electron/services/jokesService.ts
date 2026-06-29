@@ -10,8 +10,8 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLT
 const JOKES_DIR = join(_dirname, '../public/data/jokes')
 
 
-let cachedJokes: string[] = []
-let lastJoke: string = ''
+let cachedJokes: Record<string, string[]> = {}
+let lastJokes: Record<string, string> = {}
 
 async function loadJokes(lang: string = 'es'): Promise<string[]> {
   try {
@@ -52,17 +52,22 @@ async function loadJokes(lang: string = 'es'): Promise<string[]> {
 }
 
 export async function getRandomJoke(lang = 'es'): Promise<string> {
-  if (cachedJokes.length === 0) {
-    cachedJokes = await loadJokes(lang)
+  const normLang = ['es', 'en', 'fr'].includes(lang) ? lang : 'es'
+  if (!cachedJokes[normLang] || cachedJokes[normLang].length === 0) {
+    cachedJokes[normLang] = await loadJokes(normLang)
   }
 
-  if (cachedJokes.length === 0) return lang === 'en' ? 'No jokes available.' : lang === 'fr' ? 'Aucune blague disponible.' : 'No hay chistes disponibles.'
+  const jokes = cachedJokes[normLang]
+  if (jokes.length === 0) {
+    return normLang === 'en' ? 'No jokes available.' : normLang === 'fr' ? 'Aucune blague disponible.' : 'No hay chistes disponibles.'
+  }
 
-  const available = cachedJokes.length > 1
-    ? cachedJokes.filter(j => j !== lastJoke)
-    : cachedJokes
+  const lastJoke = lastJokes[normLang] || ''
+  const available = jokes.length > 1
+    ? jokes.filter(j => j !== lastJoke)
+    : jokes
 
   const joke = available[Math.floor(Math.random() * available.length)]
-  lastJoke = joke
+  lastJokes[normLang] = joke
   return joke
 }
