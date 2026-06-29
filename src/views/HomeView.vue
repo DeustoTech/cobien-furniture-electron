@@ -14,13 +14,28 @@ const { t, locale } = useI18n()
 
 const currentDate = ref('')
 const currentTime = ref('')
-const weatherTemp = ref('17°')
+const weatherTemp = ref('—°')
 const weatherCondition = ref('')
-const weatherIcon = ref('/images/sol.png')
+const weatherIcon = ref('/svg/nubes.svg')
 const cityName = ref(t('common.loading'))
 
 const minTemp = ref('')
 const maxTemp = ref('')
+
+// Initialize weather from localStorage cache if available
+try {
+  const cached = localStorage.getItem('cobien_cached_weather')
+  if (cached) {
+    const data = JSON.parse(cached)
+    weatherTemp.value = data.temp || '—°'
+    weatherCondition.value = data.description || ''
+    weatherIcon.value = data.icon || '/svg/nubes.svg'
+    minTemp.value = data.tempMin || ''
+    maxTemp.value = data.tempMax || ''
+    if (data.city) cityName.value = data.city
+  }
+} catch (e) {}
+
 const nextEvent = ref(t('common.no_upcoming_events'))
 const jokeText = ref('')
 const systemMeta = ref('CoBien2 · v3.2.40')
@@ -52,9 +67,19 @@ onMounted(async () => {
       weatherIcon.value = bundle.icon
       minTemp.value = bundle.tempMin
       maxTemp.value = bundle.tempMax
+
+      // Cache the weather data
+      try {
+        localStorage.setItem('cobien_cached_weather', JSON.stringify({
+          city: cityName.value,
+          temp: bundle.temp,
+          description: bundle.description,
+          icon: bundle.icon,
+          tempMin: bundle.tempMin,
+          tempMax: bundle.tempMax
+        }))
+      } catch (e) {}
     }
-
-
   } catch(e) {}
 
   try {
