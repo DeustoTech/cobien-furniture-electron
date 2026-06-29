@@ -104,7 +104,28 @@
     "ringtone_none": "None",
     "simulate_notif": "Simulate",
     "update_notif": "Update Profile",
-    "notifications_saved_success": "Notification configuration saved and applied successfully."
+    "notifications_saved_success": "Notification configuration saved and applied successfully.",
+    "rfid_settings": {
+      "title": "RFID Cards Configuration",
+      "instruction": "Press 'Start Configuration' and then tap an RFID card to assign an action to it.",
+      "start_btn": "🔧 Start Configuration",
+      "card_id": "Card ID",
+      "action": "Action",
+      "delete_btn": "Delete",
+      "city": "City",
+      "contact": "Contact",
+      "waiting_title": "Waiting for RFID card",
+      "waiting_desc": "Configuration Mode Active\n\nPlease tap an RFID card...",
+      "select_action": "Select Action",
+      "select_action_desc": "Which action do you want to assign to this card?",
+      "action_events": "Day's Events",
+      "action_weather": "Weather",
+      "action_call": "Video Call",
+      "success_title": "Successful Configuration",
+      "success_desc": "Card {id} configured successfully!",
+      "delete_confirm_title": "Confirm Delete",
+      "delete_confirm_desc": "Are you sure you want to delete this RFID card?"
+    }
   },
   "assistant": {
     "title": "CoBien Assistant",

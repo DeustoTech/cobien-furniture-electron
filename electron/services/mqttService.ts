@@ -51,6 +51,7 @@ let rfidActions: Record<number, RfidAction> = {}
 const RFID_DEBOUNCE_MS = 5000
 let lastRfidId: number | null = null
 let lastRfidAt = 0
+let isConfigModeActive = false
 
 let client: MqttClient | null = null
 let mainWindowRef: BrowserWindow | null = null
@@ -78,6 +79,11 @@ function handleRfid(raw: any) {
   lastRfidAt = now
 
   console.log(`[MQTT] RFID card: ${cardId}`)
+
+  if (isConfigModeActive) {
+    send({ topic: TOPIC_RFID, type: 'rfid', cardId })
+    return
+  }
   
   const action = rfidActions[cardId]
   if (action) {
@@ -331,6 +337,41 @@ export function turnOffNotificationLed() {
 
   client.publish('ledstrip/config', JSON.stringify(payload))
   console.log('[MQTT] Published LED turn-off config:', payload)
+}
+
+export function publishRfidInit(mode: number) {
+  isConfigModeActive = (mode === 1)
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot publish RFID init')
+    return
+  }
+  const payload = { mode }
+  client.publish('rfid/init', JSON.stringify(payload))
+  console.log('[MQTT] Published RFID init:', payload)
+}
+
+export function publishRfidConfig(cardId: number, actionCode: number) {
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot publish RFID config')
+    return
+  }
+  const payload = { id: cardId, action: actionCode }
+  client.publish('rfid/config', JSON.stringify(payload))
+  console.log('[MQTT] Published RFID config:', payload)
+}
+
+export function publishRfidReload() {
+  if (!client || !client.connected) {
+    console.warn('[MQTT] Client not connected, cannot publish RFID reload')
+    return
+  }
+  const payload = {
+    action: 'reload',
+    timestamp: new Date().toISOString()
+  }
+  client.publish('rfid/actions_reload', JSON.stringify(payload))
+  console.log('[MQTT] Published RFID actions reload:', payload)
+  loadRfidActions()
 }
 
 

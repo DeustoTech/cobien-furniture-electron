@@ -12,6 +12,7 @@ import LanguageSettingsView from '../views/LanguageSettingsView.vue'
 import ButtonColorsSettingsView from '../views/ButtonColorsSettingsView.vue'
 import NotificationsSettingsView from '../views/NotificationsSettingsView.vue'
 import WifiSettingsView from '../views/WifiSettingsView.vue'
+import RfidSettingsView from '../views/RfidSettingsView.vue'
 
 import SettingsView from '../views/SettingsView.vue'
 
@@ -65,6 +66,11 @@ const router = createRouter({
       path: '/settings/wifi',
       name: 'settings-wifi',
       component: WifiSettingsView
+    },
+    {
+      path: '/settings/rfid',
+      name: 'settings-rfid',
+      component: RfidSettingsView
     },
 
     {

@@ -93,7 +93,7 @@ const settingsButtons = [
   { id: 'cities', icon: '/images/weather.png', path: '/settings/weather' },
   { id: 'colors', icon: '/images/color.png', path: '/settings/colors' },
   { id: 'notif', icon: '/svg/notif.svg', path: '/settings/notifications' },
-  { id: 'rfid', icon: '/images/card.png', path: '#' },
+  { id: 'rfid', icon: '/images/card.png', path: '/settings/rfid' },
   { id: 'audio', icon: '/images/audio.png', path: '/settings/audio' },
   { id: 'logs', icon: '/images/logs.png', path: '#' },
   { id: 'parameters', icon: '/images/settings.png', path: '#' },

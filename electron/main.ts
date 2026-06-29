@@ -38,7 +38,7 @@ import { getRandomJoke } from './services/jokesService'
 import { loadContacts, requestCall, syncContacts } from './services/contactsService'
 
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
-import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed } from './services/mqttService'
+import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -264,6 +264,103 @@ function setupIPC() {
       return true
     } catch (e) {
       console.error('Error saving notifications config:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:getRfidActions', async () => {
+    try {
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      return data.settings?.rfid_actions || {}
+    } catch (e) {
+      console.error('Error reading RFID actions:', e)
+      return {}
+    }
+  })
+
+  ipcMain.handle('config:initRfidConfigMode', async () => {
+    publishRfidInit(1)
+    return true
+  })
+
+  ipcMain.handle('config:cancelRfidConfigMode', async () => {
+    publishRfidInit(0)
+    return true
+  })
+
+  ipcMain.handle('config:saveRfidAction', async (event, cardId: number, action: string, extra = '') => {
+    try {
+      // Save to main config
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      if (!data.settings) data.settings = {}
+      if (!data.settings.rfid_actions) data.settings.rfid_actions = {}
+      data.settings.rfid_actions[String(cardId)] = { action, extra }
+      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
+
+      // Save to local config if present
+      try {
+        if (_localConfigPath) {
+          let localData: any = {}
+          try {
+            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+          } catch(e) {}
+          if (!localData.settings) localData.settings = {}
+          if (!localData.settings.rfid_actions) localData.settings.rfid_actions = {}
+          localData.settings.rfid_actions[String(cardId)] = { action, extra }
+          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        }
+      } catch (err) {
+        console.error('Error writing local config for RFID:', err)
+      }
+
+      // Map action to code: day_events=2, weather=3, videocall=5
+      const actionCodes: Record<string, number> = {
+        day_events: 2,
+        weather: 3,
+        videocall: 5
+      }
+      const code = actionCodes[action] ?? 2
+
+      // Publish config and reload via MQTT
+      publishRfidConfig(cardId, code)
+      publishRfidReload()
+      return true
+    } catch (e) {
+      console.error('Error saving RFID action:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:deleteRfidAction', async (event, cardId: number) => {
+    try {
+      // Delete from main config
+      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      if (data.settings?.rfid_actions) {
+        delete data.settings.rfid_actions[String(cardId)]
+      }
+      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
+
+      // Delete from local config
+      try {
+        if (_localConfigPath) {
+          let localData: any = {}
+          try {
+            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+          } catch(e) {}
+          if (localData.settings?.rfid_actions) {
+            delete localData.settings.rfid_actions[String(cardId)]
+          }
+          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        }
+      } catch (err) {
+        console.error('Error writing local config for RFID deletion:', err)
+      }
+
+      // Publish reload via MQTT
+      publishRfidReload()
+      return true
+    } catch (e) {
+      console.error('Error deleting RFID action:', e)
       return false
     }
   })

@@ -46,6 +46,12 @@ contextBridge.exposeInMainWorld('config', {
   syncContacts: () => ipcRenderer.invoke('contacts:sync'),
   openCall: (userName: string) => ipcRenderer.invoke('contacts:openCall', userName),
 
+  getRfidActions: () => ipcRenderer.invoke('config:getRfidActions'),
+  initRfidConfigMode: () => ipcRenderer.invoke('config:initRfidConfigMode'),
+  cancelRfidConfigMode: () => ipcRenderer.invoke('config:cancelRfidConfigMode'),
+  saveRfidAction: (cardId: number, action: string, extra = '') => ipcRenderer.invoke('config:saveRfidAction', cardId, action, extra),
+  deleteRfidAction: (cardId: number) => ipcRenderer.invoke('config:deleteRfidAction', cardId),
+
   addReminder: (message: string, isoDatetime: string) => ipcRenderer.invoke('reminders:add', message, isoDatetime),
 
   listReminders: () => ipcRenderer.invoke('reminders:list'),

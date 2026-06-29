@@ -107,7 +107,28 @@
     "ringtone_none": "Ninguno",
     "simulate_notif": "Simular",
     "update_notif": "Actualizar Perfil",
-    "notifications_saved_success": "Configuración de notificaciones guardada y aplicada correctamente."
+    "notifications_saved_success": "Configuración de notificaciones guardada y aplicada correctamente.",
+    "rfid_settings": {
+      "title": "Configuración Tarjetas RFID",
+      "instruction": "Presione 'Iniciar Configuración' y luego presente una tarjeta RFID para asignarle una acción.",
+      "start_btn": "🔧 Iniciar Configuración",
+      "card_id": "ID Tarjeta",
+      "action": "Acción",
+      "delete_btn": "Eliminar",
+      "city": "Ciudad",
+      "contact": "Contacto",
+      "waiting_title": "Esperando tarjeta RFID",
+      "waiting_desc": "Modo Configuración Activado\n\nPresente una tarjeta RFID...",
+      "select_action": "Seleccionar Acción",
+      "select_action_desc": "¿A qué acción quiere asignar esta tarjeta?",
+      "action_events": "Eventos del Día",
+      "action_weather": "Tiempo",
+      "action_call": "Videollamada",
+      "success_title": "Configuración Exitosa",
+      "success_desc": "¡Tarjeta {id} configurada con éxito!",
+      "delete_confirm_title": "Confirmar borrado",
+      "delete_confirm_desc": "¿Seguro que quieres eliminar esta tarjeta RFID?"
+    }
   },
   "assistant": {
     "title": "Asistente CoBien",
