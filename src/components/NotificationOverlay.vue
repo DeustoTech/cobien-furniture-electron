@@ -72,11 +72,17 @@ async function handleIncomingNotification(notif: any) {
     return
   }
 
+  // Si llega un missed_call, cerramos inmediatamente la llamada entrante que esté sonando de ese mismo sender
+  if (type === 'missed_call') {
+    const activeCallIndex = activeNotifications.value.findIndex(n => n.type === 'videocall' && n.caller === sender)
+    if (activeCallIndex !== -1) {
+      console.log(`[NOTIF] Dismissing active videocall from ${sender} due to missed_call signal`)
+      dismissNotification(activeNotifications.value[activeCallIndex].id)
+    }
+  }
+
   // Avoid duplicates
   const isDuplicate = activeNotifications.value.some(item => {
-    // If we receive a videocall but we already have a missed_call from the same sender (because we just rejected it), ignore it
-    if (type === 'videocall' && item.type === 'missed_call' && item.caller === sender) return true
-    
     if (item.type !== type) return false
     if (type === 'videocall' && item.caller === sender) return true
     if (type === 'new_message' && item.sender === sender) return true
@@ -127,13 +133,6 @@ async function handleIncomingNotification(notif: any) {
     item.caller = sender
     item.time = formatTime(notif.timestamp) || t('common.loading')
     ringtoneFile = '' // Typically missed calls don't play a continuous ringtone
-    
-    // Si llega un missed_call, cerramos la llamada entrante que esté sonando de ese mismo sender
-    const activeCallIndex = activeNotifications.value.findIndex(n => n.type === 'videocall' && n.caller === sender)
-    if (activeCallIndex !== -1) {
-      console.log(`[NOTIF] Dismissing active videocall from ${sender} due to missed_call signal`)
-      dismissNotification(activeNotifications.value[activeCallIndex].id)
-    }
     
     // Register it globally for the Contacts view
     addMissedCall({ author: sender, userName: sender, time: item.time })
