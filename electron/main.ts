@@ -25,17 +25,43 @@ protocol.registerSchemesAsPrivileged([
 
 import { execSync } from 'node:child_process'
 
-// Disable hardware acceleration in virtual environments to prevent GPU crashes
+// Disable hardware acceleration in virtual environments or when GPU is not functional
+let gpuDisabled = false
 try {
   const virt = execSync('systemd-detect-virt', { encoding: 'utf-8' }).trim()
   if (virt && virt !== 'none') {
     console.log(`[GPU] Virtual machine detected (${virt}). Disabling hardware acceleration.`)
-    app.disableHardwareAcceleration()
-    app.commandLine.appendSwitch('disable-gpu')
+    gpuDisabled = true
   }
 } catch (e) {
-  // Ignored if systemd-detect-virt is missing or returns non-zero (none)
+  // Ignored if systemd-detect-virt is missing or returns non-zero
 }
+
+// Check if any DRI card device exists — if not, GPU rendering cannot work
+if (!gpuDisabled) {
+  try {
+    const fsCheck = require('node:fs')
+    const driEntries = fsCheck.existsSync('/dev/dri')
+      ? fsCheck.readdirSync('/dev/dri').filter((f: string) => f.startsWith('card'))
+      : []
+    if (driEntries.length === 0) {
+      console.log('[GPU] No DRI card devices found. Disabling hardware acceleration.')
+      gpuDisabled = true
+    }
+  } catch (e) {
+    // Ignore
+  }
+}
+
+if (gpuDisabled) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+}
+
+// Always disable VA-API to prevent FATAL crashes on systems with broken/missing VA-API drivers
+// (e.g. VMs with DRI devices but no proper VA-API support). This does not affect rendering,
+// only hardware video decode acceleration.
+app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEncoder')
 
 // Disable login keyring popups in kiosk environment
 app.commandLine.appendSwitch('password-store', 'basic')
