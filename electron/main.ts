@@ -1147,7 +1147,7 @@ function startWifiWatchdog() {
           const lines = stdout.split('\n').map(l => l.trim())
           const connected = lines.some(line => {
             const [type, state] = line.split(':')
-            return (type === 'wifi' || type === 'ethernet') && state === 'connected'
+            return type === 'wifi' && state === 'connected'
           })
           resolve(connected)
         })
