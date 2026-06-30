@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { promises as fs } from 'node:fs'
 import * as fsSync from 'node:fs'
 import * as os from 'node:os'
+import * as dns from 'node:dns'
 import { startBackendSync, setNetworkSpeed, triggerHeartbeat } from './services/backendSync'
 import { getEvents, addPersonalEvent, updatePersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
@@ -240,6 +241,14 @@ function setupIPC() {
 
     return defaultSuccess || localSuccess
   }
+
+  ipcMain.handle('network:is-online', async () => {
+    return new Promise<boolean>((resolve) => {
+      dns.lookup('google.com', (err) => {
+        resolve(!err)
+      })
+    })
+  })
 
   ipcMain.handle('config:getWeather', async () => {
     try {
@@ -495,14 +504,12 @@ function setupIPC() {
       }
 
       return new Promise((resolve) => {
-        exec('nmcli device wifi rescan', () => {
-          exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
-            if (error || !stdout) {
-              resolve([])
-              return
-            }
-            resolve(parseNmcliOutput(stdout))
-          })
+        exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
+          if (error || !stdout) {
+            resolve([])
+            return
+          }
+          resolve(parseNmcliOutput(stdout))
         })
       })
     }

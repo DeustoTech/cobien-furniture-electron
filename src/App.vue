@@ -20,23 +20,45 @@ const { lang } = useSettings()
 const router = useRouter()
 const route = useRoute()
 
-const isOffline = ref(!navigator.onLine)
+const isOffline = ref(false) // Start as false to prevent blocking screens on startup
 const countdown = ref(5)
 let countdownInterval: any = null
+let networkInterval: any = null
 
-const handleOnline = () => {
-  console.log('[NETWORK] Device is online')
-  isOffline.value = false
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
+const checkRealOnlineStatus = async () => {
+  try {
+    const online = await (window as any).config.isOnline()
+    isOffline.value = !online
+    if (online) {
+      if (countdownInterval) {
+        clearInterval(countdownInterval)
+        countdownInterval = null
+      }
+    } else {
+      startRedirectCountdown()
+    }
+  } catch (e) {
+    console.error('[NETWORK] Failed to check online status via IPC, falling back to navigator.onLine:', e)
+    isOffline.value = !navigator.onLine
+    if (navigator.onLine) {
+      if (countdownInterval) {
+        clearInterval(countdownInterval)
+        countdownInterval = null
+      }
+    } else {
+      startRedirectCountdown()
+    }
   }
 }
 
-const handleOffline = () => {
-  console.log('[NETWORK] Device is offline')
-  isOffline.value = true
-  startRedirectCountdown()
+const handleOnline = async () => {
+  console.log('[NETWORK] Browser event: online')
+  await checkRealOnlineStatus()
+}
+
+const handleOffline = async () => {
+  console.log('[NETWORK] Browser event: offline')
+  await checkRealOnlineStatus()
 }
 
 function startRedirectCountdown() {
@@ -90,9 +112,11 @@ onMounted(async () => {
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
 
-  if (isOffline.value) {
-    startRedirectCountdown()
-  }
+  // Verify initial network connectivity using the backend check
+  await checkRealOnlineStatus()
+
+  // Periodically check connection every 15 seconds
+  networkInterval = setInterval(checkRealOnlineStatus, 15000)
 
   try {
     const sysInfo = await (window as any).config.getSystemInfo()
@@ -154,6 +178,10 @@ onBeforeUnmount(() => {
   if (countdownInterval) {
     clearInterval(countdownInterval)
     countdownInterval = null
+  }
+  if (networkInterval) {
+    clearInterval(networkInterval)
+    networkInterval = null
   }
 })
 </script>
