@@ -776,28 +776,51 @@ function setupIPC() {
       webPreferences: { nodeIntegration: false, contextIsolation: true },
     })
 
+    const closeWindowCleanly = () => {
+      if (callWin.isDestroyed()) return
+      try {
+        callWin.hide()
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+        callWin.loadURL('about:blank')
+        setTimeout(() => {
+          if (!callWin.isDestroyed()) {
+            callWin.close()
+          }
+        }, 500)
+      } catch (e) {
+        console.error('[VIDEOCALL] Error during clean close:', e)
+      }
+    }
+
+    callWin.on('closed', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    })
+
     callWin.loadURL(targetUrl)
 
-    // Intercept cobien://call-ended to close call window
+    // Intercept cobien://call-ended to close call window cleanly
     callWin.webContents.on('will-navigate', (event, url) => {
       if (url.startsWith('cobien://call-ended')) {
         event.preventDefault()
-        callWin.hide()
-        callWin.close()
+        closeWindowCleanly()
       }
     })
     callWin.webContents.on('did-start-navigation', (event, url) => {
       if (url.startsWith('cobien://call-ended')) {
         event.preventDefault()
-        callWin.hide()
-        callWin.close()
+        closeWindowCleanly()
       }
     })
     callWin.webContents.on('will-frame-navigate', (event) => {
       if (event.url.startsWith('cobien://call-ended')) {
         event.preventDefault()
-        callWin.hide()
-        callWin.close()
+        closeWindowCleanly()
       }
     })
 
