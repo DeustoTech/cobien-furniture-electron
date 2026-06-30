@@ -245,24 +245,39 @@ function setupIPC() {
       // Ignore write failures in production for default config (read-only asar/bundle)
     }
 
-    let localSuccess = false
+    // Determine target local paths to write to
+    const targetPaths: string[] = []
     if (_localConfigPath) {
+      targetPaths.push(_localConfigPath)
+    }
+    if (process.platform === 'linux') {
+      const globalCobienDir = process.env.COBIEN_CONFIG_DIR || join(process.env.XDG_CONFIG_HOME || join(os.homedir(), '.config'), 'cobien')
+      targetPaths.push(join(globalCobienDir, 'config.local.json'))
+    }
+
+    // Deduplicate paths
+    const uniquePaths = Array.from(new Set(targetPaths))
+    let localSuccess = false
+
+    for (const targetPath of uniquePaths) {
       try {
-        // Ensure the parent directory exists (critical for fresh VMs / first run)
-        await fs.mkdir(dirname(_localConfigPath), { recursive: true })
+        // Ensure the parent directory exists
+        await fs.mkdir(dirname(targetPath), { recursive: true })
 
         let localData: any = {}
         try {
-          localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+          localData = JSON.parse(await fs.readFile(targetPath, 'utf-8'))
         } catch (e) {}
         updater(localData)
-        await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        await fs.writeFile(targetPath, JSON.stringify(localData, null, 4))
         localSuccess = true
       } catch (e) {
-        console.error('[CONFIG] Error writing local config:', e)
+        console.error(`[CONFIG] Error writing config to ${targetPath}:`, e)
       }
-    } else {
-      console.warn('[CONFIG] _localConfigPath not set, cannot persist settings locally')
+    }
+
+    if (uniquePaths.length === 0) {
+      console.warn('[CONFIG] No local config paths determined, cannot persist settings locally')
     }
 
     return defaultSuccess || localSuccess
