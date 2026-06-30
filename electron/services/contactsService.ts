@@ -20,7 +20,7 @@ function normalizeName(name: string): string {
 
 function findContactImage(displayName: string): string {
   const base = normalizeName(displayName)
-  const exts = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
+  const exts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.PNG', '.JPG', '.JPEG', '.WEBP', '.GIF']
   for (const ext of exts) {
     const p = join(CONTACTS_DIR, base + ext)
     if (fsSync.existsSync(p)) return p

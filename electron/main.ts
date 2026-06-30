@@ -1036,8 +1036,17 @@ app.whenReady().then(() => {
   })
 
   protocol.handle('cobien-media', (request) => {
-    const url = request.url.replace('cobien-media://', '')
-    return net.fetch('file://' + url)
+    try {
+      const parsed = new URL(request.url)
+      let filePath = decodeURIComponent(parsed.pathname)
+      if (parsed.hostname && parsed.hostname !== 'localhost') {
+        filePath = '/' + decodeURIComponent(parsed.hostname) + filePath
+      }
+      return net.fetch('file://' + filePath)
+    } catch (e) {
+      console.error('[PROTOCOL] Failed to parse custom media URL:', request.url, e)
+      return new Response('Invalid URL', { status: 400 })
+    }
   })
 
   setupIPC()
