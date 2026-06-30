@@ -296,8 +296,8 @@ export function publishButtonConfig(buttonColors: any) {
 }
 
 const NOTIF_MODES: Record<string, number> = {
-  "OFF": 0,
-  "ON": 1,
+  "OFF": 1,
+  "ON": 0,
   "BLINK": 2,
   "FADING_BLINK": 3
 }
@@ -309,7 +309,7 @@ export function publishNotificationLed(params: any) {
   }
 
   const modeStr = (params.mode || 'ON').toUpperCase()
-  const modeInt = NOTIF_MODES[modeStr] ?? 1
+  const modeInt = NOTIF_MODES[modeStr] ?? 0
 
   const payload = {
     group: 7,
@@ -332,7 +332,7 @@ export function turnOffNotificationLed() {
     group: 7,
     color: '#000000',
     intensity: 0,
-    mode: 0
+    mode: 1 // 1 matches OFF in swapped config
   }
 
   client.publish('ledstrip/config', JSON.stringify(payload))

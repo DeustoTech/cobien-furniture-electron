@@ -169,6 +169,18 @@ async function handleIncomingNotification(notif: any) {
 
   item.audio = audio
 
+  // Trigger notification LED
+  let ledProfileType = ''
+  if (type === 'videocall') ledProfileType = 'videollamada'
+  else if (type === 'new_message') ledProfileType = 'nueva_foto'
+  else if (type === 'new_event' || type === 'events_reload') ledProfileType = 'nuevo_evento'
+
+  if (ledProfileType) {
+    (window as any).config.triggerNotificationLed(ledProfileType).catch((err: any) => {
+      console.error('[NOTIF] Failed to trigger notification LED:', err)
+    })
+  }
+
   // Auto-dismiss after 12s for non-call notifications
   if (item.type === 'new_message' || item.type === 'new_event') {
     item.autoDismissTimer = setTimeout(() => {
@@ -200,6 +212,16 @@ function dismissNotification(id: string) {
       clearTimeout(item.autoDismissTimer)
     }
     activeNotifications.value.splice(index, 1)
+
+    // Check if we still have any active LED notifications left
+    const remainingLeds = activeNotifications.value.some(n => 
+      n.type === 'videocall' || n.type === 'new_message' || n.type === 'new_event'
+    )
+    if (!remainingLeds) {
+      (window as any).config.turnOffNotificationLed().catch((err: any) => {
+        console.error('[NOTIF] Failed to turn off notification LED:', err)
+      })
+    }
   }
 }
 
