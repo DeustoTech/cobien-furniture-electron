@@ -104,23 +104,23 @@ async function handleIncomingNotification(notif: any) {
     type: type as any
   }
 
-  // Load custom ringtones from user settings if set
-  let settings: any = {}
+  // Load custom ringtones from user notifications config if set
+  let notifConfig: any = {}
   try {
-    settings = await (window as any).config.getSettings()
+    notifConfig = await (window as any).config.getNotifications()
   } catch (e) {}
 
   if (type === 'videocall') {
     item.caller = sender
     item.room = notif.room || localDeviceId.value
-    ringtoneFile = settings?.notifications?.videollamada?.ringtone || 'ringtone6.wav'
+    ringtoneFile = notifConfig?.videollamada?.ringtone || 'ringtone6.wav'
   } else if (type === 'new_message') {
     item.sender = sender
-    ringtoneFile = settings?.notifications?.nueva_foto?.ringtone || 'ringtone3.mp3'
+    ringtoneFile = notifConfig?.nueva_foto?.ringtone || 'ringtone3.mp3'
   } else if (type === 'new_event') {
     item.title = notif.title || t('notification.new_event')
     item.date = notif.date || ''
-    ringtoneFile = settings?.notifications?.nuevo_evento?.ringtone || 'ringtone2.mp3'
+    ringtoneFile = notifConfig?.nuevo_evento?.ringtone || 'ringtone2.mp3'
   } else if (type === 'events_reload') {
     // Backend signals that events were updated — show a subtle new_event notification if title provided
     console.log('[NOTIF] events_reload received — reloading event list')
@@ -128,7 +128,7 @@ async function handleIncomingNotification(notif: any) {
     item.type = 'new_event'
     item.title = notif.title || t('notification.new_event')
     item.date = notif.date || ''
-    ringtoneFile = settings?.notifications?.nuevo_evento?.ringtone || 'ringtone2.mp3'
+    ringtoneFile = notifConfig?.nuevo_evento?.ringtone || 'ringtone2.mp3'
   } else if (type === 'missed_call') {
     item.caller = sender
     item.time = formatTime(notif.timestamp) || t('common.loading')
