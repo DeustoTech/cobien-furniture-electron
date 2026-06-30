@@ -1243,6 +1243,45 @@ app.whenReady().then(() => {
 function startWifiWatchdog() {
   setInterval(async () => {
     try {
+      // 1. Check if watchdog is enabled in settings
+      const homeDir = os.homedir()
+      const defaultPath = join(app.getAppPath(), 'config.default.json')
+      const localPath = process.env.COBIEN_LOCAL_CONFIG_PATH || join(homeDir, '.config', 'cobien', 'config.local.json')
+      
+      let enabled = false
+      try {
+        let defaultData: any = {}
+        if (fsSync.existsSync(defaultPath)) {
+          defaultData = JSON.parse(fsSync.readFileSync(defaultPath, 'utf-8'))
+        }
+        let localData: any = {}
+        if (fsSync.existsSync(localPath)) {
+          localData = JSON.parse(fsSync.readFileSync(localPath, 'utf-8'))
+        }
+        const settings = { ...defaultData.settings, ...localData.settings }
+        enabled = settings.enable_wifi_watchdog === true
+      } catch (e) {
+        // Safe fallback to false if reading fails
+      }
+
+      if (!enabled) return
+
+      // 2. Check if we already have global internet connectivity (ethernet, wifi, etc.)
+      const hasInternet = await new Promise<boolean>((resolve) => {
+        exec('nmcli -t -f CONNECTIVITY networking', (error, stdout) => {
+          if (!error && stdout) {
+            const status = stdout.trim()
+            if (status === 'full') {
+              resolve(true)
+              return
+            }
+          }
+          resolve(false)
+        })
+      })
+
+      if (hasInternet) return
+
       const hasWifi = await new Promise<boolean>((resolve) => {
         exec('nmcli -t -f TYPE device', (error, stdout) => {
           if (error || !stdout) {

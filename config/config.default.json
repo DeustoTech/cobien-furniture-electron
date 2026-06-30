@@ -27,7 +27,8 @@
         "idle_timeout_sec": 60,
         "solitaire_enabled": false,
         "chess_enabled": false,
-        "disable_gpu": false
+        "disable_gpu": false,
+        "enable_wifi_watchdog": false
     },
     "notifications": {
         "videollamada": {
