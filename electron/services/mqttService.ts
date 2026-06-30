@@ -25,6 +25,8 @@ const TOPIC_EVENTS_RELOAD = 'events/reload'
 const TOPIC_BOARD_RELOAD = 'board/reload'
 const TOPIC_WEATHER_RELOAD = 'weather/reload'
 
+const TOPIC_RFID_RELOAD = 'rfid/actions_reload'
+
 const SUBSCRIBED_TOPICS = [
   TOPIC_RFID,
   TOPIC_SENSORS,
@@ -32,6 +34,7 @@ const SUBSCRIBED_TOPICS = [
   TOPIC_EVENTS_RELOAD,
   TOPIC_BOARD_RELOAD,
   TOPIC_WEATHER_RELOAD,
+  TOPIC_RFID_RELOAD,
 ]
 
 // Capacitive button mapping — mirrors BUTTON_ACTIONS in mqtt_publisher.py
@@ -116,7 +119,7 @@ function handleAppNav(raw: any) {
   send({ topic: TOPIC_APP_NAV, ...raw })
 }
 
-async function loadRfidActions() {
+export async function loadRfidActions() {
   const { promises: fs } = await import('node:fs')
   const { join, dirname } = await import('node:path')
   const { app } = await import('electron')
