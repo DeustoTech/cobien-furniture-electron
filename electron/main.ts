@@ -79,7 +79,7 @@ import { getRandomJoke } from './services/jokesService'
 import { loadContacts, requestCall, syncContacts } from './services/contactsService'
 
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
-import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload } from './services/mqttService'
+import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload, loadRfidActions } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -395,6 +395,9 @@ function setupIPC() {
       // Publish config and reload via MQTT
       publishRfidConfig(cardId, code)
       publishRfidReload()
+      
+      // Load updated actions locally in memory immediately
+      await loadRfidActions()
       return success
     } catch (e) {
       console.error('Error saving RFID action:', e)
@@ -412,6 +415,9 @@ function setupIPC() {
 
       // Publish reload via MQTT
       publishRfidReload()
+
+      // Load updated actions locally in memory immediately
+      await loadRfidActions()
       return success
     } catch (e) {
       console.error('Error deleting RFID action:', e)
