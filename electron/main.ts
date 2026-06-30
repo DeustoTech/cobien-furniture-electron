@@ -60,6 +60,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLT
 
 let mainWindow: BrowserWindow | null = null
 let activeMockSSID = 'CoBien_WiFi_5G'
+let lastManualConnectTime = 0
 
 const configPath = join(_dirname, '../config/config.default.json')
 let _localConfigPath = ''  // set once app is ready
@@ -518,6 +519,7 @@ function setupIPC() {
   })
 
   ipcMain.handle('config:connectWifi', async (event, ssid: string, password?: string) => {
+    lastManualConnectTime = Date.now()
     const runScanWifi = async (): Promise<{ ssid: string; signal: number; security: string; active: boolean }[]> => {
       const hostScanFile = '/tmp/host_wifi_list.txt'
       try {
@@ -1097,6 +1099,8 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  startWifiWatchdog()
+
   // Load pending reminders and wire notification to renderer
   loadPendingReminders((reminder) => {
     if (mainWindow) {
@@ -1119,6 +1123,68 @@ app.whenReady().then(() => {
     }
   })
 })
+
+function startWifiWatchdog() {
+  setInterval(async () => {
+    try {
+      const hasWifi = await new Promise<boolean>((resolve) => {
+        exec('nmcli -t -f TYPE device', (error, stdout) => {
+          if (error || !stdout) {
+            resolve(false)
+            return
+          }
+          resolve(stdout.split('\n').some(line => line.trim() === 'wifi'))
+        })
+      })
+      if (!hasWifi) return
+
+      const isConnected = await new Promise<boolean>((resolve) => {
+        exec('nmcli -t -f TYPE,STATE device', (error, stdout) => {
+          if (error || !stdout) {
+            resolve(false)
+            return
+          }
+          const lines = stdout.split('\n').map(l => l.trim())
+          const connected = lines.some(line => {
+            const [type, state] = line.split(':')
+            return (type === 'wifi' || type === 'ethernet') && state === 'connected'
+          })
+          resolve(connected)
+        })
+      })
+
+      if (isConnected) return
+
+      if (Date.now() - lastManualConnectTime < 120 * 1000) {
+        return
+      }
+
+      const isCobienInRange = await new Promise<boolean>((resolve) => {
+        exec('nmcli -t -f SSID device wifi list', (error, stdout) => {
+          if (error || !stdout) {
+            resolve(false)
+            return
+          }
+          const ssids = stdout.split('\n').map(s => s.trim())
+          resolve(ssids.includes('cobien'))
+        })
+      })
+
+      if (isCobienInRange) {
+        console.log('[WIFI-WATCHDOG] Device is offline, and "cobien" SSID is in range. Auto-connecting to default Wi-Fi...')
+        exec('nmcli device wifi connect "cobien" password "Cobien2026"', (err, stdout, stderr) => {
+          if (err) {
+            console.error('[WIFI-WATCHDOG] Failed to auto-connect to cobien Wi-Fi:', err, stderr)
+          } else {
+            console.log('[WIFI-WATCHDOG] Successfully auto-connected to cobien Wi-Fi.')
+          }
+        })
+      }
+    } catch (err) {
+      console.error('[WIFI-WATCHDOG] Error in watchdog loop:', err)
+    }
+  }, 30 * 1000)
+}
 
 app.on('window-all-closed', () => {
   stopMqtt()
