@@ -182,14 +182,68 @@ async function measureNetworkSpeed(): Promise<number | null> {
 }
 
 function setupIPC() {
+  async function readMergedConfig() {
+    let defaultData: any = {}
+    try {
+      defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    } catch (e) {
+      console.error('Error reading default config:', e)
+    }
+
+    let localData: any = {}
+    if (_localConfigPath) {
+      try {
+        localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+      } catch (e) {
+        // Fine if local config is empty/doesn't exist
+      }
+    }
+
+    return {
+      ...defaultData,
+      ...localData,
+      settings: { ...(defaultData.settings || {}), ...(localData.settings || {}) },
+      notifications: { ...(defaultData.notifications || {}), ...(localData.notifications || {}) },
+      services: { ...(defaultData.services || {}), ...(localData.services || {}) }
+    }
+  }
+
+  async function writeConfig(updater: (data: any) => void) {
+    let defaultSuccess = false
+    try {
+      const defaultData = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      updater(defaultData)
+      await fs.writeFile(configPath, JSON.stringify(defaultData, null, 4))
+      defaultSuccess = true
+    } catch (e) {
+      // Ignore write failures in production for default config
+    }
+
+    let localSuccess = false
+    if (_localConfigPath) {
+      try {
+        let localData: any = {}
+        try {
+          localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
+        } catch (e) {}
+        updater(localData)
+        await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+        localSuccess = true
+      } catch (e) {
+        console.error('Error writing local config:', e)
+      }
+    }
+
+    return defaultSuccess || localSuccess
+  }
 
   ipcMain.handle('config:getWeather', async () => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const data = await readMergedConfig()
       return {
-        catalog: data.settings.weather_city_catalog || [],
-        active: data.settings.weather_cities || [],
-        primary: data.settings.weather_primary_city || ''
+        catalog: data.settings?.weather_city_catalog || [],
+        active: data.settings?.weather_cities || [],
+        primary: data.settings?.weather_primary_city || ''
       }
     } catch (e) {
       console.error('Error reading config:', e)
@@ -199,7 +253,7 @@ function setupIPC() {
 
   ipcMain.handle('config:getSettings', async () => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const data = await readMergedConfig()
       return data.settings || {}
     } catch (e) {
       return {}
@@ -208,12 +262,13 @@ function setupIPC() {
 
   ipcMain.handle('config:saveWeather', async (event, payload: any) => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-      data.settings.weather_city_catalog = payload.catalog
-      data.settings.weather_cities = payload.active
-      data.settings.weather_primary_city = payload.primary
-      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
-      return true
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        data.settings.weather_city_catalog = payload.catalog
+        data.settings.weather_cities = payload.active
+        data.settings.weather_primary_city = payload.primary
+      })
+      return success
     } catch (e) {
       console.error('Error saving config:', e)
       return false
@@ -222,27 +277,12 @@ function setupIPC() {
 
   ipcMain.handle('config:saveButtonColors', async (event, payload: any) => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-      if (!data.settings) data.settings = {}
-      data.settings.button_colors = payload
-      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
-
-      try {
-        if (_localConfigPath) {
-          let localData: any = {}
-          try {
-            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
-          } catch(e) {}
-          if (!localData.settings) localData.settings = {}
-          localData.settings.button_colors = payload
-          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
-        }
-      } catch(err) {
-        console.error('Error writing local config:', err)
-      }
-
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        data.settings.button_colors = payload
+      })
       publishButtonConfig(payload)
-      return true
+      return success
     } catch (e) {
       console.error('Error saving button colors:', e)
       return false
@@ -251,7 +291,7 @@ function setupIPC() {
 
   ipcMain.handle('config:getNotifications', async () => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const data = await readMergedConfig()
       return data.notifications || {}
     } catch (e) {
       return {}
@@ -260,24 +300,10 @@ function setupIPC() {
 
   ipcMain.handle('config:saveNotifications', async (event, payload: any) => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-      data.notifications = payload
-      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
-
-      try {
-        if (_localConfigPath) {
-          let localData: any = {}
-          try {
-            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
-          } catch(e) {}
-          localData.notifications = payload
-          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
-        }
-      } catch(err) {
-        console.error('Error writing local config:', err)
-      }
-
-      return true
+      const success = await writeConfig((data) => {
+        data.notifications = payload
+      })
+      return success
     } catch (e) {
       console.error('Error saving notifications config:', e)
       return false
@@ -286,7 +312,7 @@ function setupIPC() {
 
   ipcMain.handle('config:getRfidActions', async () => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const data = await readMergedConfig()
       return data.settings?.rfid_actions || {}
     } catch (e) {
       console.error('Error reading RFID actions:', e)
@@ -306,28 +332,11 @@ function setupIPC() {
 
   ipcMain.handle('config:saveRfidAction', async (event, cardId: number, action: string, extra = '') => {
     try {
-      // Save to main config
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-      if (!data.settings) data.settings = {}
-      if (!data.settings.rfid_actions) data.settings.rfid_actions = {}
-      data.settings.rfid_actions[String(cardId)] = { action, extra }
-      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
-
-      // Save to local config if present
-      try {
-        if (_localConfigPath) {
-          let localData: any = {}
-          try {
-            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
-          } catch(e) {}
-          if (!localData.settings) localData.settings = {}
-          if (!localData.settings.rfid_actions) localData.settings.rfid_actions = {}
-          localData.settings.rfid_actions[String(cardId)] = { action, extra }
-          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
-        }
-      } catch (err) {
-        console.error('Error writing local config for RFID:', err)
-      }
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        if (!data.settings.rfid_actions) data.settings.rfid_actions = {}
+        data.settings.rfid_actions[String(cardId)] = { action, extra }
+      })
 
       // Map action to code: day_events=2, weather=3, videocall=5
       const actionCodes: Record<string, number> = {
@@ -340,7 +349,7 @@ function setupIPC() {
       // Publish config and reload via MQTT
       publishRfidConfig(cardId, code)
       publishRfidReload()
-      return true
+      return success
     } catch (e) {
       console.error('Error saving RFID action:', e)
       return false
@@ -349,32 +358,15 @@ function setupIPC() {
 
   ipcMain.handle('config:deleteRfidAction', async (event, cardId: number) => {
     try {
-      // Delete from main config
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
-      if (data.settings?.rfid_actions) {
-        delete data.settings.rfid_actions[String(cardId)]
-      }
-      await fs.writeFile(configPath, JSON.stringify(data, null, 4))
-
-      // Delete from local config
-      try {
-        if (_localConfigPath) {
-          let localData: any = {}
-          try {
-            localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
-          } catch(e) {}
-          if (localData.settings?.rfid_actions) {
-            delete localData.settings.rfid_actions[String(cardId)]
-          }
-          await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
+      const success = await writeConfig((data) => {
+        if (data.settings?.rfid_actions) {
+          delete data.settings.rfid_actions[String(cardId)]
         }
-      } catch (err) {
-        console.error('Error writing local config for RFID deletion:', err)
-      }
+      })
 
       // Publish reload via MQTT
       publishRfidReload()
-      return true
+      return success
     } catch (e) {
       console.error('Error deleting RFID action:', e)
       return false
@@ -405,7 +397,7 @@ function setupIPC() {
 
   ipcMain.handle('config:triggerNotificationLed', async (event, type: string) => {
     try {
-      const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+      const data = await readMergedConfig()
       const notif = data.notifications?.[type]
       if (notif) {
         publishNotificationLed(notif)
@@ -688,7 +680,7 @@ function setupIPC() {
       console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
       process.exit(1);
     }
-    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const data = await readMergedConfig()
     const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
     return await syncContacts(deviceId, apiKey, baseUrl)
   })
@@ -701,7 +693,7 @@ function setupIPC() {
       console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
       process.exit(1);
     }
-    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const data = await readMergedConfig()
     const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
     return await requestCall(userName, deviceId, apiKey, baseUrl)
   })
@@ -840,7 +832,7 @@ function setupIPC() {
   })
 
   ipcMain.handle('events:addPersonal', async (_, payload: any) => {
-    const data = JSON.parse(await fs.readFile(configPath, 'utf-8'))
+    const data = await readMergedConfig()
     const defaultLocation = process.env.COBIEN_DEVICE_LOCATION || data.settings?.device_location || 'Bilbao'
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
     // Ensure we don't override payload.location if it exists
