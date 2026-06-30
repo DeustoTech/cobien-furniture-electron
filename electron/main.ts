@@ -544,7 +544,35 @@ function setupIPC() {
       })
     }
 
-    const runConnectWifi = (targetSsid: string, pass?: string): Promise<boolean> => {
+    const runConnectWifi = async (targetSsid: string, pass?: string): Promise<boolean> => {
+      const exists = await new Promise<boolean>((resolve) => {
+        exec('nmcli -t -f NAME connection show', (error, stdout) => {
+          if (error || !stdout) {
+            resolve(false)
+            return
+          }
+          const names = stdout.split('\n').map(n => n.trim())
+          resolve(names.includes(targetSsid))
+        })
+      })
+
+      if (exists) {
+        console.log(`[WIFI] Connection profile for "${targetSsid}" already exists. Attempting to bring it up...`)
+        const upSuccess = await new Promise<boolean>((resolve) => {
+          exec(`nmcli connection up "${targetSsid.replace(/"/g, '\\"')}"`, (error, stdout, stderr) => {
+            if (error) {
+              console.warn(`[WIFI] Failed to bring up existing connection "${targetSsid}":`, error, stderr)
+              resolve(false)
+            } else {
+              console.log(`[WIFI] Successfully brought up existing connection "${targetSsid}".`)
+              resolve(true)
+            }
+          })
+        })
+        if (upSuccess) return true
+      }
+
+      console.log(`[WIFI] Creating/updating connection for "${targetSsid}"...`)
       return new Promise((resolve) => {
         let cmd = `nmcli device wifi connect "${targetSsid.replace(/"/g, '\\"')}"`
         if (pass) {
