@@ -216,12 +216,15 @@ function setupIPC() {
       await fs.writeFile(configPath, JSON.stringify(defaultData, null, 4))
       defaultSuccess = true
     } catch (e) {
-      // Ignore write failures in production for default config
+      // Ignore write failures in production for default config (read-only asar/bundle)
     }
 
     let localSuccess = false
     if (_localConfigPath) {
       try {
+        // Ensure the parent directory exists (critical for fresh VMs / first run)
+        await fs.mkdir(dirname(_localConfigPath), { recursive: true })
+
         let localData: any = {}
         try {
           localData = JSON.parse(await fs.readFile(_localConfigPath, 'utf-8'))
@@ -230,8 +233,10 @@ function setupIPC() {
         await fs.writeFile(_localConfigPath, JSON.stringify(localData, null, 4))
         localSuccess = true
       } catch (e) {
-        console.error('Error writing local config:', e)
+        console.error('[CONFIG] Error writing local config:', e)
       }
+    } else {
+      console.warn('[CONFIG] _localConfigPath not set, cannot persist settings locally')
     }
 
     return defaultSuccess || localSuccess
@@ -1094,11 +1099,14 @@ app.whenReady().then(() => {
     }
   })
 
+  // Initialize the writable local config path BEFORE registering IPC handlers
+  const localConfigPath = join(app.getPath('userData'), 'config.local.json')
+  _localConfigPath = localConfigPath
+
   setupIPC()
 
   // Initial Syncs
   const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
-  const localConfigPath = join(app.getPath('userData'), 'config.local.json')
   let localData: any = {}
   try {
     if (fsSync.existsSync(localConfigPath)) {
@@ -1152,9 +1160,7 @@ app.whenReady().then(() => {
   })
 
   if (mainWindow) {
-    const localPath = join(app.getPath('userData'), 'config.local.json')
-    _localConfigPath = localPath
-    startBackendSync(mainWindow, configPath, localPath)
+    startBackendSync(mainWindow, configPath, localConfigPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)
   }
