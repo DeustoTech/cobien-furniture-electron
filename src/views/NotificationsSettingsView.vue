@@ -100,7 +100,8 @@ function stopPreview() {
 
 async function handleSaveSingle(type: string) {
   try {
-    const success = await (window as any).config.saveNotifications(profiles.value)
+    const rawPayload = JSON.parse(JSON.stringify(profiles.value))
+    const success = await (window as any).config.saveNotifications(rawPayload)
     if (success) {
       triggerSuccessFlash()
       // Trigger LED config for testing
@@ -119,7 +120,8 @@ async function handleSaveSingle(type: string) {
 
 async function handleSaveAll() {
   try {
-    const success = await (window as any).config.saveNotifications(profiles.value)
+    const rawPayload = JSON.parse(JSON.stringify(profiles.value))
+    const success = await (window as any).config.saveNotifications(rawPayload)
     if (success) {
       triggerSuccessFlash()
     }
