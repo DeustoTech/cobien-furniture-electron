@@ -243,11 +243,18 @@ function setupIPC() {
   }
 
   ipcMain.handle('network:is-online', async () => {
-    return new Promise<boolean>((resolve) => {
-      dns.lookup('google.com', (err) => {
-        resolve(!err)
+    const dnsCheck = (host: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(false), 3000)
+        dns.lookup(host, (err) => {
+          clearTimeout(timer)
+          resolve(!err)
+        })
       })
-    })
+    }
+    const online = await dnsCheck('google.com')
+    if (online) return true
+    return dnsCheck('one.one.one.one')
   })
 
   ipcMain.handle('config:getWeather', async () => {
@@ -504,12 +511,14 @@ function setupIPC() {
       }
 
       return new Promise((resolve) => {
-        exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
-          if (error || !stdout) {
-            resolve([])
-            return
-          }
-          resolve(parseNmcliOutput(stdout))
+        exec('nmcli device wifi rescan', () => {
+          exec('nmcli -t -f SSID,SIGNAL,SECURITY,ACTIVE device wifi list', (error, stdout) => {
+            if (error || !stdout) {
+              resolve([])
+              return
+            }
+            resolve(parseNmcliOutput(stdout))
+          })
         })
       })
     }
@@ -1079,6 +1088,8 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(_dirname, '../dist/index.html'))
   }
+}
+
 // Disable hardware acceleration based on env vars, VM detection, or config settings
 let gpuDisabled = process.env.COBIEN_DISABLE_GPU === '1' || process.env.DISABLE_GPU === '1'
 
