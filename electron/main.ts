@@ -23,54 +23,12 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
-import { execSync } from 'node:child_process'
-
-// Disable hardware acceleration in virtual environments or when GPU is not functional
-let gpuDisabled = false
-try {
-  const virt = execSync('systemd-detect-virt', { encoding: 'utf-8' }).trim()
-  if (virt && virt !== 'none') {
-    console.log(`[GPU] Virtual machine detected (${virt}). Disabling hardware acceleration.`)
-    gpuDisabled = true
-  }
-} catch (e) {
-  // Ignored if systemd-detect-virt is missing or returns non-zero
-}
-
-// Check if any DRI card device exists — if not, GPU rendering cannot work
-if (!gpuDisabled) {
-  try {
-    const fsCheck = require('node:fs')
-    const driEntries = fsCheck.existsSync('/dev/dri')
-      ? fsCheck.readdirSync('/dev/dri').filter((f: string) => f.startsWith('card'))
-      : []
-    if (driEntries.length === 0) {
-      console.log('[GPU] No DRI card devices found. Disabling hardware acceleration.')
-      gpuDisabled = true
-    }
-  } catch (e) {
-    // Ignore
-  }
-}
-
-if (gpuDisabled) {
-  app.disableHardwareAcceleration()
-  app.commandLine.appendSwitch('disable-gpu')
-}
-
-// Always disable VA-API to prevent FATAL crashes on systems with broken/missing VA-API drivers
-// (e.g. VMs with DRI devices but no proper VA-API support). This does not affect rendering,
-// only hardware video decode acceleration.
-app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEncoder')
-
-// Disable login keyring popups in kiosk environment
-app.commandLine.appendSwitch('password-store', 'basic')
+import { execSync, execFile, exec } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execFile, exec } from 'node:child_process'
 import { promises as fs } from 'node:fs'
-import * as os from 'node:os'
 import * as fsSync from 'node:fs'
+import * as os from 'node:os'
 import { startBackendSync, setNetworkSpeed, triggerHeartbeat } from './services/backendSync'
 import { getEvents, addPersonalEvent, updatePersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
@@ -1114,7 +1072,69 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(_dirname, '../dist/index.html'))
   }
+// Disable hardware acceleration based on env vars, VM detection, or config settings
+let gpuDisabled = process.env.COBIEN_DISABLE_GPU === '1' || process.env.DISABLE_GPU === '1'
+
+if (!gpuDisabled) {
+  try {
+    const virt = execSync('systemd-detect-virt', { encoding: 'utf-8' }).trim()
+    if (virt && virt !== 'none') {
+      console.log(`[GPU] Virtual machine detected (${virt}). Disabling hardware acceleration.`)
+      gpuDisabled = true
+    }
+  } catch (e) {
+    // Ignored if systemd-detect-virt is missing or returns non-zero
+  }
 }
+
+if (!gpuDisabled) {
+  try {
+    const homeDir = os.homedir()
+    const possiblePaths = [
+      process.env.COBIEN_LOCAL_CONFIG_PATH || join(homeDir, '.config', 'cobien', 'config.local.json'),
+      join(homeDir, '.config', 'cobien-furniture-electron', 'config.local.json')
+    ]
+    for (const p of possiblePaths) {
+      if (fsSync.existsSync(p)) {
+        const raw = fsSync.readFileSync(p, 'utf-8')
+        const parsed = JSON.parse(raw)
+        if (parsed?.settings?.disable_gpu === true) {
+          console.log(`[GPU] disable_gpu=true found in local config (${p}). Disabling hardware acceleration.`)
+          gpuDisabled = true
+          break
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+}
+
+if (!gpuDisabled) {
+  try {
+    const driEntries = fsSync.existsSync('/dev/dri')
+      ? fsSync.readdirSync('/dev/dri').filter((f: string) => f.startsWith('card'))
+      : []
+    if (driEntries.length === 0) {
+      console.log('[GPU] No DRI card devices found. Disabling hardware acceleration.')
+      gpuDisabled = true
+    }
+  } catch (e) {
+    // Ignore
+  }
+}
+
+if (gpuDisabled) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+}
+
+// Always disable VA-API to prevent FATAL crashes on systems with broken/missing VA-API drivers
+// (e.g. VMs or remote sessions via RustDesk with DRI devices but no proper VA-API support).
+app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEncoder')
+
+// Disable login keyring popups in kiosk environment
+app.commandLine.appendSwitch('password-store', 'basic')
 
 app.whenReady().then(() => {
   // Automatically grant camera/microphone/media permissions

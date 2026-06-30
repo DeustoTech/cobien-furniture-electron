@@ -26,7 +26,8 @@
         "joke_category": "general",
         "idle_timeout_sec": 60,
         "solitaire_enabled": false,
-        "chess_enabled": false
+        "chess_enabled": false,
+        "disable_gpu": false
     },
     "notifications": {
         "videollamada": {
