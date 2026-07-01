@@ -14,6 +14,7 @@ import NotificationsSettingsView from '../views/NotificationsSettingsView.vue'
 import WifiSettingsView from '../views/WifiSettingsView.vue'
 import RfidSettingsView from '../views/RfidSettingsView.vue'
 import LogsSettingsView from '../views/LogsSettingsView.vue'
+import GeneralSettingsView from '../views/GeneralSettingsView.vue'
 
 import SettingsView from '../views/SettingsView.vue'
 
@@ -77,6 +78,11 @@ const router = createRouter({
       path: '/settings/logs',
       name: 'settings-logs',
       component: LogsSettingsView
+    },
+    {
+      path: '/settings/general',
+      name: 'settings-general',
+      component: GeneralSettingsView
     },
 
     {

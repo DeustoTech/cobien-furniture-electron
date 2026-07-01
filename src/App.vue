@@ -7,7 +7,7 @@ import { startWakeWordDetection, stopWakeWordDetection } from './services/voiceR
 import { useSettings } from './composables/useSettings'
 import VoiceAssistant from './components/VoiceAssistant.vue'
 import NotificationOverlay from './components/NotificationOverlay.vue'
-// import IdleOverlay from './components/IdleOverlay.vue'
+import IdleOverlay from './components/IdleOverlay.vue'
 
 // Register MQTT listener at root level so it works across all screens
 useMqtt()
@@ -131,44 +131,68 @@ onMounted(async () => {
     console.error('Error loading default language:', e)
   }
 
-  try {
-    const settings = await (window as any).config.getSettings()
-    if (settings && settings.idle_timeout_sec) {
-      idleTimeout.value = settings.idle_timeout_sec
+  const handleIdleTimeoutChange = () => {
+    const localT = localStorage.getItem('cobien_idle_timeout')
+    if (localT !== null) {
+      idleTimeout.value = parseInt(localT, 10)
     }
-  } catch (e) {
-    console.error('Error loading settings:', e)
   }
+
+  const localTimeout = localStorage.getItem('cobien_idle_timeout')
+  if (localTimeout !== null) {
+    idleTimeout.value = parseInt(localTimeout, 10)
+  } else {
+    try {
+      const settings = await (window as any).config.getSettings()
+      if (settings && settings.idle_timeout_sec) {
+        idleTimeout.value = settings.idle_timeout_sec
+      }
+    } catch (e) {
+      console.error('Error loading settings:', e)
+    }
+  }
+
+  window.addEventListener('idle-timeout-changed', handleIdleTimeoutChange)
 
   // Listen for manual trigger (from buttons)
   window.addEventListener('start-voice-assistant', () => {
     voiceAssistantRef.value?.startAssistant()
   })
 
-  // Start background listening for "cobien"
-  try {
-    startWakeWordDetection(locale.value, () => {
-      console.log('[WAKE] UI Triggered by voice')
-      window.dispatchEvent(new Event('wake-word-detected'))
-      voiceAssistantRef.value?.startAssistant()
-    })
-  } catch (e) {
-    console.error('[WAKE] Error starting background wake word detection:', e)
-  }
-
-  // Watch for language changes to restart wake word with new model
-  watch(locale, (newLang) => {
-    console.log(`[WAKE] Language changed to ${newLang}, restarting wake word detection...`)
+  const startWakeWithCheck = () => {
     try {
       stopWakeWordDetection()
-      startWakeWordDetection(newLang, () => {
-        console.log('[WAKE] UI Triggered by voice')
-        window.dispatchEvent(new Event('wake-word-detected'))
-        voiceAssistantRef.value?.startAssistant()
-      })
+      const enabled = localStorage.getItem('cobien_wake_word_enabled') !== 'false'
+      if (enabled) {
+        console.log('[WAKE] Starting background wake word detection...')
+        startWakeWordDetection(locale.value, () => {
+          console.log('[WAKE] UI Triggered by voice')
+          window.dispatchEvent(new Event('wake-word-detected'))
+          voiceAssistantRef.value?.startAssistant()
+        })
+      } else {
+        console.log('[WAKE] Wake word detection is disabled by user settings')
+      }
     } catch (e) {
-      console.error('[WAKE] Error restarting wake word detection after language change:', e)
+      console.error('[WAKE] Error managing wake word detection:', e)
     }
+  }
+
+  // Start background listening for "cobien"
+  startWakeWithCheck()
+
+  // Watch for language changes to restart wake word with new model
+  watch(locale, () => {
+    console.log(`[WAKE] Language changed, restarting check...`)
+    startWakeWithCheck()
+  })
+
+  // Listen for setting updates
+  window.addEventListener('wake-word-setting-changed', startWakeWithCheck)
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('wake-word-setting-changed', startWakeWithCheck)
+    window.removeEventListener('idle-timeout-changed', handleIdleTimeoutChange)
   })
 })
 
@@ -191,7 +215,7 @@ onBeforeUnmount(() => {
   <router-view />
   <VoiceAssistant ref="voiceAssistantRef" />
   <NotificationOverlay />
-  <!-- <IdleOverlay :timeout-sec="idleTimeout" /> -->
+  <IdleOverlay v-if="idleTimeout > 0" :timeout-sec="idleTimeout" />
 
   <!-- Premium Glassmorphic Offline Warning Overlay -->
   <div v-if="isOffline && route.path !== '/settings/wifi'" class="offline-overlay">

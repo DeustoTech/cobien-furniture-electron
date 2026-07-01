@@ -6,7 +6,9 @@
     "delete": "Delete",
     "loading": "Loading...",
     "restarting": "Restarting...",
-    "exit": "Exit"
+    "exit": "Exit",
+    "on": "ON",
+    "off": "OFF"
   },
   "home": {
     "next_events": "Next events",
@@ -51,6 +53,13 @@
     "logs_bridge": "MQTT-CAN Bridge",
     "logs_can": "CAN Bus",
     "logs_icso": "ICSO Telemetry",
+    "general": "General",
+    "general_title": "General Settings",
+    "wake_word": "Enable Wake Word ('cobien')",
+    "wake_word_desc": "Allows triggering the voice assistant by saying the wake word 'cobien'.",
+    "screen_sleep": "Screen Sleep Timeout",
+    "screen_sleep_desc": "The screen will turn black after the selected inactivity period.",
+    "never": "Never",
     "parameters": "Launcher Parameters",
     "wifi": "Wi-Fi",
     "wifi_settings_title": "Wi-Fi Settings",

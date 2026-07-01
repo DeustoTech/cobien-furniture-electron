@@ -9,7 +9,9 @@
     "exit": "Quitter",
     "no_upcoming_events": "Aucun événement à venir",
     "reminder_prefix": "Rappel : ",
-    "ok": "Compris"
+    "ok": "Compris",
+    "on": "Activer",
+    "off": "Désactiver"
   },
   "home": {
     "next_events": "Événements à venir",
@@ -53,6 +55,13 @@
     "logs_bridge": "Pont MQTT-CAN",
     "logs_can": "Bus CAN",
     "logs_icso": "Télémétrie ICSO",
+    "general": "Général",
+    "general_title": "Paramètres Généraux",
+    "wake_word": "Activer le Wake Word ('cobien')",
+    "wake_word_desc": "Permet de déclencher l'assistant vocal en prononçant le mot d'activation 'cobien'.",
+    "screen_sleep": "Mise en veille de l'écran",
+    "screen_sleep_desc": "L'écran s'éteindra après la période d'inactivité sélectionnée.",
+    "never": "Jamais",
     "parameters": "Paramètres Lanceur",
     "wifi": "Wi-Fi",
     "wifi_settings_title": "Paramètres Wi-Fi",
