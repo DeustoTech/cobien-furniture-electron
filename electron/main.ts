@@ -1186,6 +1186,10 @@ app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEn
 // Disable login keyring popups in kiosk environment
 app.commandLine.appendSwitch('password-store', 'basic')
 
+// Disable sandbox and GPU sandbox to prevent crashes in VM and remote environments
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+
 function setupLogRedirection() {
   const logDir = join(app.getPath('userData'), 'logs')
   if (!fsSync.existsSync(logDir)) {
