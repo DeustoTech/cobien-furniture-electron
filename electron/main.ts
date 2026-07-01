@@ -40,6 +40,7 @@ import { loadContacts, requestCall, syncContacts } from './services/contactsServ
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload, loadRfidActions } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
+import { startIcsoSyncLoop, logScreenWakeup, stopIcsoSyncLoop } from './services/icsoService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -1055,6 +1056,36 @@ function setupIPC() {
     return await getVolume()
   })
 
+  ipcMain.handle('logs:getTypes', () => {
+    return ['app', 'icso', 'can', 'bridge']
+  })
+
+  ipcMain.handle('logs:getTail', async (_, type: string) => {
+    const logDir = join(app.getPath('userData'), 'logs')
+    let logFile = ''
+    if (type === 'app') {
+      logFile = join(logDir, 'app.log')
+    } else if (type === 'icso') {
+      logFile = join(logDir, 'icso_log.txt')
+    } else if (type === 'can') {
+      logFile = resolveLatestLogFile(logDir, ['can-bus', 'can_bus', 'can'])
+    } else if (type === 'bridge') {
+      logFile = resolveLatestLogFile(logDir, ['mqtt-can-bridge', 'mqtt_can_bridge', 'bridge'])
+    }
+
+    if (!logFile || !fsSync.existsSync(logFile)) {
+      return `(sin datos en el log de tipo: ${type})`
+    }
+
+    try {
+      const text = fsSync.readFileSync(logFile, 'utf-8')
+      const lines = text.split('\n')
+      return lines.slice(-250).join('\n')
+    } catch (e: any) {
+      return `Error al leer logs: ${e.message}`
+    }
+  })
+
 }
 
 function createWindow() {
@@ -1154,7 +1185,30 @@ app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecoder,VaapiVideoEn
 // Disable login keyring popups in kiosk environment
 app.commandLine.appendSwitch('password-store', 'basic')
 
+function setupLogRedirection() {
+  const logDir = join(app.getPath('userData'), 'logs')
+  if (!fsSync.existsSync(logDir)) {
+    fsSync.mkdirSync(logDir, { recursive: true })
+  }
+  const logFile = join(logDir, 'app.log')
+  const logStream = fsSync.createWriteStream(logFile, { flags: 'a', encoding: 'utf-8' })
+  
+  const originalWrite = process.stdout.write.bind(process.stdout)
+  process.stdout.write = (chunk: any, encoding?: any, callback?: any) => {
+    logStream.write(chunk)
+    return originalWrite(chunk, encoding, callback)
+  }
+
+  const originalErrWrite = process.stderr.write.bind(process.stderr)
+  process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+    logStream.write(chunk)
+    return originalErrWrite(chunk, encoding, callback)
+  }
+}
+
 app.whenReady().then(() => {
+  setupLogRedirection()
+
   // Automatically grant camera/microphone/media permissions
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     const allowed = ['media', 'geolocation', 'notifications', 'midiSysex', 'openExternal']
@@ -1189,6 +1243,10 @@ app.whenReady().then(() => {
   _localConfigPath = localConfigPath
 
   setupIPC()
+
+  // Start ICSO sync loop and log wakeup
+  startIcsoSyncLoop(configPath, localConfigPath)
+  logScreenWakeup()
 
   // Initial Syncs
   const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
@@ -1359,8 +1417,29 @@ function startWifiWatchdog() {
   }, 30 * 1000)
 }
 
+function resolveLatestLogFile(logDir: string, prefixes: string[]): string {
+  if (!fsSync.existsSync(logDir)) return ''
+  try {
+    const files = fsSync.readdirSync(logDir)
+    const candidates: string[] = []
+    for (const file of files) {
+      for (const prefix of prefixes) {
+        if (file.startsWith(prefix) && (file.endsWith('.log') || file.endsWith('.txt'))) {
+          candidates.push(join(logDir, file))
+        }
+      }
+    }
+    if (candidates.length === 0) return ''
+    candidates.sort((a, b) => fsSync.statSync(b).mtimeMs - fsSync.statSync(a).mtimeMs)
+    return candidates[0]
+  } catch (e) {
+    return ''
+  }
+}
+
 app.on('window-all-closed', () => {
   stopMqtt()
+  stopIcsoSyncLoop()
   if (process.platform !== 'darwin') {
     app.quit()
   }

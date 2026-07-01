@@ -5,6 +5,8 @@ import { exec } from 'node:child_process'
 import { join } from 'node:path'
 import * as os from 'node:os'
 
+import { logNavigation } from './icsoService'
+
 let currentScreen = 'home'
 let lastNetworkSpeedKbps: number | null = null
 
@@ -22,6 +24,11 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
   // Listen for route changes from Vue Router
   ipcMain.handle('app:route-changed', (event, routeName: string) => {
     currentScreen = routeName
+    try {
+      logNavigation(routeName, 'touchscreen')
+    } catch (e) {
+      console.error('[SYNC] Failed to log navigation:', e)
+    }
   })
 
   // Start background intervals

@@ -17,6 +17,7 @@
 
 import mqtt, { type MqttClient } from 'mqtt'
 import type { BrowserWindow } from 'electron'
+import { logProximityEvent, logImuEvent } from './icsoService'
 
 const TOPIC_RFID = 'rfid/read'
 const TOPIC_SENSORS = 'sensors/update'
@@ -24,6 +25,8 @@ const TOPIC_APP_NAV = 'app/nav'
 const TOPIC_EVENTS_RELOAD = 'events/reload'
 const TOPIC_BOARD_RELOAD = 'board/reload'
 const TOPIC_WEATHER_RELOAD = 'weather/reload'
+const TOPIC_PROXIMITY = 'proximity/update'
+const TOPIC_IMU = 'imu/update'
 
 const TOPIC_RFID_RELOAD = 'rfid/actions_reload'
 
@@ -35,6 +38,8 @@ const SUBSCRIBED_TOPICS = [
   TOPIC_BOARD_RELOAD,
   TOPIC_WEATHER_RELOAD,
   TOPIC_RFID_RELOAD,
+  TOPIC_PROXIMITY,
+  TOPIC_IMU,
 ]
 
 // Capacitive button mapping — mirrors BUTTON_ACTIONS in mqtt_publisher.py
@@ -155,6 +160,24 @@ export async function loadRfidActions() {
   }
 }
 
+function handleProximity(raw: any) {
+  let canId = 0
+  let eventCode = 0
+  try {
+    canId = raw?.data?.can_id !== undefined ? parseInt(raw.data.can_id) : parseInt(raw.can_id ?? 0)
+    eventCode = raw?.data?.event !== undefined ? parseInt(raw.data.event) : parseInt(raw.event ?? 0)
+  } catch {
+    // Ignore
+  }
+  if (canId && eventCode) {
+    logProximityEvent(canId, eventCode)
+  }
+}
+
+function handleImu(raw: any) {
+  logImuEvent()
+}
+
 export function startMqtt(win: BrowserWindow): void {
   mainWindowRef = win
   loadRfidActions()
@@ -209,6 +232,12 @@ export function startMqtt(win: BrowserWindow): void {
         break
       case TOPIC_WEATHER_RELOAD:
         send({ topic, type: 'reload', target: 'weather' })
+        break
+      case TOPIC_PROXIMITY:
+        handleProximity(payload)
+        break
+      case TOPIC_IMU:
+        handleImu(payload)
         break
       case 'rfid/actions_reload':
         loadRfidActions()

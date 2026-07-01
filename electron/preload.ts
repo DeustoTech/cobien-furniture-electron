@@ -78,6 +78,8 @@ contextBridge.exposeInMainWorld('config', {
   scanWifi: () => ipcRenderer.invoke('config:scanWifi'),
   connectWifi: (ssid: string, password?: string) => ipcRenderer.invoke('config:connectWifi', ssid, password),
   getCurrentWifi: () => ipcRenderer.invoke('config:getCurrentWifi'),
+  getLogTypes: () => ipcRenderer.invoke('logs:getTypes'),
+  getLogTail: (type: string) => ipcRenderer.invoke('logs:getTail', type),
 
 
 
