@@ -131,6 +131,31 @@ onMounted(() => {
   border-radius: 20px;
 }
 
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: #111;
+}
+
+.back-btn {
+  width: 4.5rem;
+  height: 4.5rem;
+  background: white;
+  border: 2px solid #000;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.back-btn img {
+  width: 2.8rem;
+  height: 2.8rem;
+}
+
 .settings-content {
   flex: 1;
   border-radius: 20px;
