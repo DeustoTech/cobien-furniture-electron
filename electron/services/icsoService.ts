@@ -133,6 +133,22 @@ function getFormattedTime(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+function ensureLogSizeLimit(filePath: string, maxSizeBytes = 5 * 1024 * 1024) {
+  try {
+    if (!fs.existsSync(filePath)) return
+    const stat = fs.statSync(filePath)
+    if (stat.size > maxSizeBytes) {
+      const backupPath = filePath + '.1'
+      if (fs.existsSync(backupPath)) {
+        fs.unlinkSync(backupPath)
+      }
+      fs.renameSync(filePath, backupPath)
+    }
+  } catch (e) {
+    console.error(`[ICSO] Log rotation failed for ${filePath}:`, e)
+  }
+}
+
 function writeTxtLog(source: string, target?: string, recognized?: string) {
   ensureLogsDir()
   const now = getFormattedTime()
@@ -154,6 +170,7 @@ function writeTxtLog(source: string, target?: string, recognized?: string) {
 
   if (target === undefined && !labelMap[sourceStr]) {
     line = `[${now}] ${sourceStr}`
+    ensureLogSizeLimit(LOG_TXT)
     fs.appendFileSync(LOG_TXT, line + '\n', 'utf-8')
     return
   }
@@ -179,6 +196,7 @@ function writeTxtLog(source: string, target?: string, recognized?: string) {
   }
 
   const logPath = sourceStr === 'proximity' ? LOG_PROXIMITY_TXT : LOG_TXT
+  ensureLogSizeLimit(logPath)
   fs.appendFileSync(logPath, line + '\n', 'utf-8')
 }
 

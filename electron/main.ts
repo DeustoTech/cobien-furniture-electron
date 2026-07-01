@@ -41,6 +41,7 @@ import { loadPendingReminders, addReminder, listReminders, deleteReminder } from
 import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload, loadRfidActions } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
 import { startIcsoSyncLoop, logScreenWakeup, stopIcsoSyncLoop } from './services/icsoService'
+import { startLogsSyncLoop, stopLogsSyncLoop } from './services/logsSyncService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
@@ -1191,16 +1192,51 @@ function setupLogRedirection() {
     fsSync.mkdirSync(logDir, { recursive: true })
   }
   const logFile = join(logDir, 'app.log')
-  const logStream = fsSync.createWriteStream(logFile, { flags: 'a', encoding: 'utf-8' })
-  
+  let logStream = fsSync.createWriteStream(logFile, { flags: 'a', encoding: 'utf-8' })
+  let logSize = 0
+  try {
+    logSize = fsSync.statSync(logFile).size
+  } catch (e) {
+    logSize = 0
+  }
+
+  const maxLogSize = 5 * 1024 * 1024 // 5 MB
+
+  const rotateStream = () => {
+    try {
+      logStream.end()
+      const backupFile = logFile + '.1'
+      if (fsSync.existsSync(backupFile)) {
+        fsSync.unlinkSync(backupFile)
+      }
+      if (fsSync.existsSync(logFile)) {
+        fsSync.renameSync(logFile, backupFile)
+      }
+      logStream = fsSync.createWriteStream(logFile, { flags: 'a', encoding: 'utf-8' })
+      logSize = 0
+    } catch (e) {
+      // Silently ignore to avoid recursive stdout logging loop
+    }
+  }
+
   const originalWrite = process.stdout.write.bind(process.stdout)
   process.stdout.write = (chunk: any, encoding?: any, callback?: any) => {
+    const len = chunk ? chunk.length : 0
+    logSize += len
+    if (logSize > maxLogSize) {
+      rotateStream()
+    }
     logStream.write(chunk)
     return originalWrite(chunk, encoding, callback)
   }
 
   const originalErrWrite = process.stderr.write.bind(process.stderr)
   process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+    const len = chunk ? chunk.length : 0
+    logSize += len
+    if (logSize > maxLogSize) {
+      rotateStream()
+    }
     logStream.write(chunk)
     return originalErrWrite(chunk, encoding, callback)
   }
@@ -1247,6 +1283,9 @@ app.whenReady().then(() => {
   // Start ICSO sync loop and log wakeup
   startIcsoSyncLoop(configPath, localConfigPath)
   logScreenWakeup()
+
+  // Start support logs sync loop
+  startLogsSyncLoop(configPath, localConfigPath)
 
   // Initial Syncs
   const data = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
@@ -1440,6 +1479,7 @@ function resolveLatestLogFile(logDir: string, prefixes: string[]): string {
 app.on('window-all-closed', () => {
   stopMqtt()
   stopIcsoSyncLoop()
+  stopLogsSyncLoop()
   if (process.platform !== 'darwin') {
     app.quit()
   }
