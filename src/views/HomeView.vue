@@ -45,16 +45,9 @@ const reminderActive = ref(false)
 const reminderMessage = ref('')
 
 let timer: number
+let weatherTimer: number
 
-onMounted(async () => {
-  updateTime()
-  timer = window.setInterval(updateTime, 1000)
-  
-  try {
-    const sysInfo = await (window as any).config.getSystemInfo()
-    systemMeta.value = `${sysInfo.deviceId} · v${sysInfo.version}`
-  } catch(e) {}
-
+async function refreshWeather() {
   try {
     const config = await (window as any).config.getWeather()
     if (config.primary) {
@@ -81,6 +74,19 @@ onMounted(async () => {
       } catch (e) {}
     }
   } catch(e) {}
+}
+
+onMounted(async () => {
+  updateTime()
+  timer = window.setInterval(updateTime, 1000)
+  
+  try {
+    const sysInfo = await (window as any).config.getSystemInfo()
+    systemMeta.value = `${sysInfo.deviceId} · v${sysInfo.version}`
+  } catch(e) {}
+
+  await refreshWeather()
+  weatherTimer = window.setInterval(refreshWeather, 20 * 60 * 1000)
 
   try {
     const events = await (window as any).config.getEvents()
@@ -106,6 +112,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearInterval(timer)
+  clearInterval(weatherTimer)
 })
 
 function updateTime() {
