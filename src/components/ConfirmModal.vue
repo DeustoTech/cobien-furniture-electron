@@ -173,6 +173,12 @@ onMounted(() => {
   box-shadow: 0 8px 20px rgba(217, 46, 46, 0.25);
 }
 
+.confirm-btn.purple {
+  background: #9b59b6;
+  color: white;
+  box-shadow: 0 8px 20px rgba(155, 89, 182, 0.25);
+}
+
 .confirm-btn.secondary {
   background: #6c757d;
   color: white;
