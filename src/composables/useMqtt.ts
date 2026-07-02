@@ -56,6 +56,9 @@ export function useMqtt() {
         case 'day_events':
           router.push('/events')
           break
+        case 'emotions':
+          window.dispatchEvent(new Event('reopen-emotion-prompt'))
+          break
         case 'voice_cmd':
           window.dispatchEvent(new CustomEvent('start-voice-assistant'))
           break
