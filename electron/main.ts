@@ -299,7 +299,7 @@ function setupIPC() {
     try {
       const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBienX'
       const baseUrl = process.env.COBIEN_BACKEND_BASE_URL || 'https://portal.co-bien.eu'
-      const res = await fetch(`${baseUrl}/emociones/api/diario/`, {
+      const res = await fetch(`${baseUrl}/api/emociones/api/diario/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_id: deviceId, emocion: emotion }),
