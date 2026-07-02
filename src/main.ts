@@ -7,7 +7,7 @@ import i18n from './i18n'
 const app = createApp(App)
 
 // Global error handler: prevent unhandled Vue errors from crashing the renderer
-app.config.errorHandler = (err, instance, info) => {
+app.config.errorHandler = (err, _instance, info) => {
   console.error(`[Vue Error] ${info}:`, err)
 }
 

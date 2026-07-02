@@ -240,7 +240,7 @@ function handleEmotionMissed() {
   }))
 }
 
-function handleEmotionAnswered(emotion: string) {
+function handleEmotionAnswered() {
   showEmotionPrompt.value = false
 }
 

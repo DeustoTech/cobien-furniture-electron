@@ -272,6 +272,11 @@ function declineCall(item: NotificationItem) {
   // Register globally for the Contacts view
   addMissedCall({ author: item.caller || 'Desconocido', userName: item.caller || 'unknown', time: timeStr })
 }
+
+function reopenEmotionPrompt(id: string) {
+  dismissNotification(id)
+  window.dispatchEvent(new Event('reopen-emotion-prompt'))
+}
 </script>
 
 <template>
