@@ -9,6 +9,8 @@ import { logNavigation } from './icsoService'
 
 let currentScreen = 'home'
 let lastNetworkSpeedKbps: number | null = null
+let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null
+let pollIntervalId: ReturnType<typeof setInterval> | null = null
 
 /** Called from main.ts after a speed measurement so heartbeat picks it up. */
 export function setNetworkSpeed(kbps: number | null) {
@@ -37,18 +39,30 @@ export async function startBackendSync(mainWindow: BrowserWindow, configPath: st
     heartbeatIntervalSec = 300 // default to 5 minutes to reduce server load
   }
   console.log(`[SYNC] Heartbeat interval set to ${heartbeatIntervalSec}s`)
-  setInterval(() => sendHeartbeat(configPath, localConfigPath), heartbeatIntervalSec * 1000)
+  heartbeatIntervalId = setInterval(() => sendHeartbeat(configPath, localConfigPath), heartbeatIntervalSec * 1000)
   
   let pollIntervalSec = parseInt(process.env.COBIEN_DEVICE_POLL_INTERVAL_SEC || '10', 10)
   if (isNaN(pollIntervalSec) || pollIntervalSec < 5) {
     pollIntervalSec = 10 // Enforce a safe minimum of 5 seconds to reduce server load
   }
   console.log(`[SYNC] Notification polling interval set to ${pollIntervalSec}s`)
-  setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), pollIntervalSec * 1000)
+  pollIntervalId = setInterval(() => pollNotifications(mainWindow, configPath, localConfigPath), pollIntervalSec * 1000)
 
   // Fire immediately on start
   sendHeartbeat(configPath, localConfigPath)
   pollNotifications(mainWindow, configPath, localConfigPath)
+}
+
+export function stopBackendSync() {
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId)
+    heartbeatIntervalId = null
+  }
+  if (pollIntervalId) {
+    clearInterval(pollIntervalId)
+    pollIntervalId = null
+  }
+  console.log('[SYNC] Backend sync stopped.')
 }
 
 async function getConfig(configPath: string, localConfigPath: string) {
@@ -260,7 +274,9 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
         console.log(`[POLL] Received ${notifications.length} notifications`)
         let reloadEvents = false
         notifications.forEach((notif: any) => {
-          mainWindow.webContents.send('backend:notification', notif)
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('backend:notification', notif)
+          }
           const type = (notif.type || '').toLowerCase()
           if (type === 'new_event' || type === 'events_reload') {
             reloadEvents = true
@@ -299,7 +315,7 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
             import('./contactsService').then(({ syncContacts }) => {
               syncContacts(deviceId, apiKey, baseUrl)
                 .then(() => {
-                  if (mainWindow) {
+                  if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('contacts:updated');
                   }
                 })

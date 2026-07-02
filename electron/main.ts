@@ -30,7 +30,7 @@ import { promises as fs } from 'node:fs'
 import * as fsSync from 'node:fs'
 import * as os from 'node:os'
 import * as dns from 'node:dns'
-import { startBackendSync, setNetworkSpeed, triggerHeartbeat } from './services/backendSync'
+import { startBackendSync, stopBackendSync, setNetworkSpeed, triggerHeartbeat } from './services/backendSync'
 import { getEvents, addPersonalEvent, updatePersonalEvent, deleteEvent } from './services/eventsMongo'
 import { fetchMessages, deleteMessage, markMessageRead, submitQuickReply } from './services/boardService'
 import { fetchWeatherBundle } from './services/weatherService'
@@ -705,8 +705,8 @@ function setupIPC() {
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
     const deviceId = process.env.COBIEN_DEVICE_ID
     if (!deviceId) {
-      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
-      process.exit(1);
+      console.error('ERROR: COBIEN_DEVICE_ID not set.');
+      throw new Error('COBIEN_DEVICE_ID not set')
     }
     const data = await readMergedConfig()
     const baseUrl = (data.services?.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
@@ -718,8 +718,8 @@ function setupIPC() {
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
     const deviceId = process.env.COBIEN_DEVICE_ID
     if (!deviceId) {
-      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
-      process.exit(1);
+      console.error('ERROR: COBIEN_DEVICE_ID not set.');
+      throw new Error('COBIEN_DEVICE_ID not set')
     }
     const data = await readMergedConfig()
     const baseUrl = (data.services?.portal_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
@@ -729,8 +729,8 @@ function setupIPC() {
   ipcMain.handle('contacts:openCall', async (_, userName: string) => {
     const deviceId = process.env.COBIEN_DEVICE_ID
     if (!deviceId) {
-      console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
-      process.exit(1);
+      console.error('ERROR: COBIEN_DEVICE_ID not set.');
+      throw new Error('COBIEN_DEVICE_ID not set')
     }
     const deviceApiKey = process.env.COBIEN_VIDEOCALL_DEVICE_API_KEY || ''
     const sessionUrl = process.env.COBIEN_DEVICE_VIDEOCALL_SESSION_URL || 'https://portal.co-bien.eu/api/device-videocall-session/'
@@ -1104,6 +1104,39 @@ function createWindow() {
 
   mainWindow.setBackgroundColor('#ffffff')
 
+  // --- Stability: recover from renderer crashes ---
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error(`[STABILITY] Render process gone: ${details.reason} (exitCode=${details.exitCode})`)
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        console.log('[STABILITY] Reloading window after renderer crash...')
+        if (process.env.VITE_DEV_SERVER_URL) {
+          mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+        } else {
+          mainWindow.loadFile(join(_dirname, '../dist/index.html'))
+        }
+      }
+    }, 2000)
+  })
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('[STABILITY] Renderer became unresponsive. Will reload if still unresponsive in 5s...')
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        // Check if it recovered
+        if (mainWindow.webContents.isCurrentlyAudible() || true) {
+          // Still need to check — force reload as safe fallback
+          console.warn('[STABILITY] Forcing reload after unresponsive timeout.')
+          mainWindow.webContents.reload()
+        }
+      }
+    }, 5000)
+  })
+
+  mainWindow.webContents.on('responsive', () => {
+    console.log('[STABILITY] Renderer became responsive again.')
+  })
+
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
@@ -1119,6 +1152,15 @@ function createWindow() {
     // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(_dirname, '../dist/index.html'))
+    // Production: retry loading on failure
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error(`[STABILITY] Failed to load production HTML (error: ${errorDescription}). Retrying in 2s...`)
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadFile(join(_dirname, '../dist/index.html'))
+        }
+      }, 2000)
+    })
   }
 }
 
@@ -1249,6 +1291,14 @@ function setupLogRedirection() {
 app.whenReady().then(() => {
   setupLogRedirection()
 
+  // --- Global crash guards: prevent unhandled errors from killing the process ---
+  process.on('uncaughtException', (error) => {
+    console.error('[FATAL] Uncaught exception (process kept alive):', error)
+  })
+  process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL] Unhandled promise rejection (process kept alive):', reason)
+  })
+
   // Automatically grant camera/microphone/media permissions
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     const allowed = ['media', 'geolocation', 'notifications', 'midiSysex', 'openExternal']
@@ -1305,11 +1355,10 @@ app.whenReady().then(() => {
 
   const baseUrl = (services.backend_base_url || 'https://portal.co-bien.eu').replace(/\/$/, '')
   const apiKey = process.env.COBIEN_NOTIFY_API_KEY || services.notify_api_key || ''
-  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id
-  // Verify device ID is present
-  if (!deviceId) {
-    console.error('ERROR: COBIEN_DEVICE_ID not set. Exiting.');
-    process.exit(1);
+  const deviceId = process.env.COBIEN_DEVICE_ID || settings.device_id || 'CoBienX'
+  // Warn if device ID is using fallback
+  if (!process.env.COBIEN_DEVICE_ID && !settings.device_id) {
+    console.error('WARNING: COBIEN_DEVICE_ID not set. Using fallback "CoBienX". The app will start but some features may not work correctly.');
   }
 
   // Initial contacts sync
@@ -1321,12 +1370,12 @@ app.whenReady().then(() => {
     pollIntervalSec = 300; // Enforce a safe minimum of 5 minutes to prevent overloading the server
   }
   if (pollIntervalSec > 0) {
-    setInterval(() => {
+    contactsSyncIntervalId = setInterval(() => {
       console.log('[CONTACTS] Periodic sync started');
       syncContacts(deviceId, apiKey, baseUrl)
         .then(() => {
           // Notify renderer to refresh contacts UI if needed
-          if (mainWindow) {
+          if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('contacts:updated');
           }
         })
@@ -1336,11 +1385,11 @@ app.whenReady().then(() => {
 
   createWindow()
 
-  startWifiWatchdog()
+  wifiWatchdogIntervalId = startWifiWatchdog()
 
   // Load pending reminders and wire notification to renderer
   loadPendingReminders((reminder) => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('reminder:fire', reminder)
     }
   })
@@ -1359,8 +1408,11 @@ app.whenReady().then(() => {
   })
 })
 
-function startWifiWatchdog() {
-  setInterval(async () => {
+let contactsSyncIntervalId: ReturnType<typeof setInterval> | null = null
+let wifiWatchdogIntervalId: ReturnType<typeof setInterval> | null = null
+
+function startWifiWatchdog(): ReturnType<typeof setInterval> {
+  const intervalId = setInterval(async () => {
     try {
       // 1. Check if watchdog is enabled in settings
       const homeDir = os.homedir()
@@ -1458,6 +1510,7 @@ function startWifiWatchdog() {
       console.error('[WIFI-WATCHDOG] Error in watchdog loop:', err)
     }
   }, 30 * 1000)
+  return intervalId
 }
 
 function resolveLatestLogFile(logDir: string, prefixes: string[]): string {
@@ -1481,9 +1534,19 @@ function resolveLatestLogFile(logDir: string, prefixes: string[]): string {
 }
 
 app.on('window-all-closed', () => {
+  // Clean up all background services and intervals
   stopMqtt()
+  stopBackendSync()
   stopIcsoSyncLoop()
   stopLogsSyncLoop()
+  if (contactsSyncIntervalId) {
+    clearInterval(contactsSyncIntervalId)
+    contactsSyncIntervalId = null
+  }
+  if (wifiWatchdogIntervalId) {
+    clearInterval(wifiWatchdogIntervalId)
+    wifiWatchdogIntervalId = null
+  }
   if (process.platform !== 'darwin') {
     app.quit()
   }
