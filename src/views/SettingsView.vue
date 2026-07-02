@@ -52,9 +52,14 @@ function triggerExit() {
   showExitConfirm.value = true
 }
 
-function handleRestart() {
+function handleRestartApp() {
   showRestartConfirm.value = false;
   (window as any).config.restartApp()
+}
+
+function handleRestartPC() {
+  showRestartConfirm.value = false;
+  (window as any).config.rebootSystem()
 }
 
 function handleExit() {
@@ -176,8 +181,12 @@ const settingsButtons = [
       v-if="showRestartConfirm"
       :title="t('settings.restart')"
       :message="t('settings.restart_confirm')"
+      :confirm-text="t('settings.restart_app')"
       confirm-class="reboot"
-      @confirm="handleRestart"
+      :third-text="t('settings.restart_pc')"
+      third-class="exit"
+      @confirm="handleRestartApp"
+      @third="handleRestartPC"
       @cancel="showRestartConfirm = false"
     />
     <ConfirmModal

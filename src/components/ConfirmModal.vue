@@ -7,13 +7,17 @@ const props = withDefaults(defineProps<{
   confirmText?: string
   cancelText?: string
   confirmClass?: string
+  thirdText?: string
+  thirdClass?: string
 }>(), {
   confirmText: 'Aceptar',
   cancelText: 'Cancelar',
-  confirmClass: 'primary'
+  confirmClass: 'primary',
+  thirdText: '',
+  thirdClass: 'secondary'
 })
 
-const emit = defineEmits(['confirm', 'cancel'])
+const emit = defineEmits(['confirm', 'cancel', 'third'])
 
 const isActive = ref(false)
 
@@ -25,6 +29,11 @@ function onCancel() {
 function onConfirm() {
   isActive.value = false
   setTimeout(() => emit('confirm'), 300)
+}
+
+function onThird() {
+  isActive.value = false
+  setTimeout(() => emit('third'), 300)
 }
 
 onMounted(() => {
@@ -45,6 +54,7 @@ onMounted(() => {
 
       <div class="popup-actions">
         <button class="btn-large cancel-btn" @click="onCancel">{{ cancelText }}</button>
+        <button v-if="thirdText" class="btn-large confirm-btn" :class="thirdClass" @click="onThird">{{ thirdText }}</button>
         <button class="btn-large confirm-btn" :class="confirmClass" @click="onConfirm">{{ confirmText }}</button>
       </div>
     </div>
@@ -161,5 +171,11 @@ onMounted(() => {
   background: #d92e2e;
   color: white;
   box-shadow: 0 8px 20px rgba(217, 46, 46, 0.25);
+}
+
+.confirm-btn.secondary {
+  background: #6c757d;
+  color: white;
+  box-shadow: 0 8px 20px rgba(108, 117, 125, 0.25);
 }
 </style>

@@ -935,6 +935,13 @@ function setupIPC() {
     }
   })
 
+  ipcMain.handle('app:reboot-system', () => {
+    console.log('[Main] System reboot requested from GUI...')
+    exec('systemctl reboot -i || reboot || sudo reboot', (err) => {
+      if (err) console.error('[Main] Failed to execute reboot command:', err)
+    })
+  })
+
   ipcMain.handle('app:exit', () => {
     app.quit()
   })

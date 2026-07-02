@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld('config', {
   measureNetworkSpeed: () => ipcRenderer.invoke('config:measureNetworkSpeed'),
   reportRoute: (routeName: string) => ipcRenderer.invoke('app:route-changed', routeName),
   restartApp: () => ipcRenderer.invoke('app:restart'),
+  rebootSystem: () => ipcRenderer.invoke('app:reboot-system'),
   exitApp: () => ipcRenderer.invoke('app:exit'),
   uninstallSystem: () => ipcRenderer.invoke('app:uninstall'),
   updateSystem: () => ipcRenderer.invoke('app:update'),
