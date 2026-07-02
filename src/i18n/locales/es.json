@@ -90,6 +90,8 @@
     "exit_confirm": "¿Salir al sistema?",
     "uninstall": "Desinstalar",
     "uninstall_confirm": "¿Seguro que quieres desinstalar CoBien? Esta acción es irreversible, eliminará toda la configuración y reiniciará el equipo.",
+    "system_actions": "Acciones del Sistema",
+    "system_actions_confirm": "¿Qué deseas hacer con el sistema del mueble?",
     "update": "Actualizar",
     "update_confirm": "¿Buscar y aplicar actualizaciones de CoBien? El equipo comprobará si hay nueva versión en GitHub y se reiniciará si es necesario.",
     "colors_pic1": "Colores PIC1 (Botón de Inicio)",

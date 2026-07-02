@@ -17,6 +17,7 @@ const showRestartConfirm = ref(false)
 const showExitConfirm = ref(false)
 const showUninstallConfirm = ref(false)
 const showUpdateConfirm = ref(false)
+const showUninstallOptions = ref(false)
 
 onMounted(async () => {
   const sys = await (window as any).config.getSystemInfo()
@@ -48,10 +49,6 @@ function triggerRestart() {
   showRestartConfirm.value = true
 }
 
-function triggerExit() {
-  showExitConfirm.value = true
-}
-
 function handleRestartApp() {
   showRestartConfirm.value = false;
   (window as any).config.restartApp()
@@ -68,6 +65,16 @@ function handleExit() {
 }
 
 function triggerUninstall() {
+  showUninstallOptions.value = true
+}
+
+function handleSelectExit() {
+  showUninstallOptions.value = false
+  showExitConfirm.value = true
+}
+
+function handleSelectUninstall() {
+  showUninstallOptions.value = false
   showUninstallConfirm.value = true
 }
 
@@ -145,7 +152,6 @@ const settingsButtons = [
       <div class="header-actions">
         <button class="action-btn update" @click="triggerUpdate">{{ t('settings.update') }}</button>
         <button class="action-btn reboot" @click="triggerRestart">{{ t('settings.restart') }}</button>
-        <button class="action-btn exit" @click="triggerExit">{{ t('settings.exit') }}</button>
         <button class="action-btn uninstall" @click="triggerUninstall">{{ t('settings.uninstall') }}</button>
         <button class="back-btn" @click="goBack">
           <img src="/images/back.png" :alt="t('common.back')" />
@@ -190,6 +196,18 @@ const settingsButtons = [
       @cancel="showRestartConfirm = false"
     />
     <ConfirmModal
+      v-if="showUninstallOptions"
+      :title="t('settings.system_actions')"
+      :message="t('settings.system_actions_confirm')"
+      :confirm-text="t('settings.exit')"
+      confirm-class="exit"
+      :third-text="t('settings.uninstall')"
+      third-class="exit"
+      @confirm="handleSelectExit"
+      @third="handleSelectUninstall"
+      @cancel="showUninstallOptions = false"
+    />
+    <ConfirmModal
       v-if="showExitConfirm"
       :title="t('settings.exit')"
       :message="t('settings.exit_confirm')"
@@ -201,7 +219,7 @@ const settingsButtons = [
       v-if="showUninstallConfirm"
       :title="t('settings.uninstall')"
       :message="t('settings.uninstall_confirm')"
-      confirm-class="uninstall"
+      confirm-class="exit"
       @confirm="handleUninstall"
       @cancel="showUninstallConfirm = false"
     />
@@ -295,7 +313,7 @@ const settingsButtons = [
 .action-btn.update { background: #0b57d0; }
 .action-btn.reboot { background: #e3920c; }
 .action-btn.exit { background: #d92e2e; }
-.action-btn.uninstall { background: #6b11b1; }
+.action-btn.uninstall { background: #d92e2e; }
 
 .back-btn {
   width: 5.5rem;

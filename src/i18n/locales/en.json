@@ -87,6 +87,8 @@
     "exit_confirm": "Exit to system?",
     "uninstall": "Uninstall",
     "uninstall_confirm": "Are you sure you want to completely uninstall the CoBien environment? This action is irreversible, will delete all configuration, and reboot the system.",
+    "system_actions": "System Actions",
+    "system_actions_confirm": "What do you want to do with the furniture system?",
     "update": "Update",
     "update_confirm": "Search and apply updates for CoBien? The device will check for a new version on GitHub and restart if necessary.",
     "colors_pic1": "PIC1 Colors (Home Button)",
