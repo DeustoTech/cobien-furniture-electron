@@ -12,7 +12,8 @@
     "ok": "Entendido",
     "on": "Activo",
     "off": "Inactivo",
-    "idle_hint": "Toque la pantalla, los botones del mueble o diga 'Cobien' para activar la pantalla"
+    "idle_hint": "Toque la pantalla, los botones del mueble o diga 'Cobien' para activar la pantalla",
+    "open": "Abrir"
   },
   "home": {
     "next_events": "Próximos eventos",
