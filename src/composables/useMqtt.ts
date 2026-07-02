@@ -25,6 +25,9 @@ export function useMqtt() {
 
     console.log('[MQTT→UI]', JSON.stringify(event))
 
+    // Wake screen / reset idle timer upon hardware inputs
+    window.dispatchEvent(new Event('user-activity'))
+
     if (type === 'nav') {
       switch (target) {
         case 'main':
