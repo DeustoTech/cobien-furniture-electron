@@ -47,16 +47,13 @@ async function downloadAndCacheImage(url: string, prefix: string, id: string): P
       headers['X-API-KEY'] = process.env.COBIEN_NOTIFY_API_KEY
     }
 
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(4000) })
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) })
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`)
     
-    // we use node streams to pipe the body straight to file
-    const fileStream = createWriteStream(targetPath)
     if (res.body) {
-      // The web fetch API body is a ReadableStream which can be piped to Node stream
-      // We need to convert it using an async iterator or just buffer it since images are small
       const arrayBuffer = await res.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
+      // Only write to disk after fully downloading to prevent 0-byte cache poisoning
       await fs.writeFile(targetPath, buffer)
       return `cobien-media://${targetPath}`
     }
