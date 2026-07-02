@@ -59,6 +59,8 @@
     "general_title": "Paramètres Généraux",
     "wake_word": "Activer le Wake Word ('cobien')",
     "wake_word_desc": "Permet de déclencher l'assistant vocal en prononçant le mot d'activation 'cobien'.",
+    "pin_protection": "Protection par PIN",
+    "pin_protection_desc": "Requiert la saisie du PIN de sécurité pour accéder aux paramètres.",
     "screen_sleep": "Mise en veille de l'écran",
     "screen_sleep_desc": "L'écran s'éteindra après la période d'inactivité sélectionnée.",
     "never": "Jamais",

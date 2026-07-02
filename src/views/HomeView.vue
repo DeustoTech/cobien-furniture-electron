@@ -122,6 +122,13 @@ function updateTime() {
 }
 
 function handleNavigation(route: string) {
+  if (route === '/admin-login') {
+    const pinEnabled = localStorage.getItem('cobien_settings_pin_enabled') !== 'false'
+    if (!pinEnabled) {
+      router.push('/settings')
+      return
+    }
+  }
   router.push(route)
 }
 

@@ -60,6 +60,8 @@
     "general_title": "Configuración General",
     "wake_word": "Activar Wake Word ('cobien')",
     "wake_word_desc": "Permite activar el asistente por voz diciendo la palabra de activación 'cobien'.",
+    "pin_protection": "Proteger Ajustes con PIN",
+    "pin_protection_desc": "Requiere introducir el PIN de seguridad al acceder a la pantalla de configuración.",
     "screen_sleep": "Tiempo de apagado de pantalla",
     "screen_sleep_desc": "La pantalla se pondrá en negro tras el tiempo de inactividad seleccionado.",
     "never": "Nunca",

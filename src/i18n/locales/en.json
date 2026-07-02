@@ -57,6 +57,8 @@
     "general_title": "General Settings",
     "wake_word": "Enable Wake Word ('cobien')",
     "wake_word_desc": "Allows triggering the voice assistant by saying the wake word 'cobien'.",
+    "pin_protection": "PIN Protection",
+    "pin_protection_desc": "Requires entering the safety PIN when accessing the settings panel.",
     "screen_sleep": "Screen Sleep Timeout",
     "screen_sleep_desc": "The screen will turn black after the selected inactivity period.",
     "never": "Never",

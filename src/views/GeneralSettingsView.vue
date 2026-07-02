@@ -7,6 +7,7 @@ const router = useRouter()
 const { t } = useI18n()
 
 const wakeWordEnabled = ref(true)
+const pinEnabled = ref(true)
 const idleTimeout = ref(120) // Default: 2 minutes (120s)
 
 const timeoutOptions = [
@@ -25,6 +26,9 @@ function loadSettings() {
   const localWake = localStorage.getItem('cobien_wake_word_enabled')
   wakeWordEnabled.value = localWake !== 'false'
 
+  const localPin = localStorage.getItem('cobien_settings_pin_enabled')
+  pinEnabled.value = localPin !== 'false'
+
   const localTimeout = localStorage.getItem('cobien_idle_timeout')
   if (localTimeout !== null) {
     idleTimeout.value = parseInt(localTimeout, 10)
@@ -37,6 +41,11 @@ function toggleWakeWord(enabled: boolean) {
   wakeWordEnabled.value = enabled
   localStorage.setItem('cobien_wake_word_enabled', String(enabled))
   window.dispatchEvent(new Event('wake-word-setting-changed'))
+}
+
+function togglePin(enabled: boolean) {
+  pinEnabled.value = enabled
+  localStorage.setItem('cobien_settings_pin_enabled', String(enabled))
 }
 
 function selectTimeout(val: number) {
@@ -82,6 +91,32 @@ onMounted(() => {
             class="switch-btn"
             :class="{ active: !wakeWordEnabled }"
             @click="toggleWakeWord(false)"
+          >
+            {{ t('common.off') || 'OFF' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- PIN Protection Option -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <h2>{{ t('settings.pin_protection') }}</h2>
+          <p>{{ t('settings.pin_protection_desc') }}</p>
+        </div>
+        <div class="toggle-switch-container">
+          <button
+            class="switch-btn"
+            :class="{ active: pinEnabled }"
+            @click="togglePin(true)"
+          >
+            {{ t('common.on') || 'ON' }}
+          </button>
+          <button
+            class="switch-btn"
+            :class="{ active: !pinEnabled }"
+            @click="togglePin(false)"
           >
             {{ t('common.off') || 'OFF' }}
           </button>
