@@ -8,6 +8,7 @@ import { useSettings } from './composables/useSettings'
 import VoiceAssistant from './components/VoiceAssistant.vue'
 import NotificationOverlay from './components/NotificationOverlay.vue'
 import IdleOverlay from './components/IdleOverlay.vue'
+import EmotionPromptOverlay from './components/EmotionPromptOverlay.vue'
 
 // Register MQTT listener at root level so it works across all screens
 useMqtt()
@@ -24,6 +25,10 @@ const isOffline = ref(false) // Start as false to prevent blocking screens on st
 const countdown = ref(5)
 let countdownInterval: any = null
 let networkInterval: any = null
+
+const showEmotionPrompt = ref(false)
+let emotionCheckInterval: any = null
+const lastEmotionPromptDate = ref('')
 
 const checkRealOnlineStatus = async () => {
   try {
@@ -192,9 +197,52 @@ onMounted(async () => {
 
   onBeforeUnmount(() => {
     window.removeEventListener('wake-word-setting-changed', startWakeWithCheck)
-    window.removeEventListener('idle-timeout-changed', handleIdleTimeoutChange)
   })
+
+  window.addEventListener('idle-timeout-changed', handleIdleTimeoutChange)
+  window.addEventListener('reopen-emotion-prompt', () => {
+    showEmotionPrompt.value = true
+  })
+  startEmotionCron()
 })
+
+function startEmotionCron() {
+  if (emotionCheckInterval) clearInterval(emotionCheckInterval)
+  emotionCheckInterval = setInterval(async () => {
+    try {
+      const settings = await (window as any).config.getSettings()
+      if (settings && settings.emotionPromptTime && settings.emotionPromptTime !== 'none') {
+        const now = new Date()
+        const hh = String(now.getHours()).padStart(2, '0')
+        const mm = String(now.getMinutes()).padStart(2, '0')
+        const currentTime = `${hh}:${mm}`
+        const todayDate = now.toISOString().split('T')[0]
+
+        if (currentTime === settings.emotionPromptTime && lastEmotionPromptDate.value !== todayDate) {
+          lastEmotionPromptDate.value = todayDate
+          showEmotionPrompt.value = true
+        }
+      }
+    } catch (e) {
+      console.error('Emotion cron error:', e)
+    }
+  }, 60000)
+}
+
+function handleEmotionMissed() {
+  showEmotionPrompt.value = false
+  window.dispatchEvent(new CustomEvent('new-notification', {
+    detail: {
+      type: 'missed_emotion',
+      sender: 'CoBien',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  }))
+}
+
+function handleEmotionAnswered(emotion: string) {
+  showEmotionPrompt.value = false
+}
 
 onBeforeUnmount(() => {
   window.removeEventListener('online', handleOnline)
@@ -216,6 +264,13 @@ onBeforeUnmount(() => {
   <VoiceAssistant ref="voiceAssistantRef" />
   <NotificationOverlay />
   <IdleOverlay v-if="idleTimeout > 0" :timeout-sec="idleTimeout" />
+
+  <EmotionPromptOverlay
+    :is-active="showEmotionPrompt"
+    @missed="handleEmotionMissed"
+    @answered="handleEmotionAnswered"
+    @close="showEmotionPrompt = false"
+  />
 
   <!-- Premium Glassmorphic Offline Warning Overlay -->
   <div v-if="isOffline && route.path !== '/settings/wifi'" class="offline-overlay">

@@ -10,7 +10,7 @@ const { addMissedCall } = useMissedCalls()
 
 interface NotificationItem {
   id: string
-  type: 'videocall' | 'new_message' | 'new_event' | 'missed_call'
+  type: 'videocall' | 'new_message' | 'new_event' | 'missed_call' | 'missed_emotion'
   title?: string
   caller?: string
   sender?: string
@@ -39,9 +39,16 @@ onMounted(async () => {
   ;(window as any).config.onNotification((notif: any) => {
     handleIncomingNotification(notif)
   })
+
+  // Register local CustomEvent listener
+  window.addEventListener('new-notification', (e: Event) => {
+    const customEvent = e as CustomEvent
+    handleIncomingNotification(customEvent.detail)
+  })
 })
 
 onUnmounted(() => {
+  window.removeEventListener('new-notification', () => {})
   // Stop all active audios and timers on destroy
   activeNotifications.value.forEach(item => {
     if (item.audio) item.audio.pause()
@@ -331,6 +338,20 @@ function declineCall(item: NotificationItem) {
           <div class="actions" style="justify-content: center;">
             <button class="btn decline" @click="dismissNotification(item.id)">
               {{ t('notification.close') }}
+            </button>
+          </div>
+        </template>
+
+        <!-- MISSED EMOTION -->
+        <template v-else-if="item.type === 'missed_emotion'">
+          <h2 class="title">{{ t('emotions.missed_prompt') || 'Aviso de Ánimo Pendiente' }}</h2>
+          <p class="desc">{{ 'No respondiste a tu estado de ánimo a las ' + item.time }}</p>
+          <div class="actions" style="justify-content: center;">
+            <button class="btn decline" @click="dismissNotification(item.id)">
+              {{ t('notification.close') || 'Cerrar' }}
+            </button>
+            <button class="btn accept" @click="reopenEmotionPrompt(item.id)">
+              {{ t('common.open') || 'Abrir' }}
             </button>
           </div>
         </template>

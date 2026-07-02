@@ -10,6 +10,8 @@ const wakeWordEnabled = ref(true)
 const pinEnabled = ref(true)
 const idleTimeout = ref(120) // Default: 2 minutes (120s)
 
+const emotionPromptTime = ref('none')
+
 const timeoutOptions = [
   { label: '30s', value: 30 },
   { label: '2 min', value: 120 },
@@ -18,11 +20,18 @@ const timeoutOptions = [
   { label: 'Never', value: 0 } // 0 means disabled
 ]
 
+const emotionTimeOptions = [
+  { label: t('settings.emotion_none'), value: 'none' },
+  { label: '10:00', value: '10:00' },
+  { label: '14:00', value: '14:00' },
+  { label: '18:00', value: '18:00' }
+]
+
 function goBack() {
   router.push('/settings')
 }
 
-function loadSettings() {
+async function loadSettings() {
   const localWake = localStorage.getItem('cobien_wake_word_enabled')
   wakeWordEnabled.value = localWake !== 'false'
 
@@ -34,6 +43,15 @@ function loadSettings() {
     idleTimeout.value = parseInt(localTimeout, 10)
   } else {
     idleTimeout.value = 120
+  }
+
+  try {
+    const config = await (window as any).config.getSettings()
+    if (config && config.emotionPromptTime) {
+      emotionPromptTime.value = config.emotionPromptTime
+    }
+  } catch (e) {
+    console.error('Error loading settings:', e)
   }
 }
 
@@ -52,6 +70,12 @@ function selectTimeout(val: number) {
   idleTimeout.value = val
   localStorage.setItem('cobien_idle_timeout', String(val))
   window.dispatchEvent(new Event('idle-timeout-changed'))
+}
+
+async function selectEmotionTime(val: string) {
+  emotionPromptTime.value = val
+  await (window as any).config.saveEmotionPromptTime(val)
+  window.dispatchEvent(new Event('emotion-time-changed'))
 }
 
 onMounted(() => {
@@ -141,6 +165,27 @@ onMounted(() => {
           >
             <span v-if="opt.value === 0">{{ t('settings.never') }}</span>
             <span v-else>{{ opt.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Emotion Prompt Time Option -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <h2>{{ t('settings.emotion_prompt') || 'Estado de Ánimo' }}</h2>
+          <p>{{ t('settings.emotion_prompt_desc') || 'Selecciona a qué hora quieres que el mueble pregunte cómo estás.' }}</p>
+        </div>
+        <div class="toggle-switch-container">
+          <button
+            v-for="opt in emotionTimeOptions"
+            :key="opt.value"
+            class="switch-btn"
+            :class="{ active: emotionPromptTime === opt.value }"
+            @click="selectEmotionTime(opt.value)"
+          >
+            {{ opt.label }}
           </button>
         </div>
       </div>

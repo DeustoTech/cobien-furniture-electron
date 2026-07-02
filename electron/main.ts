@@ -282,6 +282,36 @@ function setupIPC() {
     }
   })
 
+  ipcMain.handle('config:saveEmotionPromptTime', async (event, time: string) => {
+    try {
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        data.settings.emotionPromptTime = time
+      })
+      return success
+    } catch (e) {
+      console.error('Error saving emotion prompt time:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:submitEmotion', async (event, emotion: string) => {
+    try {
+      const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBienX'
+      const baseUrl = process.env.COBIEN_BACKEND_BASE_URL || 'https://portal.co-bien.eu'
+      const res = await fetch(`${baseUrl}/emociones/api/diario/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId, emocion: emotion }),
+        signal: AbortSignal.timeout(5000)
+      })
+      return res.ok
+    } catch (e) {
+      console.error('Error submitting emotion:', e)
+      return false
+    }
+  })
+
   ipcMain.handle('config:saveWeather', async (event, payload: any) => {
     try {
       const success = await writeConfig((data) => {
