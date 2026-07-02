@@ -20,6 +20,11 @@ async function getCacheDir() {
 async function downloadAndCacheImage(url: string, prefix: string, id: string): Promise<string> {
   if (!url) return ''
   
+  if (url.startsWith('/')) {
+    const baseUrl = process.env.COBIEN_BACKEND_BASE_URL || 'https://portal.co-bien.eu'
+    url = `${baseUrl}${url}`
+  }
+
   try {
     const dir = await getCacheDir()
     // naive extension grab
