@@ -1272,8 +1272,15 @@ function setupLogRedirection() {
     if (logSize > maxLogSize) {
       rotateStream()
     }
-    logStream.write(chunk)
-    return originalWrite(chunk, encoding, callback)
+    try {
+      logStream.write(chunk)
+    } catch (e) {}
+    try {
+      return originalWrite(chunk, encoding, callback)
+    } catch (err) {
+      if (callback) callback(err)
+      return true
+    }
   }
 
   const originalErrWrite = process.stderr.write.bind(process.stderr)
@@ -1283,8 +1290,15 @@ function setupLogRedirection() {
     if (logSize > maxLogSize) {
       rotateStream()
     }
-    logStream.write(chunk)
-    return originalErrWrite(chunk, encoding, callback)
+    try {
+      logStream.write(chunk)
+    } catch (e) {}
+    try {
+      return originalErrWrite(chunk, encoding, callback)
+    } catch (err) {
+      if (callback) callback(err)
+      return true
+    }
   }
 }
 
