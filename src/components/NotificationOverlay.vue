@@ -74,7 +74,7 @@ async function handleIncomingNotification(notif: any) {
   
   // Ignore notifications from self
   const ignoredAccounts = [localDeviceId.value, 'cobien', 'CoBien']
-  if (sender && ignoredAccounts.includes(sender)) {
+  if (type !== 'missed_emotion' && sender && ignoredAccounts.includes(sender)) {
     console.log(`[NOTIF] Ignored notification from self/portal: ${sender}`)
     return
   }
@@ -95,6 +95,7 @@ async function handleIncomingNotification(notif: any) {
     if (type === 'new_message' && item.sender === sender) return true
     if (type === 'new_event' && item.title === notif.title) return true
     if (type === 'missed_call' && item.caller === sender) return true
+    if (type === 'missed_emotion') return true // only one missed emotion notification at a time
     return false
   })
 
@@ -143,6 +144,9 @@ async function handleIncomingNotification(notif: any) {
     
     // Register it globally for the Contacts view
     addMissedCall({ author: sender, userName: sender, time: item.time })
+  } else if (type === 'missed_emotion') {
+    item.time = notif.time || formatTime(notif.timestamp) || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ringtoneFile = ''
   } else {
     // Unknown notification type
     return
