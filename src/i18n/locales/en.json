@@ -8,7 +8,8 @@
     "restarting": "Restarting...",
     "exit": "Exit",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "idle_hint": "Touch the screen, the furniture buttons or say 'Cobien' to activate the screen"
   },
   "home": {
     "next_events": "Next events",

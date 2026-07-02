@@ -202,7 +202,7 @@ const settingsButtons = [
       :confirm-text="t('settings.exit_app')"
       confirm-class="action-btn exit"
       :third-text="t('settings.uninstall')"
-      third-class="action-btn uninstall"
+      third-class="action-btn purple"
       @confirm="handleSelectExit"
       @third="handleSelectUninstall"
       @cancel="showUninstallOptions = false"
@@ -315,6 +315,7 @@ const settingsButtons = [
 .action-btn.reboot { background: #e3920c; }
 .action-btn.exit { background: #d92e2e; }
 .action-btn.uninstall { background: #d92e2e; }
+.action-btn.purple { background: #9b59b6; }
 
 .back-btn {
   width: 5.5rem;

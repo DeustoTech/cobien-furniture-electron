@@ -11,7 +11,8 @@
     "reminder_prefix": "Recordatorio: ",
     "ok": "Entendido",
     "on": "Activo",
-    "off": "Inactivo"
+    "off": "Inactivo",
+    "idle_hint": "Toque la pantalla, los botones del mueble o diga 'Cobien' para activar la pantalla"
   },
   "home": {
     "next_events": "Próximos eventos",

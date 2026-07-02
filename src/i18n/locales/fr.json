@@ -11,7 +11,8 @@
     "reminder_prefix": "Rappel : ",
     "ok": "Compris",
     "on": "Activer",
-    "off": "Désactiver"
+    "off": "Désactiver",
+    "idle_hint": "Touchez l'écran, les boutons du meuble ou dites 'Cobien' pour activer l'écran"
   },
   "home": {
     "next_events": "Événements à venir",
