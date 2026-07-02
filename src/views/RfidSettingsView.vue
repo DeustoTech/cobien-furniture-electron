@@ -130,7 +130,7 @@ async function saveCardAction() {
     )
     if (success) {
       await loadCards()
-      isConfiguring.value = false
+      await cancelConfigMode()
     }
   } catch (e) {
     console.error('Failed to save RFID card action:', e)
