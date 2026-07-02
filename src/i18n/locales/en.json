@@ -144,9 +144,21 @@
       "action_call": "Video Call",
       "success_title": "Successful Configuration",
       "success_desc": "Card {id} configured successfully!",
-      "delete_confirm_title": "Confirm Delete",
+      "delete_confirm_title": "Confirm delete",
       "delete_confirm_desc": "Are you sure you want to delete this RFID card?"
-    }
+    },
+    "emotion_prompt": "Daily Mood Check",
+    "emotion_prompt_desc": "Select what time you want the furniture to ask how you are feeling.",
+    "emotion_none": "Do not ask"
+  },
+  "emotions": {
+    "how_are_you": "How are you feeling today?",
+    "select_option": "Select an option",
+    "good": "Good",
+    "normal": "Okay",
+    "bad": "Bad",
+    "missed_prompt": "Pending Mood Check",
+    "missed_prompt_desc": "You didn't answer how you were feeling at {time}"
   },
   "assistant": {
     "title": "CoBien Assistant",

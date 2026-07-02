@@ -149,7 +149,19 @@
       "success_desc": "¡Tarjeta {id} configurada con éxito!",
       "delete_confirm_title": "Confirmar borrado",
       "delete_confirm_desc": "¿Seguro que quieres eliminar esta tarjeta RFID?"
-    }
+    },
+    "emotion_prompt": "Estado de Ánimo",
+    "emotion_prompt_desc": "Selecciona a qué hora quieres que el mueble pregunte cómo estás.",
+    "emotion_none": "No preguntar"
+  },
+  "emotions": {
+    "how_are_you": "¿Cómo te encuentras hoy?",
+    "select_option": "Selecciona una opción",
+    "good": "Bien",
+    "normal": "Normal",
+    "bad": "Mal",
+    "missed_prompt": "Aviso de Ánimo Pendiente",
+    "missed_prompt_desc": "No respondiste a tu estado de ánimo a las {time}"
   },
   "assistant": {
     "title": "Asistente CoBien",

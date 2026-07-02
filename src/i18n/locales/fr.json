@@ -148,7 +148,19 @@
       "success_desc": "Carte {id} configurée avec succès !",
       "delete_confirm_title": "Confirmer Suppression",
       "delete_confirm_desc": "Êtes-vous sûr de vouloir supprimer cette carte RFID ?"
-    }
+    },
+    "emotion_prompt": "Suivi de l'humeur",
+    "emotion_prompt_desc": "Sélectionnez l'heure à laquelle vous souhaitez que le meuble vous demande comment vous allez.",
+    "emotion_none": "Ne pas demander"
+  },
+  "emotions": {
+    "how_are_you": "Comment vous sentez-vous aujourd'hui ?",
+    "select_option": "Sélectionnez une option",
+    "good": "Bien",
+    "normal": "Normal",
+    "bad": "Mal",
+    "missed_prompt": "Rappel d'humeur en attente",
+    "missed_prompt_desc": "Vous n'avez pas répondu à votre humeur à {time}"
   },
   "assistant": {
     "title": "Assistant CoBien",

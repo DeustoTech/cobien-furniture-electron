@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
@@ -20,12 +20,12 @@ const timeoutOptions = [
   { label: 'Never', value: 0 } // 0 means disabled
 ]
 
-const emotionTimeOptions = [
+const emotionTimeOptions = computed(() => [
   { label: t('settings.emotion_none'), value: 'none' },
   { label: '10:00', value: '10:00' },
   { label: '14:00', value: '14:00' },
   { label: '18:00', value: '18:00' }
-]
+])
 
 function goBack() {
   router.push('/settings')
