@@ -43,6 +43,7 @@
     "title": "Configuración",
     "restart": "Reiniciar",
     "exit": "Salir",
+    "exit_app": "Salir de la Aplicación",
     "language": "Idioma y Voz",
     "lang": "Idioma y Voz",
     "cities": "Ciudades",

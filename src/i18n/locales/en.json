@@ -40,6 +40,7 @@
     "title": "Settings",
     "restart": "Restart",
     "exit": "Exit",
+    "exit_app": "Exit Application",
     "language": "Language & Voice",
     "lang": "Language & Voice",
     "cities": "Cities",
