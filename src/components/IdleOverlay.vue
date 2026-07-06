@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useIdle } from '../composables/useIdle'
 
@@ -8,7 +8,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const { isIdle, resetTimer } = useIdle(props.timeoutSec || 60)
+const { isIdle, resetTimer } = useIdle(toRef(props, 'timeoutSec'))
 const settings = ref<any>({})
 
 onMounted(async () => {

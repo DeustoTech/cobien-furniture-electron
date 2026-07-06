@@ -1,7 +1,7 @@
 {
   "name": "cobien-furniture-electron",
   "private": true,
-  "version": "1.5.15",
+  "version": "1.5.16",
   "author": "Aritz Madariaga <aritzmadariaga@deusto.es>",
   "type": "module",
   "main": "dist-electron/main.js",
