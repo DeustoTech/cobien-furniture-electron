@@ -44,7 +44,7 @@ export async function loadContacts(): Promise<Contact[]> {
       const [displayName, userName] = line.split('=', 2).map(s => s.trim())
       if (!displayName) continue
 
-      const callable = /^[A-Za-z0-9_.-]+$/.test(userName ?? '')
+      const callable = /^[A-Za-z0-9_. -]+$/.test(userName ?? '')
       const imagePath = findContactImage(displayName)
 
       contacts.push({ displayName, userName: userName ?? '', imagePath, callable })
@@ -157,7 +157,7 @@ export async function requestCall(
   apiKey: string,
   baseUrl: string
 ): Promise<{ ok: boolean; code?: string; detail?: string }> {
-  if (!userName || !/^[A-Za-z0-9_.-]+$/.test(userName)) {
+  if (!userName || !/^[A-Za-z0-9_. -]+$/.test(userName)) {
     return { ok: false, code: 'VC-USER', detail: 'Nombre de usuario inválido' }
   }
   if (!apiKey) return { ok: false, code: 'VC-CONFIG', detail: 'API key no configurada' }

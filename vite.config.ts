@@ -13,6 +13,9 @@ const external = [
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    minify: false
+  },
   plugins: [
     vue(),
     electron({
