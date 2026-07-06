@@ -1270,6 +1270,9 @@ app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu-sandbox')
 
 function setupLogRedirection() {
+  process.stdout.on('error', () => {})
+  process.stderr.on('error', () => {})
+
   const logDir = join(app.getPath('userData'), 'logs')
   if (!fsSync.existsSync(logDir)) {
     fsSync.mkdirSync(logDir, { recursive: true })

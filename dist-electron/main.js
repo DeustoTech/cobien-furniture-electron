@@ -2185,6 +2185,7 @@ if (!$) try {
 } catch {}
 $ && (l.disableHardwareAcceleration(), l.commandLine.appendSwitch("disable-gpu")), l.commandLine.appendSwitch("disable-features", "VaapiVideoDecoder,VaapiVideoEncoder"), l.commandLine.appendSwitch("password-store", "basic"), l.commandLine.appendSwitch("no-sandbox"), l.commandLine.appendSwitch("disable-gpu-sandbox");
 function fn() {
+	process.stdout.on("error", () => {}), process.stderr.on("error", () => {});
 	let e = v(l.getPath("userData"), "logs");
 	y.existsSync(e) || y.mkdirSync(e, { recursive: !0 });
 	let t = v(e, "app.log"), n = y.createWriteStream(t, {
