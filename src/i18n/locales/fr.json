@@ -157,9 +157,11 @@
   "emotions": {
     "how_are_you": "Comment vous sentez-vous aujourd'hui ?",
     "select_option": "Sélectionnez une option",
+    "excellent": "Excellent",
     "good": "Bien",
     "normal": "Normal",
-    "bad": "Mal",
+    "poor": "Médiocre",
+    "bad": "Très mal",
     "missed_prompt": "Rappel d'humeur en attente",
     "missed_prompt_desc": "Vous n'avez pas répondu à votre humeur à {time}"
   },

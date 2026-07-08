@@ -61,19 +61,29 @@ async function answerEmotion(emotion: string) {
         <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
         
         <div class="emotion-buttons">
-          <button class="emotion-btn happy" @click="answerEmotion('Bien')">
-            <span class="emoji">😀</span>
+          <button class="emotion-btn excellent" @click="answerEmotion('Excelente')">
+            <span class="emoji">😄</span>
+            <span class="label">{{ t('emotions.excellent') || 'Excelente' }}</span>
+          </button>
+
+          <button class="emotion-btn good" @click="answerEmotion('Bien')">
+            <span class="emoji">🙂</span>
             <span class="label">{{ t('emotions.good') || 'Bien' }}</span>
           </button>
           
-          <button class="emotion-btn neutral" @click="answerEmotion('Normal')">
+          <button class="emotion-btn average" @click="answerEmotion('Normal')">
             <span class="emoji">😐</span>
             <span class="label">{{ t('emotions.normal') || 'Normal' }}</span>
           </button>
+
+          <button class="emotion-btn poor" @click="answerEmotion('Regular')">
+            <span class="emoji">🙁</span>
+            <span class="label">{{ t('emotions.poor') || 'Regular' }}</span>
+          </button>
           
-          <button class="emotion-btn sad" @click="answerEmotion('Mal')">
+          <button class="emotion-btn bad" @click="answerEmotion('Muy mal')">
             <span class="emoji">😢</span>
-            <span class="label">{{ t('emotions.bad') || 'Triste / Mal' }}</span>
+            <span class="label">{{ t('emotions.bad') || 'Muy mal' }}</span>
           </button>
         </div>
       </div>
@@ -106,7 +116,7 @@ async function answerEmotion(emotion: string) {
   max-width: 95vw;
   background: white;
   border-radius: 40px;
-  padding: 4rem;
+  padding: 4rem 2rem;
   box-shadow: 0 40px 100px rgba(0,0,0,0.4);
   transform: translateY(60px) scale(0.9);
   opacity: 0;
@@ -139,7 +149,7 @@ async function answerEmotion(emotion: string) {
 
 .emotion-buttons {
   display: flex;
-  gap: 3rem;
+  gap: 1.5rem;
   width: 100%;
   justify-content: center;
 }
@@ -151,7 +161,7 @@ async function answerEmotion(emotion: string) {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  height: 250px;
+  height: 220px;
   border-radius: 30px;
   border: none;
   cursor: pointer;
@@ -165,26 +175,38 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-btn .emoji {
-  font-size: 6rem;
+  font-size: 5rem;
 }
 
 .emotion-btn .label {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #333;
+  text-align: center;
+  word-break: break-word;
 }
 
-.emotion-btn.happy:hover {
+.emotion-btn.excellent:hover {
   background: #dcfce7;
   box-shadow: 0 15px 40px rgba(34, 197, 94, 0.2);
 }
 
-.emotion-btn.neutral:hover {
+.emotion-btn.good:hover {
+  background: #ecfccb;
+  box-shadow: 0 15px 40px rgba(132, 204, 22, 0.2);
+}
+
+.emotion-btn.average:hover {
   background: #fef08a;
   box-shadow: 0 15px 40px rgba(234, 179, 8, 0.2);
 }
 
-.emotion-btn.sad:hover {
+.emotion-btn.poor:hover {
+  background: #ffedd5;
+  box-shadow: 0 15px 40px rgba(249, 115, 22, 0.2);
+}
+
+.emotion-btn.bad:hover {
   background: #fee2e2;
   box-shadow: 0 15px 40px rgba(239, 68, 68, 0.2);
 }

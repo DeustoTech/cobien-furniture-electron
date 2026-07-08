@@ -155,8 +155,10 @@
   "emotions": {
     "how_are_you": "How are you feeling today?",
     "select_option": "Select an option",
+    "excellent": "Excellent",
     "good": "Good",
-    "normal": "Okay",
+    "normal": "Average",
+    "poor": "Poor",
     "bad": "Bad",
     "missed_prompt": "Pending Mood Check",
     "missed_prompt_desc": "You didn't answer how you were feeling at {time}"

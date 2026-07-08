@@ -158,9 +158,11 @@
   "emotions": {
     "how_are_you": "¿Cómo te encuentras hoy?",
     "select_option": "Selecciona una opción",
+    "excellent": "Excelente",
     "good": "Bien",
     "normal": "Normal",
-    "bad": "Mal",
+    "poor": "Regular",
+    "bad": "Muy mal",
     "missed_prompt": "Aviso de Ánimo Pendiente",
     "missed_prompt_desc": "No respondiste a tu estado de ánimo a las {time}"
   },
