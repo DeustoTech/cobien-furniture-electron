@@ -163,7 +163,7 @@ async function answerEmotion(emotion: string) {
   gap: 1rem;
   height: 220px;
   border-radius: 30px;
-  border: none;
+  border: 4px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   background: #f8f9fa;
@@ -186,28 +186,55 @@ async function answerEmotion(emotion: string) {
   word-break: break-word;
 }
 
+/* Default state borders */
+.emotion-btn.excellent {
+  border-color: #16a34a;
+}
+
+.emotion-btn.good {
+  border-color: #65a30d;
+}
+
+.emotion-btn.average {
+  border-color: #ca8a04;
+}
+
+.emotion-btn.poor {
+  border-color: #ea580c;
+}
+
+.emotion-btn.bad {
+  border-color: #dc2626;
+}
+
+/* Hover state borders and tints */
 .emotion-btn.excellent:hover {
   background: #dcfce7;
-  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.2);
+  border-color: #15803d;
+  box-shadow: 0 15px 40px rgba(22, 163, 74, 0.3);
 }
 
 .emotion-btn.good:hover {
   background: #ecfccb;
-  box-shadow: 0 15px 40px rgba(132, 204, 22, 0.2);
+  border-color: #4d7c0f;
+  box-shadow: 0 15px 40px rgba(101, 163, 13, 0.3);
 }
 
 .emotion-btn.average:hover {
   background: #fef08a;
-  box-shadow: 0 15px 40px rgba(234, 179, 8, 0.2);
+  border-color: #a16207;
+  box-shadow: 0 15px 40px rgba(202, 138, 4, 0.3);
 }
 
 .emotion-btn.poor:hover {
   background: #ffedd5;
-  box-shadow: 0 15px 40px rgba(249, 115, 22, 0.2);
+  border-color: #c2410c;
+  box-shadow: 0 15px 40px rgba(234, 88, 12, 0.3);
 }
 
 .emotion-btn.bad:hover {
   background: #fee2e2;
-  box-shadow: 0 15px 40px rgba(239, 68, 68, 0.2);
+  border-color: #991b1b;
+  box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
 }
 </style>
