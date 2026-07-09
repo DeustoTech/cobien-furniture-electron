@@ -17,7 +17,7 @@
 
 import mqtt, { type MqttClient } from 'mqtt'
 import type { BrowserWindow } from 'electron'
-import { logProximityEvent, logImuEvent } from './icsoService'
+import { logProximityEvent, logImuEvent, logNotificationReceived } from './icsoService'
 
 const TOPIC_RFID = 'rfid/read'
 const TOPIC_SENSORS = 'sensors/update'
@@ -228,6 +228,11 @@ export function startMqtt(win: BrowserWindow): void {
         send({ topic, type: 'reload', target: 'events' })
         break
       case TOPIC_BOARD_RELOAD:
+        try {
+          logNotificationReceived('photo')
+        } catch (e) {
+          console.error('[MQTT] Failed to log photo received:', e)
+        }
         send({ topic, type: 'reload', target: 'board' })
         break
       case TOPIC_WEATHER_RELOAD:

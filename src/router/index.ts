@@ -109,10 +109,17 @@ const router = createRouter({
   ]
 })
 
+let lastNavSource = 'touchscreen'
+
+export function setLastNavSource(source: string) {
+  lastNavSource = source
+}
+
 router.afterEach((to) => {
   if ((window as any).config && (window as any).config.reportRoute) {
-    (window as any).config.reportRoute(to.name || to.path)
+    (window as any).config.reportRoute(to.name || to.path, lastNavSource)
   }
+  lastNavSource = 'touchscreen'
 })
 
 export default router

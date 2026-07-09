@@ -16,6 +16,7 @@
 
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { setLastNavSource } from '../router'
 
 export function useMqtt() {
   const router = useRouter()
@@ -29,6 +30,15 @@ export function useMqtt() {
     window.dispatchEvent(new Event('user-activity'))
 
     if (type === 'nav') {
+      const source = event.source || 'touchscreen'
+      let mappedSource = 'touchscreen'
+      if (source === 'rfid') {
+        mappedSource = 'rfid_cards'
+      } else if (source === 'home_button' || source === 'vocal_assistant') {
+        mappedSource = source
+      }
+      setLastNavSource(mappedSource)
+
       switch (target) {
         case 'main':
           router.push('/')

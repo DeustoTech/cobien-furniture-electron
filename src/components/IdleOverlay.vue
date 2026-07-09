@@ -15,9 +15,14 @@ onMounted(async () => {
   settings.value = await (window as any).config.getSettings()
 })
 
-watch(isIdle, (newVal) => {
+watch(isIdle, (newVal, oldVal) => {
   if (newVal) {
     console.log('[IDLE] Screen blacked out')
+  } else if (oldVal === true) {
+    console.log('[IDLE] Screen woke up')
+    if ((window as any).config && (window as any).config.logScreenWakeup) {
+      (window as any).config.logScreenWakeup().catch(() => {})
+    }
   }
 })
 

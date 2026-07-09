@@ -149,7 +149,7 @@ function ensureLogSizeLimit(filePath: string, maxSizeBytes = 5 * 1024 * 1024) {
   }
 }
 
-function writeTxtLog(source: string, target?: string, recognized?: string) {
+export function writeTxtLog(source: string, target?: string, recognized?: string) {
   ensureLogsDir()
   const now = getFormattedTime()
   const labelMap: Record<string, string> = {
@@ -205,7 +205,10 @@ export function logNavigation(target: string, source: 'touchscreen' | 'home_butt
   const state = loadState()
   
   // Update views count
-  const targetClean = target.replace(/^\//, '').replace(/-/g, '_')
+  let targetClean = target.replace(/^\//, '').replace(/-/g, '_')
+  if (targetClean === 'call') {
+    targetClean = 'contacts'
+  }
   const pageViews = state.page_views as any
   if (pageViews[targetClean] !== undefined) {
     pageViews[targetClean]++

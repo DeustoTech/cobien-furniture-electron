@@ -5,7 +5,7 @@ import { exec } from 'node:child_process'
 import { join } from 'node:path'
 import * as os from 'node:os'
 
-import { logNavigation } from './icsoService'
+import { logNavigation, logNotificationReceived } from './icsoService'
 
 let currentScreen = 'home'
 let lastNetworkSpeedKbps: number | null = null
@@ -24,10 +24,10 @@ export async function triggerHeartbeat(configPath: string, localConfigPath: stri
 
 export async function startBackendSync(mainWindow: BrowserWindow, configPath: string, localConfigPath: string) {
   // Listen for route changes from Vue Router
-  ipcMain.handle('app:route-changed', (event, routeName: string) => {
+  ipcMain.handle('app:route-changed', (event, routeName: string, source?: string) => {
     currentScreen = routeName
     try {
-      logNavigation(routeName, 'touchscreen')
+      logNavigation(routeName, (source || 'touchscreen') as any)
     } catch (e) {
       console.error('[SYNC] Failed to log navigation:', e)
     }
@@ -280,6 +280,13 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
           const type = (notif.type || '').toLowerCase()
           if (type === 'new_event' || type === 'events_reload') {
             reloadEvents = true
+            if (type === 'new_event') {
+              try {
+                logNotificationReceived('event')
+              } catch (e) {
+                console.error('[POLL] Failed to log remote event received:', e)
+              }
+            }
           }
           if (type === 'force_update') {
             console.log('[POLL] Force update notification received. Triggering manual update...')

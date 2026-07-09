@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettings } from './useSettings'
+import { setLastNavSource } from '../router'
 import { startListening, stopListening, startWakeWordDetection, stopWakeWordDetection } from '../services/voiceRecognizer'
 import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 const lastGreetingIndex = ref(-1)
@@ -80,6 +81,10 @@ export function useVoiceAssistant() {
   async function startAssistant() {
     if (isActive.value) return
     isActive.value = true
+
+    if ((window as any).config && (window as any).config.logVocalAssistant) {
+      (window as any).config.logVocalAssistant('assistant_triggered', '')
+    }
     
     const g = (tm as any)('assistant.greetings')
     const greetings = Array.isArray(g) ? g : [
@@ -102,6 +107,9 @@ export function useVoiceAssistant() {
     if (!isActive.value) return 
     
     if (!command) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('not_understood', '')
+      }
       message.value = t('assistant.not_understood')
       await speak(t('assistant.not_understood'))
       await new Promise(r => setTimeout(r, 1500))
@@ -139,6 +147,9 @@ export function useVoiceAssistant() {
     const activeStopWords = stopKeywords[currentLang] || stopKeywords.es
 
     if (activeStopWords.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('silence', command)
+      }
       await (window as any).config.ttsStop()
       isActive.value = false
       step.value = 'idle'
@@ -155,21 +166,44 @@ export function useVoiceAssistant() {
     }
 
     if (keywords.weather.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('weather', command)
+      }
+      setLastNavSource('vocal_assistant')
       await speak(t('assistant.opening_weather'))
       router.push('/weather')
     } else if (keywords.events.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('events', command)
+      }
+      setLastNavSource('vocal_assistant')
       await speak(t('assistant.opening_events'))
       router.push('/events')
     } else if (keywords.board.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('board', command)
+      }
+      setLastNavSource('vocal_assistant')
       await speak(t('assistant.opening_board'))
       router.push('/board')
     } else if (keywords.call.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('call', command)
+      }
+      setLastNavSource('vocal_assistant')
       await speak(t('assistant.opening_contacts'))
       router.push('/call')
     } else if (keywords.home.some(k => text.includes(k))) {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('home', command)
+      }
+      setLastNavSource('vocal_assistant')
       await speak(t('assistant.going_home'))
       router.push('/')
     } else {
+      if ((window as any).config && (window as any).config.logVocalAssistant) {
+        (window as any).config.logVocalAssistant('not_understood', command)
+      }
       // Fallback or generic response
       await speak(t('assistant.not_understood'))
     }

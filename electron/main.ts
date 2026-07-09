@@ -40,7 +40,7 @@ import { loadContacts, requestCall, syncContacts } from './services/contactsServ
 import { loadPendingReminders, addReminder, listReminders, deleteReminder } from './services/remindersService'
 import { startMqtt, stopMqtt, publishButtonConfig, publishNotificationLed, turnOffNotificationLed, publishRfidInit, publishRfidConfig, publishRfidReload, loadRfidActions } from './services/mqttService'
 import { adjustVolume, getVolume, adjustBrightness } from './services/hardwareService'
-import { startIcsoSyncLoop, logScreenWakeup, stopIcsoSyncLoop } from './services/icsoService'
+import { startIcsoSyncLoop, logScreenWakeup, stopIcsoSyncLoop, logVideoCallEvent, logNotificationReceived, writeTxtLog } from './services/icsoService'
 import { startLogsSyncLoop, stopLogsSyncLoop } from './services/logsSyncService'
 
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
@@ -745,6 +745,11 @@ function setupIPC() {
 
 
   ipcMain.handle('contacts:requestCall', async (_, userName: string) => {
+    try {
+      logVideoCallEvent('request')
+    } catch (e) {
+      console.error('[MAIN] Failed to log call request:', e)
+    }
     const apiKey = process.env.COBIEN_NOTIFY_API_KEY || ''
     const deviceId = process.env.COBIEN_DEVICE_ID
     if (!deviceId) {
@@ -757,6 +762,11 @@ function setupIPC() {
   })
 
   ipcMain.handle('contacts:openCall', async (_, userName: string) => {
+    try {
+      logVideoCallEvent('made')
+    } catch (e) {
+      console.error('[MAIN] Failed to log call made:', e)
+    }
     const deviceId = process.env.COBIEN_DEVICE_ID
     if (!deviceId) {
       console.error('ERROR: COBIEN_DEVICE_ID not set.');
@@ -826,9 +836,17 @@ function setupIPC() {
       webPreferences: { nodeIntegration: false, contextIsolation: true },
     })
 
+    const callStartTime = Date.now()
+
     const closeWindowCleanly = () => {
       if (callWin.isDestroyed()) return
       try {
+        const durationSec = Math.round((Date.now() - callStartTime) / 1000)
+        try {
+          logVideoCallEvent('ended', durationSec)
+        } catch (e) {
+          console.error('[MAIN] Failed to log call ended:', e)
+        }
         callWin.hide()
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.show()
@@ -895,6 +913,11 @@ function setupIPC() {
     const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBien6'
     // Ensure we don't override payload.location if it exists
     const location = payload.location || defaultLocation
+    try {
+      logNotificationReceived('event')
+    } catch (e) {
+      console.error('[MAIN] Failed to log event creation:', e)
+    }
     return await addPersonalEvent({ ...payload, location, deviceId })
   })
 
@@ -947,6 +970,26 @@ function setupIPC() {
       triggerHeartbeat(configPath, _localConfigPath).catch(() => {})
     }
     return kbps
+  })
+
+  ipcMain.handle('icso:logVocalAssistant', (_, target: string, recognized: string) => {
+    try {
+      writeTxtLog('vocal_assistant', target, recognized)
+      return true
+    } catch (e) {
+      console.error('[MAIN] Failed to log vocal assistant action:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('icso:logScreenWakeup', () => {
+    try {
+      logScreenWakeup()
+      return true
+    } catch (e) {
+      console.error('[MAIN] Failed to log screen wakeup:', e)
+      return false
+    }
   })
 
   ipcMain.handle('app:restart', () => {
