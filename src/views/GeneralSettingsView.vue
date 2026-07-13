@@ -32,43 +32,50 @@ function goBack() {
 }
 
 async function loadSettings() {
-  const localWake = localStorage.getItem('cobien_wake_word_enabled')
-  wakeWordEnabled.value = localWake !== 'false'
-
-  const localPin = localStorage.getItem('cobien_settings_pin_enabled')
-  pinEnabled.value = localPin !== 'false'
-
-  const localTimeout = localStorage.getItem('cobien_idle_timeout')
-  if (localTimeout !== null) {
-    idleTimeout.value = parseInt(localTimeout, 10)
-  } else {
-    idleTimeout.value = 120
-  }
-
   try {
     const config = await (window as any).config.getSettings()
+    if (config) {
+      wakeWordEnabled.value = config.wake_word_enabled !== false
+      pinEnabled.value = config.settings_pin_enabled !== false
+      idleTimeout.value = config.idle_timeout_sec !== undefined ? config.idle_timeout_sec : 120
+      
+      localStorage.setItem('cobien_wake_word_enabled', String(wakeWordEnabled.value))
+      localStorage.setItem('cobien_settings_pin_enabled', String(pinEnabled.value))
+      localStorage.setItem('cobien_idle_timeout', String(idleTimeout.value))
+    }
     if (config && config.emotionPromptTime) {
       emotionPromptTime.value = config.emotionPromptTime
     }
   } catch (e) {
     console.error('Error loading settings:', e)
+    
+    // Fallback to local storage if config read fails
+    const localWake = localStorage.getItem('cobien_wake_word_enabled')
+    wakeWordEnabled.value = localWake !== 'false'
+    const localPin = localStorage.getItem('cobien_settings_pin_enabled')
+    pinEnabled.value = localPin !== 'false'
+    const localTimeout = localStorage.getItem('cobien_idle_timeout')
+    idleTimeout.value = localTimeout !== null ? parseInt(localTimeout, 10) : 120
   }
 }
 
-function toggleWakeWord(enabled: boolean) {
+async function toggleWakeWord(enabled: boolean) {
   wakeWordEnabled.value = enabled
   localStorage.setItem('cobien_wake_word_enabled', String(enabled))
+  await (window as any).config.saveGeneralSettings({ wakeWordEnabled: enabled })
   window.dispatchEvent(new Event('wake-word-setting-changed'))
 }
 
-function togglePin(enabled: boolean) {
+async function togglePin(enabled: boolean) {
   pinEnabled.value = enabled
   localStorage.setItem('cobien_settings_pin_enabled', String(enabled))
+  await (window as any).config.saveGeneralSettings({ pinEnabled: enabled })
 }
 
-function selectTimeout(val: number) {
+async function selectTimeout(val: number) {
   idleTimeout.value = val
   localStorage.setItem('cobien_idle_timeout', String(val))
+  await (window as any).config.saveGeneralSettings({ idleTimeout: val })
   window.dispatchEvent(new Event('idle-timeout-changed'))
 }
 

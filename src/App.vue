@@ -74,17 +74,29 @@ onMounted(async () => {
     }
   }
 
-  const localTimeout = localStorage.getItem('cobien_idle_timeout')
-  if (localTimeout !== null) {
-    idleTimeout.value = parseInt(localTimeout, 10)
-  } else {
-    try {
-      const settings = await (window as any).config.getSettings()
-      if (settings && settings.idle_timeout_sec) {
-        idleTimeout.value = settings.idle_timeout_sec
-      }
-    } catch (e) {
-      console.error('Error loading settings:', e)
+  // Load configuration from config.local.json to synchronize localStorage
+  try {
+    const config = await (window as any).config.getSettings()
+    if (config) {
+      const wakeEnabled = config.wake_word_enabled !== false
+      const pinEnabled = config.settings_pin_enabled !== false
+      const timeout = config.idle_timeout_sec !== undefined ? config.idle_timeout_sec : 120
+
+      localStorage.setItem('cobien_wake_word_enabled', String(wakeEnabled))
+      localStorage.setItem('cobien_settings_pin_enabled', String(pinEnabled))
+      localStorage.setItem('cobien_idle_timeout', String(timeout))
+
+      idleTimeout.value = timeout
+    }
+  } catch (e) {
+    console.error('[CONFIG] Error synchronizing backend settings to local storage:', e)
+    
+    // Fallback to local storage if config read fails
+    const localTimeout = localStorage.getItem('cobien_idle_timeout')
+    if (localTimeout !== null) {
+      idleTimeout.value = parseInt(localTimeout, 10)
+    } else {
+      idleTimeout.value = 120
     }
   }
 

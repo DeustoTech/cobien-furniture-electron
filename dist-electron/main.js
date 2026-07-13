@@ -1667,6 +1667,14 @@ function fn() {
 		} catch {
 			return {};
 		}
+	}), u.handle("config:saveGeneralSettings", async (e, t) => {
+		try {
+			return await c((e) => {
+				e.settings ||= {}, t.wakeWordEnabled !== void 0 && (e.settings.wake_word_enabled = t.wakeWordEnabled), t.pinEnabled !== void 0 && (e.settings.settings_pin_enabled = t.pinEnabled), t.idleTimeout !== void 0 && (e.settings.idle_timeout_sec = t.idleTimeout);
+			});
+		} catch (e) {
+			return console.error("Error saving general settings:", e), !1;
+		}
 	}), u.handle("config:saveEmotionPromptTime", async (e, t) => {
 		try {
 			return await c((e) => {

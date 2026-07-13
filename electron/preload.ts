@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('tts', {
 contextBridge.exposeInMainWorld('config', {
   getWeather: () => ipcRenderer.invoke('config:getWeather'),
   getSettings: () => ipcRenderer.invoke('config:getSettings'),
+  saveGeneralSettings: (payload: { wakeWordEnabled?: boolean, pinEnabled?: boolean, idleTimeout?: number }) => ipcRenderer.invoke('config:saveGeneralSettings', payload),
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
   saveButtonColors: (payload: any) => ipcRenderer.invoke('config:saveButtonColors', payload),
   saveEmotionPromptTime: (time: string) => ipcRenderer.invoke('config:saveEmotionPromptTime', time),

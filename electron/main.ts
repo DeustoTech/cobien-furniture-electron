@@ -282,6 +282,21 @@ function setupIPC() {
     }
   })
 
+  ipcMain.handle('config:saveGeneralSettings', async (event, payload: { wakeWordEnabled?: boolean, pinEnabled?: boolean, idleTimeout?: number }) => {
+    try {
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        if (payload.wakeWordEnabled !== undefined) data.settings.wake_word_enabled = payload.wakeWordEnabled
+        if (payload.pinEnabled !== undefined) data.settings.settings_pin_enabled = payload.pinEnabled
+        if (payload.idleTimeout !== undefined) data.settings.idle_timeout_sec = payload.idleTimeout
+      })
+      return success
+    } catch (e) {
+      console.error('Error saving general settings:', e)
+      return false
+    }
+  })
+
   ipcMain.handle('config:saveEmotionPromptTime', async (event, time: string) => {
     try {
       const success = await writeConfig((data) => {
