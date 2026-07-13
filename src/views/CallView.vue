@@ -37,20 +37,7 @@ onMounted(async () => {
 
   try {
     const fetched = await (window as any).config.getContacts()
-    
-    // Add 6 mock contacts to test scroll and landscapes
-    const mockNames = ['Javier R.', 'Elena M.', 'Pedro G.', 'Lucía F.', 'Marcos T.', 'Sonia V.']
-    const mockContacts = mockNames.map((name, i) => ({
-      displayName: name,
-      userName: `user_${i}`,
-      imagePath: '', // No photo, will use landscape
-      callable: true
-    }))
-
-    contacts.value = [
-      ...fetched,
-      ...mockContacts
-    ]
+    contacts.value = fetched
   } catch (e) {
     console.error('[CONTACTS] Error loading:', e)
   }
