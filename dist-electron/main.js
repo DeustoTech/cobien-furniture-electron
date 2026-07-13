@@ -1,5 +1,5 @@
 import { a as e, i as t, n, t as r } from "./eventsMongo-CEfPASGM.js";
-import { i, n as a, r as o } from "./contactsService-BixNje6P.js";
+import { i, n as a, r as o } from "./contactsService-CDbGa7dA.js";
 import s from "dotenv";
 import { BrowserWindow as c, app as l, ipcMain as u, net as d, protocol as f, session as p } from "electron";
 import { exec as m, execFile as h, execSync as ee } from "node:child_process";
@@ -511,7 +511,7 @@ async function Be(e, t, n) {
 					else if (i === "contacts_updated") {
 						console.log("[POLL] Contacts updated notification received. Syncing contacts...");
 						let t = (r.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, "");
-						import("./contactsService-BixNje6P.js").then((e) => e.t).then(({ syncContacts: n }) => {
+						import("./contactsService-CDbGa7dA.js").then((e) => e.t).then(({ syncContacts: n }) => {
 							n(s, o, t).then(() => {
 								e && !e.isDestroyed() && e.webContents.send("contacts:updated");
 							}).catch((e) => console.error("[POLL] Failed to sync contacts on notification:", e));

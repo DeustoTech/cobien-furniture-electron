@@ -72,6 +72,19 @@ async function downloadImage(url: string, baseName: string, apiKey: string): Pro
     const fileName = baseName + ext
     const filePath = join(CONTACTS_DIR, fileName)
     
+    // Clean up any existing contact files with the same name but different extensions
+    const exts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.PNG', '.JPG', '.JPEG', '.WEBP', '.GIF']
+    for (const otherExt of exts) {
+      if (otherExt.toLowerCase() !== ext.toLowerCase()) {
+        const otherPath = join(CONTACTS_DIR, baseName + otherExt)
+        try {
+          await fs.unlink(otherPath)
+        } catch (e) {
+          // Ignore
+        }
+      }
+    }
+
     const buffer = await res.arrayBuffer()
     await fs.writeFile(filePath, Buffer.from(buffer))
     return fileName
