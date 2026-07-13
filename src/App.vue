@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter, useRoute } from 'vue-router'
 import { useMqtt } from './composables/useMqtt'
 import { startWakeWordDetection, stopWakeWordDetection } from './services/voiceRecognizer'
 import { useSettings } from './composables/useSettings'
@@ -15,15 +14,10 @@ useMqtt()
 
 const voiceAssistantRef = ref<any>(null)
 const idleTimeout = ref(60)
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const { lang } = useSettings()
 
-const router = useRouter()
-const route = useRoute()
-
 const isOffline = ref(false) // Start as false to prevent blocking screens on startup
-const countdown = ref(5)
-let countdownInterval: any = null
 let networkInterval: any = null
 
 const showEmotionPrompt = ref(false)
@@ -34,25 +28,9 @@ const checkRealOnlineStatus = async () => {
   try {
     const online = await (window as any).config.isOnline()
     isOffline.value = !online
-    if (online) {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-        countdownInterval = null
-      }
-    } else {
-      startRedirectCountdown()
-    }
   } catch (e) {
     console.error('[NETWORK] Failed to check online status via IPC, falling back to navigator.onLine:', e)
     isOffline.value = !navigator.onLine
-    if (navigator.onLine) {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-        countdownInterval = null
-      }
-    } else {
-      startRedirectCountdown()
-    }
   }
 }
 
@@ -65,53 +43,6 @@ const handleOffline = async () => {
   console.log('[NETWORK] Browser event: offline')
   await checkRealOnlineStatus()
 }
-
-function startRedirectCountdown() {
-  if (route.path === '/settings/wifi') return
-  if (countdownInterval) clearInterval(countdownInterval)
-  
-  countdown.value = 5
-  countdownInterval = setInterval(() => {
-    if (route.path === '/settings/wifi' || !isOffline.value) {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-        countdownInterval = null
-      }
-      return
-    }
-    countdown.value--
-    if (countdown.value <= 0) {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-        countdownInterval = null
-      }
-      goToWifi()
-    }
-  }, 1000)
-}
-
-function goToWifi() {
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
-  router.push('/settings/wifi')
-}
-
-// Watch route to trigger countdown if we navigate away from wifi settings while offline
-watch(
-  () => route.path,
-  (newPath) => {
-    if (isOffline.value && newPath !== '/settings/wifi') {
-      startRedirectCountdown()
-    } else {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-        countdownInterval = null
-      }
-    }
-  }
-)
 
 onMounted(async () => {
   window.addEventListener('online', handleOnline)
@@ -247,10 +178,6 @@ function handleEmotionAnswered() {
 onBeforeUnmount(() => {
   window.removeEventListener('online', handleOnline)
   window.removeEventListener('offline', handleOffline)
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
   if (networkInterval) {
     clearInterval(networkInterval)
     networkInterval = null
@@ -271,27 +198,6 @@ onBeforeUnmount(() => {
     @answered="handleEmotionAnswered"
     @close="showEmotionPrompt = false"
   />
-
-  <!-- Premium Glassmorphic Offline Warning Overlay -->
-  <div v-if="isOffline && route.path !== '/settings/wifi'" class="offline-overlay">
-    <div class="offline-card glass-panel">
-      <div class="offline-icon-container">
-        <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.5M5 12.5a10.94 10.94 0 015.83-2.84M8.5 16.5a5 5 0 017 0M12 20h.01" />
-        </svg>
-      </div>
-      <h2 class="offline-title">{{ t('offline.title') }}</h2>
-      <p class="offline-text">{{ t('offline.message') }}</p>
-      
-      <div class="offline-status">
-        <span class="countdown-tag">{{ t('offline.redirecting', { seconds: countdown }) }}</span>
-      </div>
-      
-      <button class="wifi-redirect-btn" @click="goToWifi">
-        {{ t('offline.redirect_btn') }}
-      </button>
-    </div>
-  </div>
 </template>
 
 <style scoped>
