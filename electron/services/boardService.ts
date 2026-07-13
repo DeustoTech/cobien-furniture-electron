@@ -75,7 +75,7 @@ export async function fetchMessages() {
   }
 
   try {
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(4000) })
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(12000) })
     if (!res.ok) throw new Error(`API returned ${res.statusText}`)
     
     const data = await res.json()
@@ -124,7 +124,7 @@ export async function deleteMessage(id: string) {
   }
   
   try {
-    const res = await fetch(url, { method: 'POST', headers, signal: AbortSignal.timeout(4000) })
+    const res = await fetch(url, { method: 'POST', headers, signal: AbortSignal.timeout(12000) })
     return res.ok
   } catch(e) {
     console.error('[BOARD] Failed to delete message:', e)
@@ -147,7 +147,7 @@ export async function markMessageRead(id: string) {
       method: 'POST', 
       headers,
       body: JSON.stringify({ device_id: deviceId }),
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(12000)
     })
     return res.ok
   } catch(e) {
@@ -171,7 +171,7 @@ export async function submitQuickReply(id: string, replyText: string) {
       method: 'POST', 
       headers,
       body: JSON.stringify({ device_id: deviceId, reply_text: replyText }),
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(12000)
     })
     return res.ok
   } catch(e) {

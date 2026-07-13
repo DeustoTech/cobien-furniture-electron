@@ -568,7 +568,7 @@ async function We() {
 	try {
 		let e = await fetch(t, {
 			headers: n,
-			signal: AbortSignal.timeout(4e3)
+			signal: AbortSignal.timeout(12e3)
 		});
 		if (!e.ok) throw Error(`API returned ${e.statusText}`);
 		let r = (await e.json()).messages || [];
@@ -597,7 +597,7 @@ async function Ge(e) {
 		return (await fetch(t, {
 			method: "POST",
 			headers: n,
-			signal: AbortSignal.timeout(4e3)
+			signal: AbortSignal.timeout(12e3)
 		})).ok;
 	} catch (e) {
 		return console.error("[BOARD] Failed to delete message:", e), !1;
@@ -611,7 +611,7 @@ async function Ke(e) {
 			method: "POST",
 			headers: r,
 			body: JSON.stringify({ device_id: t }),
-			signal: AbortSignal.timeout(4e3)
+			signal: AbortSignal.timeout(12e3)
 		})).ok;
 	} catch (e) {
 		return console.error("[BOARD] Failed to mark message read:", e), !1;
@@ -628,7 +628,7 @@ async function qe(e, t) {
 				device_id: n,
 				reply_text: t
 			}),
-			signal: AbortSignal.timeout(4e3)
+			signal: AbortSignal.timeout(12e3)
 		})).ok;
 	} catch (e) {
 		return console.error("[BOARD] Failed to submit reply:", e), !1;
