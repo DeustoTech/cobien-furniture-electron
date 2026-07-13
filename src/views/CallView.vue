@@ -42,6 +42,17 @@ onMounted(async () => {
     console.error('[CONTACTS] Error loading:', e)
   }
 
+  if ((window as any).config.onContactsUpdated) {
+    (window as any).config.onContactsUpdated(async () => {
+      console.log('[CONTACTS] IPC contacts:updated received, reloading...')
+      try {
+        contacts.value = await (window as any).config.getContacts()
+      } catch (e) {
+        console.error('[CONTACTS] Error reloading contacts:', e)
+      }
+    })
+  }
+
   clockTimer = setInterval(() => {
     currentTime.value = new Date()
   }, 1000)
@@ -64,7 +75,7 @@ const formattedTime = computed(() => {
 })
 
 function getImageUrl(contact: Contact, index: number): string {
-  if (contact.imagePath) return `cobien-media://${contact.imagePath}`
+  if (contact.imagePath) return `cobien-media://${contact.imagePath}?t=${Date.now()}`
   // Cycle through 5 landscapes
   const landscapeId = (index % 5) + 1
   return `/images/landscape_${landscapeId}.png`

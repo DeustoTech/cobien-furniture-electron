@@ -102,5 +102,8 @@ contextBridge.exposeInMainWorld('config', {
   },
   onEventsChanged: (callback: () => void) => {
     ipcRenderer.on('events:changed', () => callback())
+  },
+  onContactsUpdated: (callback: () => void) => {
+    ipcRenderer.on('contacts:updated', () => callback())
   }
 })
