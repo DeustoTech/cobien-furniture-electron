@@ -328,6 +328,12 @@ async function pollNotifications(mainWindow: BrowserWindow, configPath: string, 
                 })
                 .catch(err => console.error('[POLL] Failed to sync contacts on notification:', err))
             }).catch(err => console.error('[POLL] Failed to dynamically import contactsService:', err))
+          } else if (type === 'icso_reset') {
+            console.log('[POLL] ICSO reset notification received. Resetting local telemetry...')
+            import('./icsoService').then(({ resetLocalTelemetry, syncIcsoToBackend }) => {
+              resetLocalTelemetry()
+              syncIcsoToBackend(configPath, localConfigPath, true)
+            }).catch(err => console.error('[POLL] Failed to reset local telemetry:', err))
           }
         })
 

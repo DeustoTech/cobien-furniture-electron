@@ -176,6 +176,7 @@ async function fetchAndUpdateEvents(configPath: string, deviceId: string, defaul
     const locationName = process.env.COBIEN_DEVICE_LOCATION || deviceDoc.location || defaultData.settings?.device_location || 'Bilbao'
 
     const query = {
+      hidden: { $ne: true },
       $or: [
         { 
           $or: [

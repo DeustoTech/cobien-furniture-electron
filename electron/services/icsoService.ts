@@ -496,3 +496,8 @@ export function stopIcsoSyncLoop() {
     syncTimer = null
   }
 }
+
+export function resetLocalTelemetry() {
+  saveState(DEFAULT_STATE)
+  console.log('[ICSO] Local telemetry snapshot reset to default state.')
+}
