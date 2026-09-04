@@ -236,24 +236,25 @@ async function answerEmotion(emotion: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
   background: #f1f5f9;
-  border-radius: 24px;
-  padding: 1.25rem 1.5rem;
-  border: 2px solid #e2e8f0;
+  border-radius: 28px;
+  padding: 1.5rem 2rem;
+  border: 2px solid #cbd5e1;
 }
 
 .context-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #334155;
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #1e293b;
   margin: 0;
+  text-align: center;
 }
 
 .context-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.2rem;
   justify-content: center;
   width: 100%;
 }
@@ -261,17 +262,17 @@ async function answerEmotion(emotion: string) {
 .context-chip {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 1.5rem;
+  gap: 0.85rem;
+  padding: 1.1rem 2rem;
   border-radius: 50px;
-  border: 3px solid #cbd5e1;
+  border: 3px solid #94a3b8;
   background: #ffffff;
-  color: #334155;
-  font-size: 1.25rem;
-  font-weight: 650;
+  color: #1e293b;
+  font-size: 1.7rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .context-chip:active {
@@ -282,11 +283,11 @@ async function answerEmotion(emotion: string) {
   background: #2563eb;
   border-color: #1d4ed8;
   color: #ffffff;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
 }
 
 .chip-icon {
-  font-size: 1.3rem;
+  font-size: 1.8rem;
   font-weight: 900;
 }
 
