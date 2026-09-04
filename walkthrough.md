@@ -162,5 +162,6 @@ Se ha completado e integrado la extensión de la encuesta diaria de emociones at
    * Se ha establecido la política de incremento automático de versión (`1.5.30`) y sincronización simultánea de la rama `develop` con `master`.
 5. **Verificación y Despliegue**:
    * **`CoBien1`**: Actualizado e impulsado a la versión `1.5.30` vía SSH (`systemctl --user start cobien-update.service`), verificado servicio en estado `active` y cambios reflejados en pantalla táctil.
-   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Resuelto el error `launch-failed (exitCode=1002)` del proceso renderer de Chromium mediante la adición de `disable-dev-shm-usage` y permisos SUID `4755` en `chrome-sandbox`. Servicio `cobien-launcher.service` ejecutando Electron v1.5.32 de forma completamente estable.
+   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Corregido el filtrado de `render-process-gone` para ignorar salidas limpias/reinicios (`exitCode=0`/`clean-exit`) y generada la carpeta `dist/index.html` con `npm run build`. Servicio `cobien-launcher.service` ejecutando Electron v1.5.33 de forma completamente estable en pantalla.
+
 

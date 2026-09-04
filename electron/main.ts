@@ -1219,6 +1219,9 @@ function createWindow() {
   // --- Stability: recover from renderer crashes ---
   mainWindow.webContents.on('render-process-gone', (event, details) => {
     console.error(`[STABILITY] Render process gone: ${details.reason} (exitCode=${details.exitCode})`)
+    if (details.reason === 'clean-exit' || details.reason === 'killed' || details.exitCode === 0) {
+      return
+    }
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         console.log('[STABILITY] Reloading window after renderer crash...')
