@@ -141,5 +141,28 @@ Para acceder de forma rápida y remota a ambos muebles desde este equipo de desa
   6. **Confirmación Segura**: Se integró un modal `#resetDeviceModal` en la pestaña de Zona de Peligro que obliga al administrador a teclear el ID único del mueble para validar el reseteo de datos.
   7. **Verificación**: Cambios probados y validados con éxito en la máquina virtual **`CoBien7`**. Se comprobó que el archivo local `icso_log.json` fue reseteado a 0, la base de datos MongoDB Atlas actualizó su snapshot a 0, y los eventos personales anteriores desaparecieron de la caché local del dispositivo (`events.local.json`), mostrando únicamente los eventos públicos del centro.
 
+---
+
+## Frases Contextuales de Mañana y Noche según Requerimientos CIBIR (Versión 1.5.30)
+
+Se ha completado e integrado la extensión de la encuesta diaria de emociones atendiendo a las peticiones del CIBIR (Centro de Investigación Biomédica de La Rioja / Rioja Salud).
+
+### Cambios Realizados:
+1. **Frontend (`EmotionPromptOverlay.vue`)**:
+   * Se evalúa dinámicamente el horario de la encuesta al abrirse:
+     * **Franja de Mañana (< 10:00h)**: Se muestra la sección *"Cuéntanos sobre tu descanso:"* con opciones chip seleccionables (*"He dormido bien esta noche"*, *"Me siento descansado"*).
+     * **Franja de Noche (≥ 20:00h)**: Se muestra la sección *"¿Cómo ha ido tu día?"* con opciones chip seleccionables (*"Hoy me he sentido querido"*, *"Hoy me he sentido acompañado"*, *"Hoy ha sido un buen día para mí"*).
+     * **Franja Intermedia (10:00h - 20:00h)**: Mantiene la encuesta estándar con los 5 botones de emociones.
+   * Se conservan de forma prominente los 5 botones tradicionales con emojis (😄 Excelente, 🙂 Bien, 😐 Normal, 🙁 Regular, 😢 Muy mal).
+2. **Internacionalización (`es.json`, `en.json`, `fr.json`)**:
+   * Se han traducido fielmente todas las frases y títulos contextuales en Español, Inglés y Francés.
+3. **Backend & IPC (`main.ts` / `preload.ts`)**:
+   * Se actualizó el manejador `config:submitEmotion` para aceptar un payload extendido `{ emotion, statements, period, timestamp }` manteniendo compatibilidad absoluta con peticiones de texto plano tradicionales.
+4. **Gestión de Git y Versionado**:
+   * Se ha establecido la política de incremento automático de versión (`1.5.30`) y sincronización simultánea de la rama `develop` con `master`.
+5. **Verificación y Despliegue**:
+   * **`CoBien1`**: Actualizado e impulsado a la versión `1.5.30` vía SSH (`systemctl --user start cobien-update.service`), verificado servicio en estado `active` y cambios reflejados en pantalla táctil.
+
+
 
 
