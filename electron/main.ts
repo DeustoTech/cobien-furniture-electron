@@ -310,14 +310,31 @@ function setupIPC() {
     }
   })
 
-  ipcMain.handle('config:submitEmotion', async (event, emotion: string) => {
+  ipcMain.handle('config:submitEmotion', async (event, emotion: any) => {
     try {
       const deviceId = process.env.COBIEN_DEVICE_ID || 'CoBienX'
       const baseUrl = process.env.COBIEN_BACKEND_BASE_URL || 'https://portal.co-bien.eu'
+      
+      let emotionVal = ''
+      let payloadExtra: any = {}
+
+      if (typeof emotion === 'object' && emotion !== null) {
+        emotionVal = emotion.emotion || ''
+        payloadExtra = emotion
+      } else {
+        emotionVal = String(emotion)
+      }
+
+      const bodyData = {
+        device_id: deviceId,
+        emocion: emotionVal,
+        ...payloadExtra
+      }
+
       const res = await fetch(`${baseUrl}/api/emociones/api/diario/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: deviceId, emocion: emotion }),
+        body: JSON.stringify(bodyData),
         signal: AbortSignal.timeout(5000)
       })
       return res.ok

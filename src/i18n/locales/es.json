@@ -163,6 +163,13 @@
     "normal": "Normal",
     "poor": "Regular",
     "bad": "Muy mal",
+    "morning_title": "Cuéntanos sobre tu descanso:",
+    "night_title": "¿Cómo ha ido tu día?",
+    "slept_well": "He dormido bien esta noche",
+    "feel_rested": "Me siento descansado",
+    "felt_loved": "Hoy me he sentido querido",
+    "felt_accompanied": "Hoy me he sentido acompañado",
+    "good_day": "Hoy ha sido un buen día para mí",
     "missed_prompt": "Aviso de Ánimo Pendiente",
     "missed_prompt_desc": "No respondiste a tu estado de ánimo a las {time}"
   },

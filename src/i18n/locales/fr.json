@@ -162,6 +162,13 @@
     "normal": "Normal",
     "poor": "Médiocre",
     "bad": "Très mal",
+    "morning_title": "Parlez-nous de votre sommeil :",
+    "night_title": "Comment s'est passée votre journée ?",
+    "slept_well": "J'ai bien dormi cette nuit",
+    "feel_rested": "Je me sens reposé",
+    "felt_loved": "Aujourd'hui je me suis senti aimé",
+    "felt_accompanied": "Aujourd'hui je me suis senti accompagné",
+    "good_day": "Aujourd'hui a été une bonne journée pour moi",
     "missed_prompt": "Rappel d'humeur en attente",
     "missed_prompt_desc": "Vous n'avez pas répondu à votre humeur à {time}"
   },

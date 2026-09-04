@@ -160,6 +160,13 @@
     "normal": "Average",
     "poor": "Poor",
     "bad": "Bad",
+    "morning_title": "Tell us about your sleep:",
+    "night_title": "How was your day?",
+    "slept_well": "I slept well tonight",
+    "feel_rested": "I feel rested",
+    "felt_loved": "Today I felt loved",
+    "felt_accompanied": "Today I felt accompanied",
+    "good_day": "Today was a good day for me",
     "missed_prompt": "Pending Mood Check",
     "missed_prompt_desc": "You didn't answer how you were feeling at {time}"
   },

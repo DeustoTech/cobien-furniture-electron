@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -12,8 +12,16 @@ const { t } = useI18n()
 let timeoutId: any = null
 const timeoutSeconds = 60
 
+const selectedStatements = ref<string[]>([])
+const currentHour = ref(new Date().getHours())
+
+const isMorning = computed(() => currentHour.value < 10)
+const isNight = computed(() => currentHour.value >= 20)
+
 watch(() => props.isActive, (newVal) => {
   if (newVal) {
+    currentHour.value = new Date().getHours()
+    selectedStatements.value = []
     startTimeout()
   } else {
     if (timeoutId) clearTimeout(timeoutId)
@@ -22,6 +30,8 @@ watch(() => props.isActive, (newVal) => {
 
 onMounted(() => {
   if (props.isActive) {
+    currentHour.value = new Date().getHours()
+    selectedStatements.value = []
     startTimeout()
   }
 })
@@ -37,13 +47,28 @@ function startTimeout() {
   }, timeoutSeconds * 1000)
 }
 
+function toggleStatement(key: string) {
+  const idx = selectedStatements.value.indexOf(key)
+  if (idx >= 0) {
+    selectedStatements.value.splice(idx, 1)
+  } else {
+    selectedStatements.value.push(key)
+  }
+}
+
 async function answerEmotion(emotion: string) {
   if (timeoutId) clearTimeout(timeoutId)
   
-  // Try sending it to backend
+  const payload = {
+    emotion,
+    statements: [...selectedStatements.value],
+    period: isMorning.value ? 'morning' : isNight.value ? 'night' : 'standard',
+    timestamp: new Date().toISOString()
+  }
+
   try {
     if ((window as any).config && (window as any).config.submitEmotion) {
-      await (window as any).config.submitEmotion(emotion)
+      await (window as any).config.submitEmotion(payload)
     }
   } catch (e) {
     console.error('Failed to submit emotion', e)
@@ -60,6 +85,64 @@ async function answerEmotion(emotion: string) {
         <h1 class="emotion-title">{{ t('emotions.how_are_you') || '¿Cómo te encuentras hoy?' }}</h1>
         <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
         
+        <!-- Frases Contextuales de Mañana (< 10:00h) -->
+        <div v-if="isMorning" class="context-section">
+          <h2 class="context-title">{{ t('emotions.morning_title') || 'Cuéntanos sobre tu descanso:' }}</h2>
+          <div class="context-chips">
+            <button 
+              class="context-chip" 
+              :class="{ selected: selectedStatements.includes('slept_well') }" 
+              @click="toggleStatement('slept_well')"
+            >
+              <span class="chip-icon">{{ selectedStatements.includes('slept_well') ? '✓' : '+' }}</span>
+              <span class="chip-text">{{ t('emotions.slept_well') || 'He dormido bien esta noche' }}</span>
+            </button>
+
+            <button 
+              class="context-chip" 
+              :class="{ selected: selectedStatements.includes('feel_rested') }" 
+              @click="toggleStatement('feel_rested')"
+            >
+              <span class="chip-icon">{{ selectedStatements.includes('feel_rested') ? '✓' : '+' }}</span>
+              <span class="chip-text">{{ t('emotions.feel_rested') || 'Me siento descansado' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Frases Contextuales de Noche (>= 20:00h) -->
+        <div v-if="isNight" class="context-section">
+          <h2 class="context-title">{{ t('emotions.night_title') || '¿Cómo ha ido tu día?' }}</h2>
+          <div class="context-chips">
+            <button 
+              class="context-chip" 
+              :class="{ selected: selectedStatements.includes('felt_loved') }" 
+              @click="toggleStatement('felt_loved')"
+            >
+              <span class="chip-icon">{{ selectedStatements.includes('felt_loved') ? '✓' : '+' }}</span>
+              <span class="chip-text">{{ t('emotions.felt_loved') || 'Hoy me he sentido querido' }}</span>
+            </button>
+
+            <button 
+              class="context-chip" 
+              :class="{ selected: selectedStatements.includes('felt_accompanied') }" 
+              @click="toggleStatement('felt_accompanied')"
+            >
+              <span class="chip-icon">{{ selectedStatements.includes('felt_accompanied') ? '✓' : '+' }}</span>
+              <span class="chip-text">{{ t('emotions.felt_accompanied') || 'Hoy me he sentido acompañado' }}</span>
+            </button>
+
+            <button 
+              class="context-chip" 
+              :class="{ selected: selectedStatements.includes('good_day') }" 
+              @click="toggleStatement('good_day')"
+            >
+              <span class="chip-icon">{{ selectedStatements.includes('good_day') ? '✓' : '+' }}</span>
+              <span class="chip-text">{{ t('emotions.good_day') || 'Hoy ha sido un buen día para mí' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de Emoción Principal (5 niveles) -->
         <div class="emotion-buttons">
           <button class="emotion-btn excellent" @click="answerEmotion('Excelente')">
             <span class="emoji">😄</span>
@@ -112,11 +195,11 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-card {
-  width: 900px;
+  width: 960px;
   max-width: 95vw;
   background: white;
   border-radius: 40px;
-  padding: 4rem 2rem;
+  padding: 3rem 2rem;
   box-shadow: 0 40px 100px rgba(0,0,0,0.4);
   transform: translateY(60px) scale(0.9);
   opacity: 0;
@@ -124,7 +207,7 @@ async function answerEmotion(emotion: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .emotion-card.active {
@@ -133,7 +216,7 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-title {
-  font-size: 3.5rem;
+  font-size: 3.2rem;
   font-weight: 850;
   margin: 0;
   color: #111;
@@ -141,15 +224,75 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-subtitle {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   color: #555;
-  margin: 0 0 2rem 0;
+  margin: 0;
   text-align: center;
+}
+
+/* Contextual phrases section */
+.context-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  background: #f1f5f9;
+  border-radius: 24px;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid #e2e8f0;
+}
+
+.context-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.context-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 50px;
+  border: 3px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 1.25rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.context-chip:active {
+  transform: scale(0.96);
+}
+
+.context-chip.selected {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+}
+
+.chip-icon {
+  font-size: 1.3rem;
+  font-weight: 900;
 }
 
 .emotion-buttons {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.25rem;
   width: 100%;
   justify-content: center;
 }
@@ -160,9 +303,9 @@ async function answerEmotion(emotion: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  height: 220px;
-  border-radius: 30px;
+  gap: 0.85rem;
+  height: 200px;
+  border-radius: 28px;
   border: 4px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -175,11 +318,11 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-btn .emoji {
-  font-size: 5rem;
+  font-size: 4.5rem;
 }
 
 .emotion-btn .label {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #333;
   text-align: center;
