@@ -1343,6 +1343,7 @@ app.commandLine.appendSwitch('password-store', 'basic')
 // Disable sandbox and GPU sandbox to prevent crashes in VM and remote environments
 app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu-sandbox')
+app.commandLine.appendSwitch('disable-dev-shm-usage')
 
 function setupLogRedirection() {
   process.stdout.on('error', () => {})
