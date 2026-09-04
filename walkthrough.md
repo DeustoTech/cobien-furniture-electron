@@ -162,7 +162,4 @@ Se ha completado e integrado la extensión de la encuesta diaria de emociones at
    * Se ha establecido la política de incremento automático de versión (`1.5.30`) y sincronización simultánea de la rama `develop` con `master`.
 5. **Verificación y Despliegue**:
    * **`CoBien1`**: Actualizado e impulsado a la versión `1.5.30` vía SSH (`systemctl --user start cobien-update.service`), verificado servicio en estado `active` y cambios reflejados en pantalla táctil.
-
-
-
-
+   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Resuelto el problema de arranque con permisos SUID `4755` en `chrome-sandbox` y `sysctl kernel.unprivileged_userns_clone=1`. Servicio `cobien-launcher.service` activo y ejecutando Electron v1.5.30 correctamente en pantalla (`DISPLAY=:0`).

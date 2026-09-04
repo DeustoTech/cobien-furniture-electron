@@ -144,7 +144,10 @@ onMounted(async () => {
 
   window.addEventListener('idle-timeout-changed', handleIdleTimeoutChange)
   window.addEventListener('reopen-emotion-prompt', () => {
-    showEmotionPrompt.value = true
+    showEmotionPrompt.value = false
+    setTimeout(() => {
+      showEmotionPrompt.value = true
+    }, 50)
   })
   startEmotionCron()
 })
