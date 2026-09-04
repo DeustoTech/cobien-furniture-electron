@@ -162,7 +162,8 @@ Se ha completado e integrado la extensión de la encuesta diaria de emociones at
    * Se ha establecido la política de incremento automático de versión (`1.5.30`) y sincronización simultánea de la rama `develop` con `master`.
 5. **Verificación y Despliegue**:
    * **`CoBien1`**: Actualizado e impulsado a la versión `1.5.30` vía SSH (`systemctl --user start cobien-update.service`), verificado servicio en estado `active` y cambios reflejados en pantalla táctil.
-   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Aumentado considerablemente el tamaño de fuente (`1.7rem` / `1.85rem`) y el relleno de los chips contextuales del panel de emociones para maximizar la legibilidad en pantalla táctil (Versión 1.5.34).
+   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Ampliado el temporizador de cierre del modal a 5 minutos (300s) y añadido el atajo de teclado global `F8` / `Ctrl+E` para lanzar manualmente la encuesta de emociones (Versión 1.5.35).
+
 
 
 

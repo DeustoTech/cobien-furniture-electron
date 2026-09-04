@@ -149,6 +149,14 @@ onMounted(async () => {
       showEmotionPrompt.value = true
     }, 50)
   })
+
+  // Keyboard shortcut (F8 or Ctrl+E) to manually trigger emotion prompt
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F8' || (e.ctrlKey && e.key.toLowerCase() === 'e')) {
+      console.log('[SHORTCUT] Triggering emotion prompt overlay')
+      window.dispatchEvent(new Event('reopen-emotion-prompt'))
+    }
+  })
   startEmotionCron()
 })
 

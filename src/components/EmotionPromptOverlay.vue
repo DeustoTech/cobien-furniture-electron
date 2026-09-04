@@ -10,7 +10,7 @@ const emit = defineEmits(['close', 'missed', 'answered'])
 const { t } = useI18n()
 
 let timeoutId: any = null
-const timeoutSeconds = 60
+const timeoutSeconds = 300
 
 const selectedStatements = ref<string[]>([])
 const currentHour = ref(new Date().getHours())
