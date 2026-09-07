@@ -181,3 +181,27 @@ Se ha completado e integrado la extensión de la encuesta diaria de emociones at
 * **Despliegue:**
   * Commit y push ejecutados en `master` y `develop` de `cobien-furniture-app-launcher`.
   * Parche desplegado y verificado en la máquina virtual `CoBien7`.
+
+---
+
+## Selección Múltiple de Horas para Estado de Ánimo y Botón de Cierre (Versión 1.5.37)
+
+Se ha ampliado el sistema de encuestas de estado de ánimo según los requisitos del CIBIR y las necesidades operativas de los muebles Co-bien:
+
+### 1. Selección Múltiple de Horas
+* **Ajustes:** En [GeneralSettingsView.vue](file:///home/asier/cobien/cobien-furniture-electron/src/views/GeneralSettingsView.vue) se ha transformado el selector a multiselección con las opciones:
+  * `No preguntar` (desactiva todos los disparos)
+  * `9:00` (mañana)
+  * `14:00` (mediodía)
+  * `18:00` (tarde)
+  * `21:00` (noche)
+* **Valores por defecto:** `['09:00', '21:00']` vienen preseleccionados de fábrica para cubrir automáticamente las preguntas de mañana y noche.
+* **Persistencia IPC:** Manejador `config:saveEmotionPromptTimes` en [main.ts](file:///home/asier/cobien/cobien-furniture-electron/electron/main.ts) y expuesto en [preload.ts](file:///home/asier/cobien/cobien-furniture-electron/electron/preload.ts). Mantiene total compatibilidad retrospectiva con versiones anteriores.
+* **Supervisor Cron:** En [App.vue](file:///home/asier/cobien/cobien-furniture-electron/src/App.vue) se evalúa cada minuto el listado completo de horas configuradas, gestionando un registro por hora (`lastEmotionPromptTriggers[hour] = todayDate`) para que cada hora se dispare exactamente una vez al día sin bloquear a las demás.
+
+### 2. Botón de Cierre con Notificación Pendiente
+* En [EmotionPromptOverlay.vue](file:///home/asier/cobien/cobien-furniture-electron/src/components/EmotionPromptOverlay.vue) se ha añadido un botón de cierre táctil circular (`✕`) en la esquina superior derecha.
+* Al pulsar el botón de cerrar, se detiene el temporizador y se emite la señal `missed`. Esto genera de inmediato una tarjeta flotante en [NotificationOverlay.vue](file:///home/asier/cobien/cobien-furniture-electron/src/components/NotificationOverlay.vue) (*"Aviso de Ánimo Pendiente"*) con dos acciones:
+  * **Cerrar:** Descarta la notificación.
+  * **Abrir:** Reabre la encuesta de emociones en pantalla completa en cualquier momento que el usuario decida retomarla.
+
