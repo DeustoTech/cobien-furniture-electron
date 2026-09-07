@@ -162,8 +162,22 @@ Se ha completado e integrado la extensión de la encuesta diaria de emociones at
    * Se ha establecido la política de incremento automático de versión (`1.5.30`) y sincronización simultánea de la rama `develop` con `master`.
 5. **Verificación y Despliegue**:
    * **`CoBien1`**: Actualizado e impulsado a la versión `1.5.30` vía SSH (`systemctl --user start cobien-update.service`), verificado servicio en estado `active` y cambios reflejados en pantalla táctil.
-   * **Máquina Virtual Hyper-V (`CoBien7` / `192.168.1.48`)**: Ampliado el temporizador de cierre del modal a 5 minutos (300s) y añadido el atajo de teclado global `F8` / `Ctrl+E` para lanzar manualmente la encuesta de emociones (Versión 1.5.35).
+   * **Máquina Virtual (`CoBien7` / `192.168.122.129`)**: Ampliado el temporizador de cierre del modal a 5 minutos (300s) y añadido el atajo de teclado global `F8` / `Ctrl+E` para lanzar manualmente la encuesta de emociones (Versión 1.5.35).
 
+---
 
+## Resolución de Pantalla en Negro y Auto-Limpieza Untracked en Launcher
 
+### 1. Diagnóstico del Fallo
+* **Síntoma:** Al arrancar la máquina virtual o reiniciar el servicio supervisor, la pantalla permanecía en negro indefinidamente en Openbox.
+* **Causa Raíz:** En entornos donde se compila en local (`npm run build` o Vite), se generan artefactos no rastreados en `dist-electron/` (`contactsService-*.js`, `eventsMongo-*.js`, `icsoService-*.js`). Cuando entran nuevos commits desde el remoto que traen dichos archivos versionados, `git reset --hard` no eliminaba los archivos untracked, provocando que `git pull --ff-only` abortara con error.
+* Además, la rutina `update_repo_if_needed` no comprobaba el código de retorno del pull y retornaba `0` incondicionalmente, haciendo creer al supervisor que la actualización se había completado con éxito e induciendo un bucle infinito de reinicios cada 13 segundos.
 
+### 2. Corrección Implementada (`cobien-furniture-app-launcher`)
+* **Archivo:** [cobien-launcher.sh](file:///home/asier/cobien/cobien-furniture-app-launcher/cobien-launcher.sh)
+* **Cambios:**
+  1. Se añadió `git -C "$repo" clean -fd --quiet` tras el `git reset --hard` para purgar cualquier artefacto untracked que colisione con ramas entrantes.
+  2. Se añadió validación estricta del resultado de `git pull --ff-only`; si falla, se registra el fallo y se devuelve `1`, evitando falsos reinicios y bucles continuos.
+* **Despliegue:**
+  * Commit y push ejecutados en `master` y `develop` de `cobien-furniture-app-launcher`.
+  * Parche desplegado y verificado en la máquina virtual `CoBien7`.
