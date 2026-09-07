@@ -10,7 +10,7 @@ const wakeWordEnabled = ref(true)
 const pinEnabled = ref(true)
 const idleTimeout = ref(120) // Default: 2 minutes (120s)
 
-const emotionPromptTime = ref('none')
+const emotionPromptTimes = ref<string[]>(['09:00', '21:00'])
 
 const timeoutOptions = [
   { label: '30s', value: 30 },
@@ -21,10 +21,11 @@ const timeoutOptions = [
 ]
 
 const emotionTimeOptions = computed(() => [
-  { label: t('settings.emotion_none'), value: 'none' },
-  { label: '10:00', value: '10:00' },
+  { label: t('settings.emotion_none') || 'No preguntar', value: 'none' },
+  { label: '9:00', value: '09:00' },
   { label: '14:00', value: '14:00' },
-  { label: '18:00', value: '18:00' }
+  { label: '18:00', value: '18:00' },
+  { label: '21:00', value: '21:00' }
 ])
 
 function goBack() {
@@ -43,8 +44,14 @@ async function loadSettings() {
       localStorage.setItem('cobien_settings_pin_enabled', String(pinEnabled.value))
       localStorage.setItem('cobien_idle_timeout', String(idleTimeout.value))
     }
-    if (config && config.emotionPromptTime) {
-      emotionPromptTime.value = config.emotionPromptTime
+    if (config) {
+      if (Array.isArray(config.emotionPromptTimes)) {
+        emotionPromptTimes.value = config.emotionPromptTimes
+      } else if (config.emotionPromptTime) {
+        emotionPromptTimes.value = config.emotionPromptTime === 'none' ? [] : [config.emotionPromptTime]
+      } else {
+        emotionPromptTimes.value = ['09:00', '21:00']
+      }
     }
   } catch (e) {
     console.error('Error loading settings:', e)
@@ -79,10 +86,35 @@ async function selectTimeout(val: number) {
   window.dispatchEvent(new Event('idle-timeout-changed'))
 }
 
-async function selectEmotionTime(val: string) {
-  emotionPromptTime.value = val
-  await (window as any).config.saveEmotionPromptTime(val)
-  window.dispatchEvent(new Event('emotion-time-changed'))
+function isEmotionTimeActive(val: string): boolean {
+  if (val === 'none') {
+    return emotionPromptTimes.value.length === 0
+  }
+  return emotionPromptTimes.value.includes(val)
+}
+
+async function toggleEmotionTime(val: string) {
+  if (val === 'none') {
+    emotionPromptTimes.value = []
+  } else {
+    const idx = emotionPromptTimes.value.indexOf(val)
+    if (idx >= 0) {
+      emotionPromptTimes.value.splice(idx, 1)
+    } else {
+      emotionPromptTimes.value.push(val)
+    }
+  }
+
+  try {
+    if ((window as any).config?.saveEmotionPromptTimes) {
+      await (window as any).config.saveEmotionPromptTimes(emotionPromptTimes.value)
+    } else if ((window as any).config?.saveEmotionPromptTime) {
+      await (window as any).config.saveEmotionPromptTime(emotionPromptTimes.value.length > 0 ? emotionPromptTimes.value[0] : 'none')
+    }
+    window.dispatchEvent(new Event('emotion-time-changed'))
+  } catch (e) {
+    console.error('Error saving emotion prompt times:', e)
+  }
 }
 
 onMounted(() => {
@@ -189,8 +221,8 @@ onMounted(() => {
             v-for="opt in emotionTimeOptions"
             :key="opt.value"
             class="switch-btn"
-            :class="{ active: emotionPromptTime === opt.value }"
-            @click="selectEmotionTime(opt.value)"
+            :class="{ active: isEmotionTimeActive(opt.value) }"
+            @click="toggleEmotionTime(opt.value)"
           >
             {{ opt.label }}
           </button>

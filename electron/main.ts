@@ -276,9 +276,17 @@ function setupIPC() {
   ipcMain.handle('config:getSettings', async () => {
     try {
       const data = await readMergedConfig()
-      return data.settings || {}
+      const settings = data.settings || {}
+      if (settings.emotionPromptTimes === undefined) {
+        if (settings.emotionPromptTime !== undefined) {
+          settings.emotionPromptTimes = settings.emotionPromptTime === 'none' ? [] : [settings.emotionPromptTime]
+        } else {
+          settings.emotionPromptTimes = ['09:00', '21:00']
+        }
+      }
+      return settings
     } catch (e) {
-      return {}
+      return { emotionPromptTimes: ['09:00', '21:00'] }
     }
   })
 
@@ -302,10 +310,25 @@ function setupIPC() {
       const success = await writeConfig((data) => {
         if (!data.settings) data.settings = {}
         data.settings.emotionPromptTime = time
+        data.settings.emotionPromptTimes = time === 'none' ? [] : [time]
       })
       return success
     } catch (e) {
       console.error('Error saving emotion prompt time:', e)
+      return false
+    }
+  })
+
+  ipcMain.handle('config:saveEmotionPromptTimes', async (event, times: string[]) => {
+    try {
+      const success = await writeConfig((data) => {
+        if (!data.settings) data.settings = {}
+        data.settings.emotionPromptTimes = Array.isArray(times) ? times : []
+        data.settings.emotionPromptTime = times && times.length > 0 ? times[0] : 'none'
+      })
+      return success
+    } catch (e) {
+      console.error('Error saving emotion prompt times:', e)
       return false
     }
   })

@@ -56,6 +56,11 @@ function toggleStatement(key: string) {
   }
 }
 
+function closeOverlay() {
+  if (timeoutId) clearTimeout(timeoutId)
+  emit('missed')
+}
+
 async function answerEmotion(emotion: string) {
   if (timeoutId) clearTimeout(timeoutId)
   
@@ -82,6 +87,12 @@ async function answerEmotion(emotion: string) {
   <Teleport defer to="body">
     <div class="emotion-overlay" :class="{ active: isActive }">
       <div class="emotion-card glass-panel" :class="{ active: isActive }">
+        <button class="close-overlay-btn" @click="closeOverlay" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
         <h1 class="emotion-title">{{ t('emotions.how_are_you') || '¿Cómo te encuentras hoy?' }}</h1>
         <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
         
@@ -195,6 +206,7 @@ async function answerEmotion(emotion: string) {
 }
 
 .emotion-card {
+  position: relative;
   width: 960px;
   max-width: 95vw;
   background: white;
@@ -208,6 +220,34 @@ async function answerEmotion(emotion: string) {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+}
+
+.close-overlay-btn {
+  position: absolute;
+  top: 1.8rem;
+  right: 1.8rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.close-overlay-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.08);
+}
+
+.close-overlay-btn:active {
+  transform: scale(0.95);
 }
 
 .emotion-card.active {

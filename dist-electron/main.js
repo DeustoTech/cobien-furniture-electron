@@ -1349,9 +1349,10 @@ function Kt() {
 		}
 	}), v.handle("config:getSettings", async () => {
 		try {
-			return (await e()).settings || {};
+			let t = (await e()).settings || {};
+			return t.emotionPromptTimes === void 0 && (t.emotionPromptTime === void 0 ? t.emotionPromptTimes = ["09:00", "21:00"] : t.emotionPromptTimes = t.emotionPromptTime === "none" ? [] : [t.emotionPromptTime]), t;
 		} catch {
-			return {};
+			return { emotionPromptTimes: ["09:00", "21:00"] };
 		}
 	}), v.handle("config:saveGeneralSettings", async (e, n) => {
 		try {
@@ -1364,21 +1365,32 @@ function Kt() {
 	}), v.handle("config:saveEmotionPromptTime", async (e, n) => {
 		try {
 			return await t((e) => {
-				e.settings ||= {}, e.settings.emotionPromptTime = n;
+				e.settings ||= {}, e.settings.emotionPromptTime = n, e.settings.emotionPromptTimes = n === "none" ? [] : [n];
 			});
 		} catch (e) {
 			return console.error("Error saving emotion prompt time:", e), !1;
 		}
+	}), v.handle("config:saveEmotionPromptTimes", async (e, n) => {
+		try {
+			return await t((e) => {
+				e.settings ||= {}, e.settings.emotionPromptTimes = Array.isArray(n) ? n : [], e.settings.emotionPromptTime = n && n.length > 0 ? n[0] : "none";
+			});
+		} catch (e) {
+			return console.error("Error saving emotion prompt times:", e), !1;
+		}
 	}), v.handle("config:submitEmotion", async (e, t) => {
 		try {
-			let e = process.env.COBIEN_DEVICE_ID || "CoBienX", n = process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu";
+			let e = process.env.COBIEN_DEVICE_ID || "CoBienX", n = process.env.COBIEN_BACKEND_BASE_URL || "https://portal.co-bien.eu", r = "", i = {};
+			typeof t == "object" && t ? (r = t.emotion || "", i = t) : r = String(t);
+			let a = {
+				device_id: e,
+				emocion: r,
+				...i
+			};
 			return (await fetch(`${n}/api/emociones/api/diario/`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					device_id: e,
-					emocion: t
-				}),
+				body: JSON.stringify(a),
 				signal: AbortSignal.timeout(5e3)
 			})).ok;
 		} catch (e) {
@@ -1893,7 +1905,7 @@ function qt() {
 			contextIsolation: !0
 		}
 	}), J.setBackgroundColor("#ffffff"), J.webContents.on("render-process-gone", (e, t) => {
-		console.error(`[STABILITY] Render process gone: ${t.reason} (exitCode=${t.exitCode})`), setTimeout(() => {
+		console.error(`[STABILITY] Render process gone: ${t.reason} (exitCode=${t.exitCode})`), !(t.reason === "clean-exit" || t.reason === "killed" || t.exitCode === 0) && setTimeout(() => {
 			J && !J.isDestroyed() && (console.log("[STABILITY] Reloading window after renderer crash..."), process.env.VITE_DEV_SERVER_URL ? J.loadURL(process.env.VITE_DEV_SERVER_URL) : J.loadFile(S(q, "../dist/index.html")));
 		}, 2e3);
 	}), J.webContents.on("unresponsive", () => {
@@ -1930,7 +1942,7 @@ if (!Q) try {
 if (!Q) try {
 	(C.existsSync("/dev/dri") ? C.readdirSync("/dev/dri").filter((e) => e.startsWith("card")) : []).length === 0 && (console.log("[GPU] No DRI card devices found. Disabling hardware acceleration."), Q = !0);
 } catch {}
-Q && (_.disableHardwareAcceleration(), _.commandLine.appendSwitch("disable-gpu")), _.commandLine.appendSwitch("disable-features", "VaapiVideoDecoder,VaapiVideoEncoder"), _.commandLine.appendSwitch("password-store", "basic"), _.commandLine.appendSwitch("no-sandbox"), _.commandLine.appendSwitch("disable-gpu-sandbox");
+Q && (_.disableHardwareAcceleration(), _.commandLine.appendSwitch("disable-gpu")), _.commandLine.appendSwitch("disable-features", "VaapiVideoDecoder,VaapiVideoEncoder"), _.commandLine.appendSwitch("password-store", "basic"), _.commandLine.appendSwitch("no-sandbox"), _.commandLine.appendSwitch("disable-gpu-sandbox"), _.commandLine.appendSwitch("disable-dev-shm-usage");
 function Jt() {
 	process.stdout.on("error", () => {}), process.stderr.on("error", () => {});
 	let e = S(_.getPath("userData"), "logs");

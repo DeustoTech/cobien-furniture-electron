@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('config', {
   saveWeather: (payload: any) => ipcRenderer.invoke('config:saveWeather', payload),
   saveButtonColors: (payload: any) => ipcRenderer.invoke('config:saveButtonColors', payload),
   saveEmotionPromptTime: (time: string) => ipcRenderer.invoke('config:saveEmotionPromptTime', time),
+  saveEmotionPromptTimes: (times: string[]) => ipcRenderer.invoke('config:saveEmotionPromptTimes', times),
   submitEmotion: (emotion: any) => ipcRenderer.invoke('config:submitEmotion', emotion),
   startVoiceAssistant: () => ipcRenderer.invoke('config:startVoiceAssistant'),
   getNotifications: () => ipcRenderer.invoke('config:getNotifications'),

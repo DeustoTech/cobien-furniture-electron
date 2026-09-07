@@ -22,7 +22,7 @@ let networkInterval: any = null
 
 const showEmotionPrompt = ref(false)
 let emotionCheckInterval: any = null
-const lastEmotionPromptDate = ref('')
+const lastEmotionPromptTriggers = ref<Record<string, string>>({})
 
 const checkRealOnlineStatus = async () => {
   try {
@@ -157,30 +157,53 @@ onMounted(async () => {
       window.dispatchEvent(new Event('reopen-emotion-prompt'))
     }
   })
+  window.addEventListener('emotion-time-changed', () => {
+    checkEmotionPromptTrigger()
+  })
+
   startEmotionCron()
 })
 
-function startEmotionCron() {
-  if (emotionCheckInterval) clearInterval(emotionCheckInterval)
-  emotionCheckInterval = setInterval(async () => {
-    try {
-      const settings = await (window as any).config.getSettings()
-      if (settings && settings.emotionPromptTime && settings.emotionPromptTime !== 'none') {
-        const now = new Date()
-        const hh = String(now.getHours()).padStart(2, '0')
-        const mm = String(now.getMinutes()).padStart(2, '0')
-        const currentTime = `${hh}:${mm}`
-        const todayDate = now.toISOString().split('T')[0]
+async function checkEmotionPromptTrigger() {
+  try {
+    const settings = await (window as any).config.getSettings()
+    let configuredTimes: string[] = []
+    if (Array.isArray(settings?.emotionPromptTimes)) {
+      configuredTimes = settings.emotionPromptTimes
+    } else if (settings?.emotionPromptTime && settings.emotionPromptTime !== 'none') {
+      configuredTimes = [settings.emotionPromptTime]
+    } else if (settings?.emotionPromptTimes === undefined && settings?.emotionPromptTime === undefined) {
+      configuredTimes = ['09:00', '21:00']
+    }
 
-        if (currentTime === settings.emotionPromptTime && lastEmotionPromptDate.value !== todayDate) {
-          lastEmotionPromptDate.value = todayDate
+    if (!configuredTimes || configuredTimes.length === 0) return
+
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    const currentTime = `${hh}:${mm}`
+    const todayDate = now.toISOString().split('T')[0]
+
+    for (const timeStr of configuredTimes) {
+      if (timeStr === 'none') continue
+      const normalizedConfigTime = timeStr.padStart(5, '0')
+      if (currentTime === normalizedConfigTime) {
+        if (lastEmotionPromptTriggers.value[normalizedConfigTime] !== todayDate) {
+          lastEmotionPromptTriggers.value[normalizedConfigTime] = todayDate
           showEmotionPrompt.value = true
+          break
         }
       }
-    } catch (e) {
-      console.error('Emotion cron error:', e)
     }
-  }, 60000)
+  } catch (e) {
+    console.error('Emotion cron error:', e)
+  }
+}
+
+function startEmotionCron() {
+  if (emotionCheckInterval) clearInterval(emotionCheckInterval)
+  checkEmotionPromptTrigger()
+  emotionCheckInterval = setInterval(checkEmotionPromptTrigger, 60000)
 }
 
 function handleEmotionMissed() {
@@ -204,6 +227,10 @@ onBeforeUnmount(() => {
   if (networkInterval) {
     clearInterval(networkInterval)
     networkInterval = null
+  }
+  if (emotionCheckInterval) {
+    clearInterval(emotionCheckInterval)
+    emotionCheckInterval = null
   }
 })
 </script>
