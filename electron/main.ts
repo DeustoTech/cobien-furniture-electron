@@ -1005,9 +1005,10 @@ function setupIPC() {
       // Ignore
     }
 
+    const { settings: localSettings } = await getConfig(configPath, localConfigPath)
     return {
       version: app.getVersion(),
-      deviceId: process.env.COBIEN_DEVICE_ID || 'CoBienX',
+      deviceId: process.env.COBIEN_DEVICE_ID || localSettings.device_id || 'CoBienX',
       contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
       defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en',
       rustdeskId,
@@ -1554,6 +1555,48 @@ app.whenReady().then(() => {
     startBackendSync(mainWindow, configPath, localConfigPath)
     // Start MQTT sensor bridge (gracefully handles broker not available)
     startMqtt(mainWindow)
+
+    // Local automated verification triggers
+    const testNotifPath = '/tmp/cobien_test_notification.json'
+    const testCmdPath = '/tmp/cobien_test_cmd.json'
+    try {
+      if (fsSync.existsSync(testNotifPath)) fsSync.unlinkSync(testNotifPath)
+      fsSync.watchFile(testNotifPath, { interval: 300 }, async () => {
+        try {
+          if (fsSync.existsSync(testNotifPath)) {
+            const raw = fsSync.readFileSync(testNotifPath, 'utf8')
+            if (raw.trim()) {
+              const notif = JSON.parse(raw)
+              console.log('[TEST] Local test notification trigger:', notif)
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('backend:notification', notif)
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[TEST] Error reading test notification:', e)
+        }
+      })
+
+      if (fsSync.existsSync(testCmdPath)) fsSync.unlinkSync(testCmdPath)
+      fsSync.watchFile(testCmdPath, { interval: 300 }, async () => {
+        try {
+          if (fsSync.existsSync(testCmdPath)) {
+            const raw = fsSync.readFileSync(testCmdPath, 'utf8')
+            if (raw.trim()) {
+              const cmd = JSON.parse(raw)
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                if (cmd.action === 'eval' && cmd.script) {
+                  mainWindow.webContents.executeJavaScript(cmd.script).catch(console.error)
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[TEST] Error executing test cmd:', e)
+        }
+      })
+    } catch (e) {}
   }
 
 

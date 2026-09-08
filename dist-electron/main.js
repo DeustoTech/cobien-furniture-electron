@@ -1781,9 +1781,10 @@ function Kt() {
 				});
 			});
 		} catch {}
+		let { settings: t } = await getConfig(X, localConfigPath);
 		return {
 			version: _.getVersion(),
-			deviceId: process.env.COBIEN_DEVICE_ID || "CoBienX",
+			deviceId: process.env.COBIEN_DEVICE_ID || t.device_id || "CoBienX",
 			contactsPath: S(_.getPath("userData"), "contacts/list_contacts.txt"),
 			defaultLanguage: process.env.COBIEN_APP_LANGUAGE || "en",
 			rustdeskId: e,
@@ -2034,13 +2035,44 @@ _.whenReady().then(() => {
 	}, s = (i.backend_base_url || "https://portal.co-bien.eu").replace(/\/$/, ""), c = process.env.COBIEN_NOTIFY_API_KEY || i.notify_api_key || "", l = process.env.COBIEN_DEVICE_ID || o.device_id || "CoBienX";
 	!process.env.COBIEN_DEVICE_ID && !o.device_id && console.error("WARNING: COBIEN_DEVICE_ID not set. Using fallback \"CoBienX\". The app will start but some features may not work correctly."), p(l, c, s).catch(console.error);
 	let u = parseInt(process.env.COBIEN_CONTACTS_SYNC_INTERVAL_SEC || "300", 10);
-	u < 60 && (u = 300), u > 0 && (Yt = setInterval(() => {
+	if (u < 60 && (u = 300), u > 0 && (Yt = setInterval(() => {
 		console.log("[CONTACTS] Periodic sync started"), p(l, c, s).then(() => {
 			J && !J.isDestroyed() && J.webContents.send("contacts:updated");
 		}).catch(console.error);
 	}, u * 1e3)), qt(), $ = Xt(), Ge((e) => {
 		J && !J.isDestroyed() && J.webContents.send("reminder:fire", e);
-	}), J && (ge(J, X, e), dt(J)), _.on("activate", () => {
+	}), J) {
+		ge(J, X, e), dt(J);
+		let t = "/tmp/cobien_test_notification.json", n = "/tmp/cobien_test_cmd.json";
+		try {
+			C.existsSync(t) && C.unlinkSync(t), C.watchFile(t, { interval: 300 }, async () => {
+				try {
+					if (C.existsSync(t)) {
+						let e = C.readFileSync(t, "utf8");
+						if (e.trim()) {
+							let t = JSON.parse(e);
+							console.log("[TEST] Local test notification trigger:", t), J && !J.isDestroyed() && J.webContents.send("backend:notification", t);
+						}
+					}
+				} catch (e) {
+					console.error("[TEST] Error reading test notification:", e);
+				}
+			}), C.existsSync(n) && C.unlinkSync(n), C.watchFile(n, { interval: 300 }, async () => {
+				try {
+					if (C.existsSync(n)) {
+						let e = C.readFileSync(n, "utf8");
+						if (e.trim()) {
+							let t = JSON.parse(e);
+							J && !J.isDestroyed() && t.action === "eval" && t.script && J.webContents.executeJavaScript(t.script).catch(console.error);
+						}
+					}
+				} catch (e) {
+					console.error("[TEST] Error executing test cmd:", e);
+				}
+			});
+		} catch {}
+	}
+	_.on("activate", () => {
 		g.getAllWindows().length === 0 && qt();
 	});
 });
