@@ -42,7 +42,7 @@ try {
 
 const nextEvent = ref(t('common.no_upcoming_events'))
 const jokeText = ref('')
-const systemMeta = ref('CoBien2 · v3.2.40')
+const systemMeta = ref('')
 
 // Reminder notification
 const reminderActive = ref(false)

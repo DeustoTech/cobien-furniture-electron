@@ -1005,10 +1005,28 @@ function setupIPC() {
       // Ignore
     }
 
-    const { settings: localSettings } = await getConfig(configPath, localConfigPath)
+    let deviceId = process.env.COBIEN_DEVICE_ID || ''
+    if (!deviceId) {
+      try {
+        const localPath = _localConfigPath || join(app.getPath('userData'), 'config.local.json')
+        if (fsSync.existsSync(localPath)) {
+          const localData = JSON.parse(fsSync.readFileSync(localPath, 'utf-8'))
+          deviceId = localData.settings?.device_id || ''
+        }
+      } catch (e) {}
+    }
+    if (!deviceId) {
+      try {
+        if (fsSync.existsSync(configPath)) {
+          const defaultData = JSON.parse(fsSync.readFileSync(configPath, 'utf-8'))
+          deviceId = defaultData.settings?.device_id || ''
+        }
+      } catch (e) {}
+    }
+
     return {
       version: app.getVersion(),
-      deviceId: process.env.COBIEN_DEVICE_ID || localSettings.device_id || 'CoBienX',
+      deviceId: deviceId || 'CoBien',
       contactsPath: join(app.getPath('userData'), 'contacts/list_contacts.txt'),
       defaultLanguage: process.env.COBIEN_APP_LANGUAGE || 'en',
       rustdeskId,
