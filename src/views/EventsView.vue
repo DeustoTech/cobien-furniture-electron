@@ -21,8 +21,13 @@ const selectedEvents = computed(() => {
   const d = selectedDate.value
   const day = d.getDate().toString().padStart(2, '0')
   const month = (d.getMonth() + 1).toString().padStart(2, '0')
-  const dateStr = `${day}-${month}-${d.getFullYear()}`
-  return eventsList.value.filter(e => e.date === dateStr)
+  const dateStr1 = `${day}-${month}-${d.getFullYear()}`
+  const dateStr2 = `${d.getFullYear()}-${month}-${day}`
+  return eventsList.value.filter(e => {
+    if (!e || !e.date) return false
+    const s = String(e.date).trim()
+    return s === dateStr1 || s === dateStr2 || s.startsWith(dateStr2) || s.startsWith(dateStr1)
+  })
 })
 
 function updateClock() {
@@ -242,13 +247,18 @@ const calendarDays = computed(() => {
   // Current month
   for (let i = 1; i <= daysInMonth.value; i++) {
     const dayStr = i.toString().padStart(2, '0')
-    const dateToMatch = `${dayStr}-${monthStr}-${year}`
-    const dayEvents = eventsList.value.filter(e => e.date === dateToMatch)
+    const dateToMatch1 = `${dayStr}-${monthStr}-${year}`
+    const dateToMatch2 = `${year}-${monthStr}-${dayStr}`
+    const dayEvents = eventsList.value.filter(e => {
+      if (!e || !e.date) return false
+      const s = String(e.date).trim()
+      return s === dateToMatch1 || s === dateToMatch2 || s.startsWith(dateToMatch2) || s.startsWith(dateToMatch1)
+    })
     days.push({ 
       isOtherMonth: false, 
       isToday: isCurrentMonth && today.getDate() === i, 
       date: i, 
-      dateStr: dateToMatch, 
+      dateStr: dateToMatch1, 
       events: dayEvents 
     })
   }
