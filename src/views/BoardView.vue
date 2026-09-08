@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
+import { useBoardMessages } from '../composables/useBoardMessages'
 
 const router = useRouter()
 const { t, locale } = useI18n()
+const { refreshUnreadCount } = useBoardMessages()
 
 const messages = ref<any[]>([])
 const currentIndex = ref(0)
@@ -14,6 +16,7 @@ const loading = ref(true)
 const showReplyModal = ref(false)
 const showFullscreenImage = ref(false)
 const showDeleteConfirm = ref(false)
+let currentDeviceId = ''
 
 const currentMessage = computed(() => {
   if (messages.value.length === 0) return null
@@ -25,6 +28,10 @@ const currentTime = ref(new Date())
 let clockInterval: any = null
 
 onMounted(async () => {
+  try {
+    const sys = await (window as any).config.getSystemInfo()
+    if (sys && sys.deviceId) currentDeviceId = sys.deviceId
+  } catch(e) {}
   await loadMessages()
   clockInterval = setInterval(() => {
     currentTime.value = new Date()
@@ -63,6 +70,7 @@ async function loadMessages() {
     if (messages.value.length > 0 && messages.value[currentIndex.value]) {
       checkAndMarkRead(messages.value[currentIndex.value])
     }
+    refreshUnreadCount().catch(() => {})
   } catch (e) {
     console.error('Error loading board:', e)
   } finally {
@@ -71,11 +79,13 @@ async function loadMessages() {
 }
 
 async function checkAndMarkRead(msg: any) {
-  const deviceId = 'CoBien6' 
-  if (msg && !msg.read_by.includes(deviceId)) {
+  const deviceId = currentDeviceId || 'CoBien6' 
+  if (msg && (!msg.read_by || !msg.read_by.includes(deviceId))) {
     const ok = await (window as any).config.markMessageRead(msg.id)
     if (ok) {
+      if (!msg.read_by) msg.read_by = []
       msg.read_by.push(deviceId)
+      refreshUnreadCount().catch(() => {})
     }
   }
 }

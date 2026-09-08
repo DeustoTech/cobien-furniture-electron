@@ -47,19 +47,28 @@ function wakeUp() {
   inset: 0;
   background: black;
   z-index: 99999;
-  cursor: none;
+  cursor: pointer;
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
 }
 
 .idle-hint {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 1.2rem;
-  padding: 2rem;
-  font-weight: 300;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: clamp(2rem, 3.5vw, 3.2rem);
+  font-weight: 600;
   user-select: none;
-  text-align: right;
-  max-width: 50%;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+  animation: idleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes idleGlow {
+  0% { opacity: 0.75; transform: scale(0.99); }
+  100% { opacity: 1; transform: scale(1.01); }
 }
 </style>

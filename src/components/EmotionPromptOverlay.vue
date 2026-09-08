@@ -20,6 +20,8 @@ const isNight = computed(() => currentHour.value >= 20)
 
 watch(() => props.isActive, (newVal) => {
   if (newVal) {
+    window.dispatchEvent(new Event('user-activity'))
+    window.dispatchEvent(new CustomEvent('dismiss-all-notifications'))
     currentHour.value = new Date().getHours()
     selectedStatements.value = []
     startTimeout()
@@ -30,6 +32,8 @@ watch(() => props.isActive, (newVal) => {
 
 onMounted(() => {
   if (props.isActive) {
+    window.dispatchEvent(new Event('user-activity'))
+    window.dispatchEvent(new CustomEvent('dismiss-all-notifications'))
     currentHour.value = new Date().getHours()
     selectedStatements.value = []
     startTimeout()

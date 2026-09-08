@@ -6,10 +6,14 @@ import { useI18n } from 'vue-i18n'
 
 import VolumePopup from '../components/VolumePopup.vue'
 import BrightnessPopup from '../components/BrightnessPopup.vue'
-
+import { useMissedCalls } from '../composables/useMissedCalls'
+import { useBoardMessages } from '../composables/useBoardMessages'
 
 const router = useRouter()
 const { t, locale } = useI18n()
+const { missedCalls } = useMissedCalls()
+const { unreadBoardCount, refreshUnreadCount } = useBoardMessages()
+const todayEventsCount = ref(0)
 
 
 const currentDate = ref('')
@@ -76,6 +80,29 @@ async function refreshWeather() {
   } catch(e) {}
 }
 
+function updateTodayEvents(events: any[]) {
+  if (!Array.isArray(events)) {
+    todayEventsCount.value = 0
+    return
+  }
+  const now = new Date()
+  const d = String(now.getDate()).padStart(2, '0')
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const y = now.getFullYear()
+  const today1 = `${d}-${m}-${y}`
+  const today2 = `${y}-${m}-${d}`
+
+  todayEventsCount.value = events.filter(e => {
+    if (!e || !e.date) return false
+    const dateStr = String(e.date).trim()
+    return dateStr.includes(today1) || dateStr.includes(today2)
+  }).length
+}
+
+function handleNotificationEvent() {
+  refreshUnreadCount().catch(() => {})
+}
+
 onMounted(async () => {
   updateTime()
   timer = window.setInterval(updateTime, 1000)
@@ -88,11 +115,22 @@ onMounted(async () => {
   await refreshWeather()
   weatherTimer = window.setInterval(refreshWeather, 20 * 60 * 1000)
 
+  refreshUnreadCount().catch(() => {})
+  window.addEventListener('new-notification', handleNotificationEvent)
+
   try {
     const events = await (window as any).config.getEvents()
     if (events && events.length > 0) {
       nextEvent.value = events[0].title
     }
+    updateTodayEvents(events)
+  } catch(e) {}
+
+  try {
+    ;(window as any).config?.onEventsChanged?.(async () => {
+      const data = await (window as any).config.getEvents()
+      updateTodayEvents(data)
+    })
   } catch(e) {}
 
   try {
@@ -113,6 +151,7 @@ onMounted(async () => {
 onUnmounted(() => {
   clearInterval(timer)
   clearInterval(weatherTimer)
+  window.removeEventListener('new-notification', handleNotificationEvent)
 })
 
 function updateTime() {
@@ -221,16 +260,25 @@ async function openBrightnessPopup() {
         <button class="nav-card" @click="handleNavigation('/events')">
           <img src="/images/eventos.png" class="nav-card-icon" alt="Events" />
           <span class="nav-card-text">{{ t('home.events') }}</span>
+          <span v-if="todayEventsCount > 0" class="nav-badge">
+            {{ todayEventsCount }}
+          </span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/board')">
           <img src="/svg/pizarra.svg" class="nav-card-icon" alt="Board" />
           <span class="nav-card-text">{{ t('home.board') }}</span>
+          <span v-if="unreadBoardCount > 0" class="nav-badge">
+            {{ unreadBoardCount }}
+          </span>
         </button>
 
         <button class="nav-card" @click="handleNavigation('/call')">
           <img src="/images/videollamada.png" class="nav-card-icon" alt="Call Me" />
           <span class="nav-card-text">{{ t('home.call_me') }}</span>
+          <span v-if="missedCalls.length > 0" class="nav-badge">
+            {{ missedCalls.length }}
+          </span>
         </button>
       </div>
     </div>
@@ -476,6 +524,7 @@ async function openBrightnessPopup() {
 
 
 .nav-card {
+  position: relative;
   display: flex;
   background: white;
   border: 2.2px solid rgba(0, 0, 0, 0.35);
@@ -487,6 +536,33 @@ async function openBrightnessPopup() {
   gap: 2.5rem; /* More gap for the larger icon */
   cursor: pointer;
   transition: transform 0.15s;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  min-width: 3.6rem;
+  height: 3.6rem;
+  padding: 0 0.8rem;
+  background: #ef4444;
+  color: #ffffff;
+  border: 3.5px solid #ffffff;
+  border-radius: 9999px;
+  font-size: 1.7rem;
+  font-weight: 850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+  animation: badgePulse 2s infinite ease-in-out;
+  z-index: 10;
+}
+
+@keyframes badgePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 

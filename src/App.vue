@@ -146,6 +146,8 @@ onMounted(async () => {
   window.addEventListener('reopen-emotion-prompt', () => {
     showEmotionPrompt.value = false
     setTimeout(() => {
+      window.dispatchEvent(new Event('user-activity'))
+      window.dispatchEvent(new CustomEvent('dismiss-all-notifications'))
       showEmotionPrompt.value = true
     }, 50)
   })
@@ -190,6 +192,8 @@ async function checkEmotionPromptTrigger() {
       if (currentTime === normalizedConfigTime) {
         if (lastEmotionPromptTriggers.value[normalizedConfigTime] !== todayDate) {
           lastEmotionPromptTriggers.value[normalizedConfigTime] = todayDate
+          window.dispatchEvent(new Event('user-activity'))
+          window.dispatchEvent(new CustomEvent('dismiss-all-notifications'))
           showEmotionPrompt.value = true
           break
         }

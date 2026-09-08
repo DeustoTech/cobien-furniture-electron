@@ -3,10 +3,12 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMissedCalls } from '../composables/useMissedCalls'
+import { useBoardMessages } from '../composables/useBoardMessages'
 
 const router = useRouter()
 const { t } = useI18n()
 const { addMissedCall } = useMissedCalls()
+const { refreshUnreadCount } = useBoardMessages()
 
 interface NotificationItem {
   id: string
@@ -45,10 +47,19 @@ onMounted(async () => {
     const customEvent = e as CustomEvent
     handleIncomingNotification(customEvent.detail)
   })
+
+  window.addEventListener('dismiss-all-notifications', handleDismissAll)
 })
+
+function handleDismissAll() {
+  while (activeNotifications.value.length > 0) {
+    dismissNotification(activeNotifications.value[0].id)
+  }
+}
 
 onUnmounted(() => {
   window.removeEventListener('new-notification', () => {})
+  window.removeEventListener('dismiss-all-notifications', handleDismissAll)
   // Stop all active audios and timers on destroy
   activeNotifications.value.forEach(item => {
     if (item.audio) item.audio.pause()
@@ -69,8 +80,15 @@ function formatTime(timestamp: string): string {
 async function handleIncomingNotification(notif: any) {
   if (!notif || !notif.type) return
 
+  // Wake up screen immediately on incoming notification
+  window.dispatchEvent(new Event('user-activity'))
+
   const type = notif.type.toLowerCase()
   const sender = notif.from || notif.sender || ''
+
+  if (type === 'new_message') {
+    refreshUnreadCount().catch(() => {})
+  }
   
   // Ignore notifications from self
   const ignoredAccounts = [localDeviceId.value, 'cobien', 'CoBien']
@@ -88,21 +106,8 @@ async function handleIncomingNotification(notif: any) {
     }
   }
 
-  // Avoid duplicates
-  const isDuplicate = activeNotifications.value.some(item => {
-    if (item.type !== type) return false
-    if (type === 'videocall' && item.caller === sender) return true
-    if (type === 'new_message' && item.sender === sender) return true
-    if (type === 'new_event' && item.title === notif.title) return true
-    if (type === 'missed_call' && item.caller === sender) return true
-    if (type === 'missed_emotion') return true // only one missed emotion notification at a time
-    return false
-  })
-
-  if (isDuplicate) {
-    console.log('[NOTIF] Ignored duplicate notification')
-    return
-  }
+  // Ensure only ONE notification is displayed on screen at any time (no overlapping)
+  handleDismissAll()
 
   console.log('[NOTIF] Processing incoming notification:', notif)
 
@@ -130,9 +135,7 @@ async function handleIncomingNotification(notif: any) {
     item.date = notif.date || ''
     ringtoneFile = notifConfig?.nuevo_evento?.ringtone || 'ringtone2.mp3'
   } else if (type === 'events_reload') {
-    // Backend signals that events were updated — show a subtle new_event notification if title provided
     console.log('[NOTIF] events_reload received — reloading event list')
-    // Re-use new_event type for display so the user sees something
     item.type = 'new_event'
     item.title = notif.title || t('notification.new_event')
     item.date = notif.date || ''
@@ -140,15 +143,12 @@ async function handleIncomingNotification(notif: any) {
   } else if (type === 'missed_call') {
     item.caller = sender
     item.time = formatTime(notif.timestamp) || t('common.loading')
-    ringtoneFile = '' // Typically missed calls don't play a continuous ringtone
-    
-    // Register it globally for the Contacts view
+    ringtoneFile = ''
     addMissedCall({ author: sender, userName: sender, time: item.time })
   } else if (type === 'missed_emotion') {
     item.time = notif.time || formatTime(notif.timestamp) || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     ringtoneFile = ''
   } else {
-    // Unknown notification type
     return
   }
 
@@ -164,7 +164,6 @@ async function handleIncomingNotification(notif: any) {
       const playPromise = audio.play()
       if (playPromise !== undefined) {
         playPromise.then(() => {
-          // If dismissed before play resolved, pause it immediately!
           const exists = activeNotifications.value.some(n => n.id === item.id)
           if (!exists && audio) {
             audio.pause()
@@ -192,13 +191,9 @@ async function handleIncomingNotification(notif: any) {
     })
   }
 
-  // Auto-dismiss after 12s for non-call notifications
-  if (item.type === 'new_message' || item.type === 'new_event') {
-    item.autoDismissTimer = setTimeout(() => {
-      dismissNotification(item.id)
-    }, 12000)
-  } else if (item.type === 'videocall') {
-    // Auto-dismiss calls after 60s as a fallback in case network fails
+  // Auto-dismiss ONLY for videocall fallback timeout (60s).
+  // New messages and events stay on screen until user interacts with them.
+  if (item.type === 'videocall') {
     item.autoDismissTimer = setTimeout(() => {
       console.log(`[NOTIF] Auto-dismissing videocall from ${sender} due to 60s timeout`)
       dismissNotification(item.id)
@@ -379,16 +374,16 @@ function reopenEmotionPrompt(id: string) {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  width: min(580px, 95vw);
+  width: min(680px, 95vw);
   pointer-events: none;
 }
 
 .notification-card {
   background: white;
   border-radius: 28px;
-  padding: 2rem 2.5rem;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-  border: 1.5px solid rgba(0,0,0,0.1);
+  padding: 2.2rem 2.8rem;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+  border: 2px solid rgba(0,0,0,0.15);
   display: flex;
   gap: 2rem;
   align-items: center;
@@ -402,14 +397,14 @@ function reopenEmotionPrompt(id: string) {
 }
 
 .card-icon-wrap {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 6.2rem;
+  height: 6.2rem;
   background: #f0f0f0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.2rem;
+  font-size: 2.8rem;
   flex-shrink: 0;
 }
 
@@ -428,34 +423,36 @@ function reopenEmotionPrompt(id: string) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .title {
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 850;
   color: #111;
   margin: 0;
+  line-height: 1.2;
 }
 
 .desc {
-  font-size: 1.3rem;
+  font-size: 1.55rem;
   font-weight: 600;
-  color: #555;
+  color: #444;
   margin: 0;
+  line-height: 1.35;
 }
 
 .actions {
   display: flex;
   gap: 1.2rem;
-  margin-top: 1rem;
+  margin-top: 1.2rem;
 }
 
 .btn {
   flex: 1;
-  height: 4.4rem;
-  border-radius: 14px;
-  font-size: 1.2rem;
+  height: 4.8rem;
+  border-radius: 16px;
+  font-size: 1.4rem;
   font-weight: 800;
   cursor: pointer;
   border: none;
