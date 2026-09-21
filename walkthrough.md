@@ -205,3 +205,60 @@ Se ha ampliado el sistema de encuestas de estado de ánimo según los requisitos
   * **Cerrar:** Descarta la notificación.
   * **Abrir:** Reabre la encuesta de emociones en pantalla completa en cualquier momento que el usuario decida retomarla.
 
+---
+
+## Nuevo Flujo de Encuesta de Estado de Ánimo: 2 Preguntas Consecutivas, Puntuación (0-8) y Feedback Empático (Versión 1.5.47)
+
+Se ha rediseñado y completado el módulo de encuestas de estado de ánimo según los nuevos requerimientos del CIBIR y del proyecto Co-bien:
+
+### 1. Flujo en Pasos y Lógica de Puntuación
+* **Estructura en 3 Pasos (Wizard)**:
+  * **Paso 1**: Pregunta 1 según franja horaria.
+  * **Paso 2**: Pregunta 2 según franja horaria.
+  * **Paso 3**: Pantalla de Feed-back empático personalizado con cálculo acumulado de puntos.
+* **Opciones y Puntos**:
+  * `Excelente` = 4 pts
+  * `Bien` = 3 pts
+  * `Normal` = 2 pts
+  * `Regular` = 1 pto
+  * `Muy mal` = 0 pts
+  * `Ahora no, gracias` = 0 pts (opción secundaria para omitir sin penalización ni bloqueo).
+* **Puntuación Total**: Suma directa de las respuestas de P1 y P2 ($P_1 + P_2 \in [0, 8]$).
+
+### 2. Franja de Mañana (7-8 hrs / Amanecer)
+* **Ambientación**: Tarjeta con gradiente cálido y luminoso de amanecer (`card-morning` con tonos ámbar y dorados suaves), de máxima legibilidad para personas mayores.
+* **Pregunta 1**: *"Buenos días, ¿qué tal has dormido esta noche?"*
+* **Pregunta 2**: *"¿cómo estás de energía y ánimos para afrontar el día?"*
+* **Feed-back según Rangos**:
+  * **Rango A (0-3 pts)**: *"Entendido. Si el cuerpo o el ánimo pesan hoy, ve poco a poco. Que tengas un buen día. Acuérdate de que siempre puedes solicitar una llamada."*
+  * **Rango B (4-5 pts)**: *"Comprendido. Que tengas un buen día. Acuérdate de que siempre puedes solicitar una llamada."*
+  * **Rango C (6-8 pts)**: *"Genial. Empezar el día con buen descanso y energía es bueno. Que tengas un buen día. Acuérdate de que siempre puedes solicitar una llamada."*
+* **Acciones en Feedback**: Botón verde destacado **"Solicitar una llamada"** (redirige inmediatamente a `/call`) y botón **"Entendido"**.
+
+### 3. Franja de Noche (19-20 hrs / Atardecer)
+* **Ambientación**: Tarjeta con gradiente crepuscular oscuro y sereno (`card-night` en azul índigo/pizarra profundo con bordes luminosos y tipografía blanca contrastada).
+* **Pregunta 1**: *"Buenas noches, cuéntame, ¿qué tal ha ido el día?"*
+* **Pregunta 2**: *"Y sobre sentirnos acompañados, ¿cómo te has sentido en el día de hoy?"*
+* **Feed-back según Rangos**:
+  * **Rango A (0-3 pts)**: *"Veo que ha sido un día duro. Intenta descansar. Que tengas una buena noche."*
+  * **Rango B (4-5 pts)**: *"Entendido. Es momento de desconectar y descansar. Que tengas una buena noche."*
+  * **Rango C (6-8 pts)**: *"Genial. Parece que has tenido un buen día. Que tengas una buena noche."*
+* **Acciones en Feedback**: Botón **"Entendido"** y barra de progreso de auto-cierre tras 12 segundos.
+
+### 4. Ajustes y Configuración de Horarios
+* **Opciones en Ajustes Generales**: Actualizadas a `08:00` (7-8h), `14:00`, `20:00` (19-20h), `21:30` y `No preguntar`.
+* **Valores por defecto**: `['08:00', '20:00']`.
+
+### 5. Internacionalización y Compatibilidad Backend
+* Traducciones completas integradas en Español ([`es.json`](file:///home/asier/cobien/cobien-furniture-electron/src/i18n/locales/es.json)), Inglés ([`en.json`](file:///home/asier/cobien/cobien-furniture-electron/src/i18n/locales/en.json)) y Francés ([`fr.json`](file:///home/asier/cobien/cobien-furniture-electron/src/i18n/locales/fr.json)).
+* Envíos de telemetría a `/api/emociones/api/diario/` con mapeo de estado principal según puntuación para mantener compatibilidad con el panel web de administración de Django (`devices_admin.html`) y detalles de puntuación en el array de `statements`.
+
+### 6. Despliegue y Verificación en Producción
+* **`CoBien1` (Portátil Acer / Puerto 2222)**:
+  * Archivos sincronizados y compilados con éxito con `npm run build` (`vue-tsc -b && vite build`).
+  * Servicio `cobien-launcher.service` reiniciado y verificado en estado `active` con el nuevo código.
+* **`CoBien2` (Lenovo Yoga / Puerto 2221)**:
+  * Archivos sincronizados y compilados con éxito con `npm run build`.
+  * Servicio `cobien-launcher.service` reiniciado y verificado en estado `active` con el nuevo código.
+
+
