@@ -22,10 +22,10 @@ const timeoutOptions = [
 
 const emotionTimeOptions = computed(() => [
   { label: t('settings.emotion_none') || 'No preguntar', value: 'none' },
-  { label: '9:00', value: '09:00' },
+  { label: '08:00', value: '08:00' },
   { label: '14:00', value: '14:00' },
-  { label: '18:00', value: '18:00' },
-  { label: '21:00', value: '21:00' }
+  { label: '20:00', value: '20:00' },
+  { label: '21:30', value: '21:30' }
 ])
 
 function goBack() {
@@ -50,7 +50,7 @@ async function loadSettings() {
       } else if (config.emotionPromptTime) {
         emotionPromptTimes.value = config.emotionPromptTime === 'none' ? [] : [config.emotionPromptTime]
       } else {
-        emotionPromptTimes.value = ['09:00', '21:00']
+        emotionPromptTimes.value = ['08:00', '20:00']
       }
     }
   } catch (e) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMqtt } from './composables/useMqtt'
 import { startWakeWordDetection, stopWakeWordDetection } from './services/voiceRecognizer'
@@ -8,6 +9,8 @@ import VoiceAssistant from './components/VoiceAssistant.vue'
 import NotificationOverlay from './components/NotificationOverlay.vue'
 import IdleOverlay from './components/IdleOverlay.vue'
 import EmotionPromptOverlay from './components/EmotionPromptOverlay.vue'
+
+const router = useRouter()
 
 // Register MQTT listener at root level so it works across all screens
 useMqtt()
@@ -175,7 +178,7 @@ async function checkEmotionPromptTrigger() {
     } else if (settings?.emotionPromptTime && settings.emotionPromptTime !== 'none') {
       configuredTimes = [settings.emotionPromptTime]
     } else if (settings?.emotionPromptTimes === undefined && settings?.emotionPromptTime === undefined) {
-      configuredTimes = ['09:00', '21:00']
+      configuredTimes = ['08:00', '20:00']
     }
 
     if (!configuredTimes || configuredTimes.length === 0) return
@@ -225,6 +228,11 @@ function handleEmotionAnswered() {
   showEmotionPrompt.value = false
 }
 
+function handleRequestCall() {
+  showEmotionPrompt.value = false
+  router.push('/call')
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('online', handleOnline)
   window.removeEventListener('offline', handleOffline)
@@ -250,6 +258,7 @@ onBeforeUnmount(() => {
     :is-active="showEmotionPrompt"
     @missed="handleEmotionMissed"
     @answered="handleEmotionAnswered"
+    @request-call="handleRequestCall"
     @close="showEmotionPrompt = false"
   />
 </template>
