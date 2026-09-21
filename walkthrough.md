@@ -261,4 +261,31 @@ Se ha rediseñado y completado el módulo de encuestas de estado de ánimo segú
   * Archivos sincronizados y compilados con éxito con `npm run build`.
   * Servicio `cobien-launcher.service` reiniciado y verificado en estado `active` con el nuevo código.
 
+---
+
+## Mejoras Visuales, Transición Fluida y Temporización en la Encuesta (Versión 1.5.48)
+
+Se han incorporado las mejoras de experiencia de usuario solicitadas para el nuevo panel de emociones:
+
+### 1. Transición Fluida entre Preguntas (Animación Slide/Fade)
+* **Archivo:** [EmotionPromptOverlay.vue](file:///C:/Users/AsierM/Documents/GitHub/cobien-furniture-electron/src/components/EmotionPromptOverlay.vue)
+* **Solución:** Se implementó una `<Transition name="step-slide" mode="out-in">` con identificadores reactivos únicos `:key="step-1"`, `:key="step-2"` y `:key="step-3"`.
+* Al responder la Pregunta 1, el contenido se desliza suavemente hacia la izquierda con desvanecimiento (`translateX(-36px)` y opacidad 0) mientras la Pregunta 2 entra desde la derecha con curva de aceleración suave (`cubic-bezier(0.22, 1, 0.36, 1)`). La misma animación suave se aplica al avanzar hacia la pantalla de Feed-back.
+
+### 2. Aumento de la Pantalla de Feed-back a 30 Segundos
+* Se aumentó el temporizador de auto-cierre de 12 segundos a **30 segundos** (`feedbackSeconds = 30`).
+* La barra de progreso animada en el pie del modal y el texto indicador reflejan proporcionalmente los 30 segundos, permitiendo una lectura sosegada antes de volver a la pantalla principal.
+
+### 3. Ambientación Visual Fotográfica (Amanecer / Atardecer)
+* Se añadieron fondos de alta definición integrados en el modal:
+  * **Mañana:** Amanecer suave sobre colinas y lago (`public/images/sunrise_modal_bg.jpg`) con gradiente ámbar superpuesto.
+  * **Noche:** Atardecer crepuscular sobre costa y montañas (`public/images/sunset_modal_bg.jpg`) integrado con gradiente índigo y azul pizarra profundo.
+* Las opciones y botones cuentan con estética de cristal esmerilado (*glassmorphism*, `backdrop-filter: blur(10px)` y fondos blancos translúcidos) para asegurar máxima legibilidad y armonía visual.
+
+### 4. Despliegue en Entornos
+* **`CoBien7` (Hyper-V VM `172.20.249.65`)**: Actualizado y verificado en vivo.
+* **`CoBien1` (Puerto 2222)**: Actualizado, compilado (`npm run build`) y reiniciado el servicio `cobien-launcher.service`.
+* **`CoBien2` (Puerto 2221)**: Actualizado, compilado (`npm run build`) y reiniciado el servicio `cobien-launcher.service`.
+
+
 
