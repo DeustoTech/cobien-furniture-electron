@@ -12,7 +12,7 @@ const { t } = useI18n()
 let timeoutId: any = null
 let feedbackTimeoutId: any = null
 const timeoutSeconds = 300 // 5 minutes inactivity timeout for questions
-const feedbackSeconds = 12 // Auto-dismiss time for feedback screen
+const feedbackSeconds = 30 // 30 seconds auto-dismiss for feedback screen
 
 // Wizard Steps: 1 = Question 1, 2 = Question 2, 3 = Feedback Screen
 const step = ref<1 | 2 | 3>(1)
@@ -35,20 +35,6 @@ const feedbackRange = computed<'A' | 'B' | 'C'>(() => {
   if (score <= 3) return 'A'
   if (score <= 5) return 'B'
   return 'C'
-})
-
-const currentQuestionTitle = computed(() => {
-  if (step.value === 1) {
-    return isMorning.value
-      ? (t('emotions.morning_q1') || 'Buenos días, ¿qué tal has dormido esta noche?')
-      : (t('emotions.night_q1') || 'Buenas noches, cuéntame, ¿qué tal ha ido el día?')
-  }
-  if (step.value === 2) {
-    return isMorning.value
-      ? (t('emotions.morning_q2') || '¿Cómo estás de energía y ánimos para afrontar el día?')
-      : (t('emotions.night_q2') || 'Y sobre sentirnos acompañados, ¿cómo te has sentido en el día de hoy?')
-  }
-  return ''
 })
 
 const feedbackMessage = computed(() => {
@@ -191,7 +177,6 @@ function handleRequestCall() {
 }
 
 async function submitSurvey() {
-  // Map total score (0..8) to primary emotion label for backward compatibility with backend
   let mappedEmotion = 'Normal'
   const score = totalScore.value
   if (score <= 1) mappedEmotion = 'Muy mal'
@@ -244,7 +229,7 @@ async function submitSurvey() {
         class="emotion-card glass-panel" 
         :class="[isMorning ? 'card-morning' : 'card-night', { active: isActive }]"
       >
-        <!-- Top Close Button (Abort survey) -->
+        <!-- Top Close Button -->
         <button class="close-overlay-btn" @click="closeOverlay" aria-label="Cerrar">
           <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -252,49 +237,86 @@ async function submitSurvey() {
           </svg>
         </button>
 
-        <!-- STEPS 1 & 2: QUESTIONS -->
-        <template v-if="step === 1 || step === 2">
-          <!-- Step indicator and ambient badge -->
-          <div class="header-meta">
-            <span class="period-badge">
-              <span class="badge-icon">{{ isMorning ? '🌅' : '🌆' }}</span>
-              <span>{{ isMorning ? 'Mañana' : 'Noche' }}</span>
-            </span>
-            <span class="step-pill">
-              {{ t('emotions.step_indicator', { step: step }) || `Pregunta ${step} de 2` }}
-            </span>
+        <!-- Dynamic Transition between Steps (Slide + Fade) -->
+        <Transition name="step-slide" mode="out-in">
+          <!-- STEP 1: PREGUNTA 1 -->
+          <div v-if="step === 1" key="step-1" class="step-container">
+            <div class="header-meta">
+              <span class="period-badge">
+                <span class="badge-icon">{{ isMorning ? '🌅' : '🌆' }}</span>
+                <span>{{ isMorning ? 'Mañana' : 'Noche' }}</span>
+              </span>
+              <span class="step-pill">
+                {{ t('emotions.step_indicator', { step: 1 }) || 'Pregunta 1 de 2' }}
+              </span>
+            </div>
+
+            <h1 class="emotion-title">
+              {{ isMorning ? (t('emotions.morning_q1') || 'Buenos días, ¿qué tal has dormido esta noche?') : (t('emotions.night_q1') || 'Buenas noches, cuéntame, ¿qué tal ha ido el día?') }}
+            </h1>
+            <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
+
+            <div class="emotion-buttons">
+              <button 
+                v-for="opt in emotionOptions"
+                :key="opt.key"
+                class="emotion-btn" 
+                :class="opt.cssClass" 
+                @click="handleSelectAnswer(opt)"
+              >
+                <span class="emoji">{{ opt.emoji }}</span>
+                <span class="label">{{ t(opt.labelKey) || opt.defaultLabel }}</span>
+              </button>
+            </div>
+
+            <div class="skip-container">
+              <button class="skip-btn" @click="handleSkipAnswer">
+                <span class="skip-icon">⏭️</span>
+                <span>{{ t('emotions.not_now') || 'Ahora no, gracias' }}</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Question Title -->
-          <h1 class="emotion-title">{{ currentQuestionTitle }}</h1>
-          <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
+          <!-- STEP 2: PREGUNTA 2 -->
+          <div v-else-if="step === 2" key="step-2" class="step-container">
+            <div class="header-meta">
+              <span class="period-badge">
+                <span class="badge-icon">{{ isMorning ? '🌅' : '🌆' }}</span>
+                <span>{{ isMorning ? 'Mañana' : 'Noche' }}</span>
+              </span>
+              <span class="step-pill">
+                {{ t('emotions.step_indicator', { step: 2 }) || 'Pregunta 2 de 2' }}
+              </span>
+            </div>
 
-          <!-- 5 Emotion Response Buttons -->
-          <div class="emotion-buttons">
-            <button 
-              v-for="opt in emotionOptions"
-              :key="opt.key"
-              class="emotion-btn" 
-              :class="opt.cssClass" 
-              @click="handleSelectAnswer(opt)"
-            >
-              <span class="emoji">{{ opt.emoji }}</span>
-              <span class="label">{{ t(opt.labelKey) || opt.defaultLabel }}</span>
-            </button>
+            <h1 class="emotion-title">
+              {{ isMorning ? (t('emotions.morning_q2') || '¿Cómo estás de energía y ánimos para afrontar el día?') : (t('emotions.night_q2') || 'Y sobre sentirnos acompañados, ¿cómo te has sentido en el día de hoy?') }}
+            </h1>
+            <p class="emotion-subtitle">{{ t('emotions.select_option') || 'Por favor, selecciona una opción:' }}</p>
+
+            <div class="emotion-buttons">
+              <button 
+                v-for="opt in emotionOptions"
+                :key="opt.key"
+                class="emotion-btn" 
+                :class="opt.cssClass" 
+                @click="handleSelectAnswer(opt)"
+              >
+                <span class="emoji">{{ opt.emoji }}</span>
+                <span class="label">{{ t(opt.labelKey) || opt.defaultLabel }}</span>
+              </button>
+            </div>
+
+            <div class="skip-container">
+              <button class="skip-btn" @click="handleSkipAnswer">
+                <span class="skip-icon">⏭️</span>
+                <span>{{ t('emotions.not_now') || 'Ahora no, gracias' }}</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Bottom Option: "Ahora no, gracias" -->
-          <div class="skip-container">
-            <button class="skip-btn" @click="handleSkipAnswer">
-              <span class="skip-icon">⏭️</span>
-              <span>{{ t('emotions.not_now') || 'Ahora no, gracias' }}</span>
-            </button>
-          </div>
-        </template>
-
-        <!-- STEP 3: FEED-BACK SCREEN -->
-        <template v-else-if="step === 3">
-          <div class="feedback-container">
+          <!-- STEP 3: FEED-BACK SCREEN (30s DURATION) -->
+          <div v-else-if="step === 3" key="step-3" class="step-container feedback-container">
             <div class="feedback-icon-wrapper">
               <span class="feedback-icon">{{ feedbackIcon }}</span>
             </div>
@@ -322,12 +344,12 @@ async function submitSurvey() {
               </button>
             </div>
 
-            <!-- Auto-dismiss countdown line -->
+            <!-- Auto-dismiss countdown bar (30 seconds) -->
             <div class="feedback-timer-bar">
               <div class="timer-fill" :style="{ width: `${feedbackProgress}%` }"></div>
             </div>
           </div>
-        </template>
+        </Transition>
       </div>
     </div>
   </Teleport>
@@ -348,7 +370,7 @@ async function submitSurvey() {
 }
 
 .emotion-overlay.active {
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(14px);
   pointer-events: all;
 }
@@ -360,14 +382,13 @@ async function submitSurvey() {
   max-width: 95vw;
   border-radius: 40px;
   padding: 3rem 2.5rem;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6);
   transform: translateY(50px) scale(0.92);
   opacity: 0;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.4rem;
   overflow: hidden;
 }
 
@@ -376,12 +397,15 @@ async function submitSurvey() {
   opacity: 1;
 }
 
-/* 🌅 MAÑANA: Amanecer claro y luminoso */
+/* 🌅 MAÑANA: Fondo Amanecer fotográfico integrado con cristal glaseado */
 .card-morning {
-  background: linear-gradient(145deg, #fffbf0 0%, #fff7ed 45%, #fef3c7 100%);
-  border: 3px solid rgba(251, 191, 36, 0.6);
-  box-shadow: 0 35px 90px rgba(217, 119, 6, 0.25), 0 0 40px rgba(253, 230, 138, 0.5);
-  color: #1e293b;
+  background: 
+    linear-gradient(180deg, rgba(255, 251, 240, 0.86) 0%, rgba(254, 243, 199, 0.90) 100%),
+    url('/images/sunrise_modal_bg.jpg') center/cover no-repeat;
+  border: 3px solid rgba(251, 191, 36, 0.65);
+  box-shadow: 0 35px 90px rgba(217, 119, 6, 0.3), 0 0 50px rgba(253, 230, 138, 0.55);
+  color: #0f172a;
+  backdrop-filter: blur(16px);
 }
 
 .card-morning .emotion-title {
@@ -389,15 +413,19 @@ async function submitSurvey() {
 }
 
 .card-morning .emotion-subtitle {
-  color: #475569;
+  color: #334155;
+  font-weight: 600;
 }
 
-/* 🌆 NOCHE: Atardecer oscuro y sereno */
+/* 🌆 NOCHE: Fondo Atardecer/Crepúsculo integrado con cristal oscuro */
 .card-night {
-  background: linear-gradient(155deg, #1e1b4b 0%, #172554 45%, #0f172a 100%);
-  border: 3px solid rgba(129, 140, 248, 0.4);
-  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.7), 0 0 50px rgba(99, 102, 241, 0.25);
+  background: 
+    linear-gradient(180deg, rgba(15, 23, 42, 0.80) 0%, rgba(30, 27, 75, 0.85) 100%),
+    url('/images/sunset_modal_bg.jpg') center/cover no-repeat;
+  border: 3px solid rgba(129, 140, 248, 0.45);
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.8), 0 0 50px rgba(99, 102, 241, 0.3);
   color: #f8fafc;
+  backdrop-filter: blur(16px);
 }
 
 .card-night .emotion-title {
@@ -417,23 +445,53 @@ async function submitSurvey() {
   height: 52px;
   border-radius: 50%;
   border: none;
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.3);
   color: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 10;
+  z-index: 20;
+  backdrop-filter: blur(8px);
 }
 
 .close-overlay-btn:hover {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.5);
   transform: scale(1.08);
 }
 
 .close-overlay-btn:active {
   transform: scale(0.95);
+}
+
+/* Step Container & Transitions */
+.step-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.35rem;
+  will-change: transform, opacity;
+}
+
+/* Slide + Fade Animation */
+.step-slide-enter-active {
+  transition: opacity 0.34s cubic-bezier(0.16, 1, 0.3, 1), transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.step-slide-leave-active {
+  transition: opacity 0.22s cubic-bezier(0.7, 0, 0.84, 0), transform 0.22s cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.step-slide-enter-from {
+  opacity: 0;
+  transform: translateX(45px) scale(0.98);
+}
+
+.step-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-45px) scale(0.98);
 }
 
 /* Header Meta */
@@ -453,16 +511,17 @@ async function submitSurvey() {
   letter-spacing: 0.05em;
   padding: 0.4rem 1.1rem;
   border-radius: 30px;
+  backdrop-filter: blur(8px);
 }
 
 .card-morning .period-badge {
-  background: #fef08a;
+  background: rgba(254, 240, 138, 0.9);
   color: #854d0e;
   border: 1.5px solid #facc15;
 }
 
 .card-night .period-badge {
-  background: #312e81;
+  background: rgba(49, 46, 129, 0.85);
   color: #c7d2fe;
   border: 1.5px solid #6366f1;
 }
@@ -472,8 +531,9 @@ async function submitSurvey() {
   font-weight: 700;
   padding: 0.4rem 1.2rem;
   border-radius: 30px;
-  background: rgba(100, 116, 139, 0.15);
+  background: rgba(100, 116, 139, 0.25);
   color: inherit;
+  backdrop-filter: blur(8px);
 }
 
 /* Titles */
@@ -484,6 +544,11 @@ async function submitSurvey() {
   text-align: center;
   line-height: 1.25;
   max-width: 90%;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+.card-night .emotion-title {
+  text-shadow: 0 2px 14px rgba(0,0,0,0.6);
 }
 
 .emotion-subtitle {
@@ -513,15 +578,16 @@ async function submitSurvey() {
   border: 4px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
 }
 
 .card-morning .emotion-btn {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .card-night .emotion-btn {
-  background: rgba(30, 41, 59, 0.85);
+  background: rgba(23, 23, 45, 0.82);
 }
 
 .emotion-btn:active {
@@ -570,35 +636,35 @@ async function submitSurvey() {
 }
 
 .card-morning .emotion-btn.excellent:hover {
-  background: #dcfce7;
+  background: rgba(220, 252, 231, 0.95);
 }
 .card-morning .emotion-btn.good:hover {
-  background: #ecfccb;
+  background: rgba(236, 252, 203, 0.95);
 }
 .card-morning .emotion-btn.average:hover {
-  background: #fef08a;
+  background: rgba(254, 240, 138, 0.95);
 }
 .card-morning .emotion-btn.poor:hover {
-  background: #ffedd5;
+  background: rgba(255, 237, 213, 0.95);
 }
 .card-morning .emotion-btn.bad:hover {
-  background: #fee2e2;
+  background: rgba(254, 226, 226, 0.95);
 }
 
 .card-night .emotion-btn.excellent:hover {
-  background: rgba(22, 163, 74, 0.3);
+  background: rgba(22, 163, 74, 0.35);
 }
 .card-night .emotion-btn.good:hover {
-  background: rgba(101, 163, 13, 0.3);
+  background: rgba(101, 163, 13, 0.35);
 }
 .card-night .emotion-btn.average:hover {
-  background: rgba(202, 138, 4, 0.3);
+  background: rgba(202, 138, 4, 0.35);
 }
 .card-night .emotion-btn.poor:hover {
-  background: rgba(234, 88, 12, 0.3);
+  background: rgba(234, 88, 12, 0.35);
 }
 .card-night .emotion-btn.bad:hover {
-  background: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.35);
 }
 
 /* Skip / "Ahora no, gracias" button */
@@ -620,14 +686,13 @@ async function submitSurvey() {
   cursor: pointer;
   transition: all 0.2s ease;
   border: 2px dashed rgba(148, 163, 184, 0.6);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.2);
   color: inherit;
-  opacity: 0.85;
+  backdrop-filter: blur(8px);
 }
 
 .skip-btn:hover {
-  opacity: 1;
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(148, 163, 184, 0.3);
   transform: scale(1.03);
 }
 
@@ -641,13 +706,9 @@ async function submitSurvey() {
 
 /* STEP 3: FEEDBACK CONTAINER */
 .feedback-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.6rem;
   padding: 1rem 0;
   text-align: center;
+  gap: 1.6rem;
 }
 
 .feedback-icon-wrapper {
@@ -679,15 +740,16 @@ async function submitSurvey() {
   letter-spacing: 0.06em;
   padding: 0.45rem 1.4rem;
   border-radius: 30px;
+  backdrop-filter: blur(8px);
 }
 
 .card-morning .range-badge {
-  background: #fed7aa;
+  background: rgba(254, 215, 170, 0.92);
   color: #9a3412;
 }
 
 .card-night .range-badge {
-  background: #3730a3;
+  background: rgba(55, 48, 163, 0.9);
   color: #e0e7ff;
 }
 
@@ -697,6 +759,7 @@ async function submitSurvey() {
   line-height: 1.4;
   margin: 0;
   max-width: 92%;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
 
 .card-morning .feedback-text {
@@ -705,6 +768,7 @@ async function submitSurvey() {
 
 .card-night .feedback-text {
   color: #ffffff;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.7);
 }
 
 .feedback-actions {
@@ -726,7 +790,7 @@ async function submitSurvey() {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 
 .action-btn:active {
@@ -755,12 +819,12 @@ async function submitSurvey() {
   box-shadow: 0 15px 35px rgba(37, 99, 235, 0.4);
 }
 
-/* Countdown bar */
+/* Countdown bar (30s) */
 .feedback-timer-bar {
-  width: 320px;
+  width: 360px;
   max-width: 80%;
   height: 6px;
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 4px;
   overflow: hidden;
   margin-top: 0.5rem;
@@ -768,7 +832,6 @@ async function submitSurvey() {
 
 .timer-fill {
   height: 100%;
-  background: #2563eb;
   transition: width 0.1s linear;
 }
 
