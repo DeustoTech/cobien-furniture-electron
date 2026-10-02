@@ -64,11 +64,11 @@ const feedbackIcon = computed(() => {
 })
 
 const emotionOptions = [
-  { key: 'Excelente', emoji: '😄', labelKey: 'emotions.excellent', defaultLabel: 'Excelente', score: 4, cssClass: 'excellent' },
-  { key: 'Bien', emoji: '🙂', labelKey: 'emotions.good', defaultLabel: 'Bien', score: 3, cssClass: 'good' },
-  { key: 'Normal', emoji: '😐', labelKey: 'emotions.normal', defaultLabel: 'Normal', score: 2, cssClass: 'average' },
+  { key: 'Muy mal', emoji: '😢', labelKey: 'emotions.bad', defaultLabel: 'Muy mal', score: 0, cssClass: 'bad' },
   { key: 'Regular', emoji: '🙁', labelKey: 'emotions.poor', defaultLabel: 'Regular', score: 1, cssClass: 'poor' },
-  { key: 'Muy mal', emoji: '😢', labelKey: 'emotions.bad', defaultLabel: 'Muy mal', score: 0, cssClass: 'bad' }
+  { key: 'Normal', emoji: '😐', labelKey: 'emotions.normal', defaultLabel: 'Normal', score: 2, cssClass: 'average' },
+  { key: 'Bien', emoji: '🙂', labelKey: 'emotions.good', defaultLabel: 'Bien', score: 3, cssClass: 'good' },
+  { key: 'Excelente', emoji: '😄', labelKey: 'emotions.excellent', defaultLabel: 'Excelente', score: 4, cssClass: 'excellent' }
 ]
 
 function resetSurvey() {

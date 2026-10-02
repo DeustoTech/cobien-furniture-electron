@@ -287,5 +287,22 @@ Se han incorporado las mejoras de experiencia de usuario solicitadas para el nue
 * **`CoBien1` (Puerto 2222)**: Actualizado, compilado (`npm run build`) y reiniciado el servicio `cobien-launcher.service`.
 * **`CoBien2` (Puerto 2221)**: Actualizado, compilado (`npm run build`) y reiniciado el servicio `cobien-launcher.service`.
 
+---
+
+## Reordenación de Iconos de Estado de Ánimo: De Peor a Mejor / In Crescendo (Versión 1.5.49)
+
+Atendiendo a los comentarios de la reunión de seguimiento sobre el módulo de estado de ánimo, se ha ajustado la disposición de las opciones en la encuesta de dos preguntas:
+
+### 1. Corrección del Orden de Iconos (Izquierda a Derecha)
+* **Archivo modificado:** [EmotionPromptOverlay.vue](file:///c:/Users/Asier/Documents/GitHub/cobien-furniture-electron/src/components/EmotionPromptOverlay.vue)
+* **Cambio:** Se ha invertido el orden del listado horizontal de opciones para que se presenten en progresión *in crescendo* de peor a mejor:
+  1. 😢 **Muy mal** (0 pts)
+  2. 🙁 **Regular** (1 pto)
+  3. 😐 **Normal** (2 pts)
+  4. 🙂 **Bien** (3 pts)
+  5. 😄 **Excelente** (4 pts)
+* **Impacto:** Facilita una lectura intuitiva de la escala de bienestar emocional de izquierda a derecha sin alterar las ponderaciones, la lógica de cálculo de rangos A/B/C ni el envío de telemetría al backend.
+
+
 
 
