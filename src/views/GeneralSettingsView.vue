@@ -8,12 +8,13 @@ const { t } = useI18n()
 
 const wakeWordEnabled = ref(true)
 const pinEnabled = ref(true)
-const idleTimeout = ref(120) // Default: 2 minutes (120s)
+const idleTimeout = ref(60) // Default: 1 minute (60s)
 
-const emotionPromptTimes = ref<string[]>(['09:00', '21:00'])
+const emotionPromptTimes = ref<string[]>(['08:00', '20:00'])
 
 const timeoutOptions = [
   { label: '30s', value: 30 },
+  { label: '1 min', value: 60 },
   { label: '2 min', value: 120 },
   { label: '5 min', value: 300 },
   { label: '30 min', value: 1800 },

@@ -281,12 +281,12 @@ function setupIPC() {
         if (settings.emotionPromptTime !== undefined) {
           settings.emotionPromptTimes = settings.emotionPromptTime === 'none' ? [] : [settings.emotionPromptTime]
         } else {
-          settings.emotionPromptTimes = ['09:00', '21:00']
+          settings.emotionPromptTimes = ['08:00', '20:00']
         }
       }
       return settings
     } catch (e) {
-      return { emotionPromptTimes: ['09:00', '21:00'] }
+      return { emotionPromptTimes: ['08:00', '20:00'] }
     }
   })
 

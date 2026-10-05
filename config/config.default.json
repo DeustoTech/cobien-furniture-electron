@@ -25,6 +25,10 @@
         "device_location": "Bilbao",
         "joke_category": "general",
         "idle_timeout_sec": 60,
+        "emotionPromptTimes": [
+            "08:00",
+            "20:00"
+        ],
         "solitaire_enabled": false,
         "chess_enabled": false,
         "disable_gpu": false,

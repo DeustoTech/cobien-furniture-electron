@@ -303,6 +303,21 @@ Atendiendo a los comentarios de la reunión de seguimiento sobre el módulo de e
   5. 😄 **Excelente** (4 pts)
 * **Impacto:** Facilita una lectura intuitiva de la escala de bienestar emocional de izquierda a derecha sin alterar las ponderaciones, la lógica de cálculo de rangos A/B/C ni el envío de telemetría al backend.
 
+---
+
+## Corrección de Opciones y Sincronización en Ajustes Generales (Versión 1.5.50)
+
+Se ha solucionado la discrepancia entre los valores por defecto del sistema y las opciones seleccionables en la interfaz gráfica de usuario (`GeneralSettingsView.vue`):
+
+### 1. Opción de 1 Minuto para Apagado de Pantalla
+* **Problema:** La configuración por defecto del sistema (`idle_timeout_sec: 60`) no existía entre los botones de la interfaz (que solo ofrecían `30s`, `2 min`, `5 min`, `30 min`, `Never`), provocando que ningún botón apareciese marcado/activo.
+* **Solución:** Se añadió la píldora `{ label: '1 min', value: 60 }` a `timeoutOptions` en [GeneralSettingsView.vue](file:///C:/Users/AsierM/Documents/GitHub/cobien-furniture-electron/src/views/GeneralSettingsView.vue), quedando la opción seleccionada y visualmente resaltada.
+
+### 2. Sincronización de Horas de Estado de Ánimo (08:00 y 20:00)
+* **Problema:** En el backend de Electron ([main.ts](file:///C:/Users/AsierM/Documents/GitHub/cobien-furniture-electron/electron/main.ts)), el fallback al no existir configuración previa devolvía las antiguas horas `['09:00', '21:00']`. Como la interfaz ofrecía `08:00`, `14:00`, `20:00`, `21:30`, ninguna de las opciones coincidía y la interfaz se mostraba vacía sin ninguna hora marcada.
+* **Solución:** Se actualizó el valor por defecto tanto en `main.ts`, en `config.default.json` como en `GeneralSettingsView.vue` a `['08:00', '20:00']`. Ahora los botones `08:00` y `20:00` se muestran seleccionados y activos desde el primer arranque.
+
+
 
 
 
