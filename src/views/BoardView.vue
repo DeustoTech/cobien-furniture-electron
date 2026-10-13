@@ -393,6 +393,7 @@ function goBack() {
 /* Board Wrapper & Navigation */
 .board-wrapper {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -428,6 +429,7 @@ function goBack() {
 .main-card {
   flex: 1;
   height: 100%;
+  min-height: 0;
   background: white;
   border-radius: 20px;
   overflow: hidden;
@@ -445,18 +447,26 @@ function goBack() {
 .card-layout {
   display: flex;
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 
 /* Left Content Side */
 .content-side {
   width: 45%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   padding: 2.5rem;
   display: flex;
   flex-direction: column;
   border-right: 1px solid rgba(0,0,0,0.05);
+  box-sizing: border-box;
 }
 
 .message-sender {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 1.2rem;
@@ -499,6 +509,7 @@ function goBack() {
 
 .message-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 1rem;
 }
@@ -511,7 +522,8 @@ function goBack() {
 }
 
 .message-actions {
-  margin-top: 2rem;
+  flex-shrink: 0;
+  margin-top: 1.5rem;
 }
 
 .reply-trigger-btn {
@@ -546,6 +558,10 @@ function goBack() {
 /* Right Image Side */
 .image-side {
   flex: 1;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  min-width: 0;
   background: #fcfcfc;
   display: flex;
   align-items: center;
@@ -555,12 +571,14 @@ function goBack() {
   cursor: zoom-in;
 }
 
-
 .full-img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   padding: 1rem;
+  box-sizing: border-box;
 }
 
 .no-img-placeholder {
