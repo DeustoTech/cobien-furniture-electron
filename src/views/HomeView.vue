@@ -172,7 +172,7 @@ function handleNavigation(route: string) {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new Event('start-voice-assistant'))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
 }
 
 

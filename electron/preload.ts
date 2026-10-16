@@ -73,7 +73,7 @@ contextBridge.exposeInMainWorld('config', {
   isOnline: () => ipcRenderer.invoke('network:is-online'),
   measureNetworkSpeed: () => ipcRenderer.invoke('config:measureNetworkSpeed'),
   reportRoute: (routeName: string, source?: string) => ipcRenderer.invoke('app:route-changed', routeName, source),
-  logVocalAssistant: (target: string, recognized: string) => ipcRenderer.invoke('icso:logVocalAssistant', target, recognized),
+  logVocalAssistant: (target: string, recognized: string, triggerSource?: string) => ipcRenderer.invoke('icso:logVocalAssistant', target, recognized, triggerSource),
   logScreenWakeup: () => ipcRenderer.invoke('icso:logScreenWakeup'),
   restartApp: () => ipcRenderer.invoke('app:restart'),
   rebootSystem: () => ipcRenderer.invoke('app:reboot-system'),

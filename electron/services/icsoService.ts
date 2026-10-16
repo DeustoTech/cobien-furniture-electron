@@ -23,6 +23,11 @@ export interface IcsoState {
     vocal_assistant: number
     rfid_cards: number
   }
+  vocal_assistant_activations: {
+    wakeword: number
+    boton_tactil: number
+    interfaz_grafica: number
+  }
   imu: {
     state: string
     movements: number
@@ -48,6 +53,7 @@ export interface IcsoState {
 const DEFAULT_STATE: IcsoState = {
   page_views: { weather: 0, events: 0, day_events: 0, contacts: 0, board: 0 },
   navigation_inputs: { touchscreen: 0, home_button: 0, vocal_assistant: 0, rfid_cards: 0 },
+  vocal_assistant_activations: { wakeword: 0, boton_tactil: 0, interfaz_grafica: 0 },
   imu: { state: 'idle', movements: 0 },
   video_calls: { call_requests: 0, calls_made: 0, last_duration_sec: 0, total_duration_sec: 0 },
   board: { received_photos: 0 },
@@ -100,6 +106,7 @@ function loadState(): IcsoState {
     return {
       page_views: { ...DEFAULT_STATE.page_views, ...parsed.page_views },
       navigation_inputs: { ...DEFAULT_STATE.navigation_inputs, ...parsed.navigation_inputs },
+      vocal_assistant_activations: { ...DEFAULT_STATE.vocal_assistant_activations, ...parsed.vocal_assistant_activations },
       imu: { ...DEFAULT_STATE.imu, ...parsed.imu },
       video_calls: { ...DEFAULT_STATE.video_calls, ...parsed.video_calls },
       board: { ...DEFAULT_STATE.board, ...parsed.board },
@@ -149,7 +156,7 @@ function ensureLogSizeLimit(filePath: string, maxSizeBytes = 5 * 1024 * 1024) {
   }
 }
 
-export function writeTxtLog(source: string, target?: string, recognized?: string) {
+export function writeTxtLog(source: string, target?: string, recognized?: string, triggerSource?: string) {
   ensureLogsDir()
   const now = getFormattedTime()
   const labelMap: Record<string, string> = {
@@ -181,7 +188,29 @@ export function writeTxtLog(source: string, target?: string, recognized?: string
   }
 
   if (sourceStr === 'vocal_assistant' && (!finalTarget || finalTarget === 'assistant_triggered')) {
-    line = `[${now}] ACTIVATION VOCAL ASSISTANT`
+    let trigger = 'interfaz_grafica'
+    if (triggerSource === 'wakeword' || triggerSource === 'wake_word') {
+      trigger = 'wakeword'
+    } else if (triggerSource === 'boton_tactil' || triggerSource === 'tactile_button' || triggerSource === 'physical_button') {
+      trigger = 'boton_tactil'
+    } else if (triggerSource === 'interfaz_grafica' || triggerSource === 'gui' || triggerSource === 'touchscreen') {
+      trigger = 'interfaz_grafica'
+    }
+
+    line = `[${now}] ACTIVATION VOCAL ASSISTANT (${trigger})`
+
+    try {
+      const state = loadState()
+      if (!state.vocal_assistant_activations) {
+        state.vocal_assistant_activations = { wakeword: 0, boton_tactil: 0, interfaz_grafica: 0 }
+      }
+      if ((state.vocal_assistant_activations as any)[trigger] !== undefined) {
+        (state.vocal_assistant_activations as any)[trigger]++
+        saveState(state)
+      }
+    } catch (e) {
+      console.error('[ICSO] Failed to track vocal assistant activation in state:', e)
+    }
   } else if (sourceStr === 'vocal_assistant' && finalTarget) {
     const recog = (recognized || '').trim()
     line = recog 

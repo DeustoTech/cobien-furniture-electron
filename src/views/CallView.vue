@@ -121,7 +121,7 @@ function dismissStatus() {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
 }
 
 const isDown = ref(false)

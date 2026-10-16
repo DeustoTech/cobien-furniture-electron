@@ -1046,9 +1046,9 @@ function setupIPC() {
     return kbps
   })
 
-  ipcMain.handle('icso:logVocalAssistant', (_, target: string, recognized: string) => {
+  ipcMain.handle('icso:logVocalAssistant', (_, target: string, recognized: string, triggerSource?: string) => {
     try {
-      writeTxtLog('vocal_assistant', target, recognized)
+      writeTxtLog('vocal_assistant', target, recognized, triggerSource)
       return true
     } catch (e) {
       console.error('[MAIN] Failed to log vocal assistant action:', e)
@@ -1152,7 +1152,7 @@ function setupIPC() {
     }
   })
 
-  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'male', engine = 'piper') => {
+  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'female', engine = 'piper') => {
     console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`)
 
     if (currentTtsProcess) {

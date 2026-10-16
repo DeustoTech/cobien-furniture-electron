@@ -29,7 +29,7 @@ export function useVoiceAssistant() {
     try {
       const lang = locale.value as string
       const engine = ttsEngine.value
-      const gender = voiceGenders.value[lang] || 'male'
+      const gender = voiceGenders.value[lang] || 'female'
       const buffer = await (window as any).config.ttsSpeak(text, lang, gender, engine)
 
 
@@ -78,12 +78,12 @@ export function useVoiceAssistant() {
   }
 
 
-  async function startAssistant() {
+  async function startAssistant(triggerSource: string = 'interfaz_grafica') {
     if (isActive.value) return
     isActive.value = true
 
     if ((window as any).config && (window as any).config.logVocalAssistant) {
-      (window as any).config.logVocalAssistant('assistant_triggered', '')
+      (window as any).config.logVocalAssistant('assistant_triggered', '', triggerSource)
     }
     
     const g = (tm as any)('assistant.greetings')
@@ -121,7 +121,7 @@ export function useVoiceAssistant() {
         startWakeWordDetection(locale.value, () => {
           console.log('[WAKE] UI Triggered by voice')
           window.dispatchEvent(new Event('wake-word-detected'))
-          startAssistant()
+          startAssistant('wakeword')
         })
       } catch(e) {}
       return
@@ -159,7 +159,7 @@ export function useVoiceAssistant() {
         startWakeWordDetection(locale.value, () => {
           console.log('[WAKE] UI Triggered by voice')
           window.dispatchEvent(new Event('wake-word-detected'))
-          startAssistant()
+          startAssistant('wakeword')
         })
       } catch(e) {}
       return
@@ -218,7 +218,7 @@ export function useVoiceAssistant() {
       startWakeWordDetection(locale.value, () => {
         console.log('[WAKE] UI Triggered by voice')
         window.dispatchEvent(new Event('wake-word-detected'))
-        startAssistant()
+        startAssistant('wakeword')
       })
     } catch(e) {}
   }
@@ -236,7 +236,7 @@ export function useVoiceAssistant() {
         startWakeWordDetection(locale.value, () => {
           console.log('[WAKE] UI Triggered by voice')
           window.dispatchEvent(new Event('wake-word-detected'))
-          startAssistant()
+          startAssistant('wakeword')
         })
       }, 500)
     } catch(e) {

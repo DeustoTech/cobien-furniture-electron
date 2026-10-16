@@ -317,7 +317,21 @@ Se ha solucionado la discrepancia entre los valores por defecto del sistema y la
 * **Problema:** En el backend de Electron ([main.ts](file:///C:/Users/AsierM/Documents/GitHub/cobien-furniture-electron/electron/main.ts)), el fallback al no existir configuración previa devolvía las antiguas horas `['09:00', '21:00']`. Como la interfaz ofrecía `08:00`, `14:00`, `20:00`, `21:30`, ninguna de las opciones coincidía y la interfaz se mostraba vacía sin ninguna hora marcada.
 * **Solución:** Se actualizó el valor por defecto tanto en `main.ts`, en `config.default.json` como en `GeneralSettingsView.vue` a `['08:00', '20:00']`. Ahora los botones `08:00` y `20:00` se muestran seleccionados y activos desde el primer arranque.
 
+---
 
+## Trazabilidad de Activación del Asistente Vocal en Logs ICSO y Estandarización de Voz Femenina (Versión 1.5.52)
 
+En respuesta a la solicitud de evaluación de interacciones de Simona y al documento de defectos de CoBien:
 
+### 1. Discriminación del Método de Activación en ICSO
+* **Objetivo:** Identificar con precisión en el fichero `icso_log.txt` y en la telemetría cómo se activó el asistente de voz en cada interacción (palabra clave de activación, botón táctil físico o interfaz gráfica).
+* **Formatos registrados en `icso_log.txt`:**
+  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (wakeword)`: Activación mediante la palabra de activación por voz ("Co-bien").
+  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (boton_tactil)`: Activación mediante la pulsación del botón capacitivo físico de hardware (PIC 2 vía MQTT `sensors/update`).
+  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (interfaz_grafica)`: Activación mediante el botón de micrófono en la pantalla táctil / interfaz gráfica de usuario.
+* **Telemetría enriquecida (`icso_log.json`):** Se añadió el sub-objeto `vocal_assistant_activations` con conteos acumulativos independientes (`wakeword`, `boton_tactil`, `interfaz_grafica`) para la sincronización periódica con el portal de CoBien.
+
+### 2. Estandarización de la Voz Femenina del Asistente
+* **Objetivo:** Resolver el defecto donde el asistente leía los mensajes del tablón con voz masculina.
+* **Corrección:** Se configuró el género por defecto a `female` en el manejador IPC `tts:speak` de [main.ts](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/electron/main.ts) y se conectó el lector de mensajes de [BoardView.vue](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/src/views/BoardView.vue) con las preferencias del usuario (`voiceGenders.value[lang] || 'female'`), garantizando una locución femenina clara y consistente en todos los idiomas del sistema.
 

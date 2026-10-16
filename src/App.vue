@@ -106,8 +106,9 @@ onMounted(async () => {
   window.addEventListener('idle-timeout-changed', handleIdleTimeoutChange)
 
   // Listen for manual trigger (from buttons)
-  window.addEventListener('start-voice-assistant', () => {
-    voiceAssistantRef.value?.startAssistant()
+  window.addEventListener('start-voice-assistant', (e: any) => {
+    const triggerSource = e?.detail?.triggerSource || 'interfaz_grafica'
+    voiceAssistantRef.value?.startAssistant(triggerSource)
   })
 
   const startWakeWithCheck = () => {
@@ -119,7 +120,7 @@ onMounted(async () => {
         startWakeWordDetection(locale.value, () => {
           console.log('[WAKE] UI Triggered by voice')
           window.dispatchEvent(new Event('wake-word-detected'))
-          voiceAssistantRef.value?.startAssistant()
+          voiceAssistantRef.value?.startAssistant('wakeword')
         })
       } else {
         console.log('[WAKE] Wake word detection is disabled by user settings')

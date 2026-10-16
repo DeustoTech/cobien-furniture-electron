@@ -5,10 +5,12 @@ import { useI18n } from 'vue-i18n'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import { playTtsAudio, stopTtsAudio } from '../services/audioPlayer'
 import { useBoardMessages } from '../composables/useBoardMessages'
+import { useSettings } from '../composables/useSettings'
 
 const router = useRouter()
 const { t, locale } = useI18n()
 const { refreshUnreadCount } = useBoardMessages()
+const { voiceGenders, ttsEngine } = useSettings()
 
 const messages = ref<any[]>([])
 const currentIndex = ref(0)
@@ -132,8 +134,10 @@ async function handleDelete() {
 
 async function speak(text: string) {
   try {
-    const lang = locale.value.split('-')[0]
-    const buffer = await (window as any).config.ttsSpeak(text, lang)
+    const lang = locale.value.split('-')[0] || 'es'
+    const gender = voiceGenders.value[lang] || 'female'
+    const engine = ttsEngine.value || 'piper'
+    const buffer = await (window as any).config.ttsSpeak(text, lang, gender, engine)
     if (buffer) {
       await playTtsAudio(buffer)
     }
@@ -154,7 +158,7 @@ async function readCurrentMessage() {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant'))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
 }
 
 function goBack() {
