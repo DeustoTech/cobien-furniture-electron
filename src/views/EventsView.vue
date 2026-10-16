@@ -400,7 +400,7 @@ async function confirmDelete() {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'graphical_interface' } }))
 }
 
 function goBack() {

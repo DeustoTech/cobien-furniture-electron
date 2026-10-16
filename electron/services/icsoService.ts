@@ -25,8 +25,8 @@ export interface IcsoState {
   }
   vocal_assistant_activations: {
     wakeword: number
-    boton_tactil: number
-    interfaz_grafica: number
+    tactile_button: number
+    graphical_interface: number
   }
   imu: {
     state: string
@@ -53,7 +53,7 @@ export interface IcsoState {
 const DEFAULT_STATE: IcsoState = {
   page_views: { weather: 0, events: 0, day_events: 0, contacts: 0, board: 0 },
   navigation_inputs: { touchscreen: 0, home_button: 0, vocal_assistant: 0, rfid_cards: 0 },
-  vocal_assistant_activations: { wakeword: 0, boton_tactil: 0, interfaz_grafica: 0 },
+  vocal_assistant_activations: { wakeword: 0, tactile_button: 0, graphical_interface: 0 },
   imu: { state: 'idle', movements: 0 },
   video_calls: { call_requests: 0, calls_made: 0, last_duration_sec: 0, total_duration_sec: 0 },
   board: { received_photos: 0 },
@@ -188,13 +188,13 @@ export function writeTxtLog(source: string, target?: string, recognized?: string
   }
 
   if (sourceStr === 'vocal_assistant' && (!finalTarget || finalTarget === 'assistant_triggered')) {
-    let trigger = 'interfaz_grafica'
+    let trigger = 'graphical_interface'
     if (triggerSource === 'wakeword' || triggerSource === 'wake_word') {
       trigger = 'wakeword'
-    } else if (triggerSource === 'boton_tactil' || triggerSource === 'tactile_button' || triggerSource === 'physical_button') {
-      trigger = 'boton_tactil'
-    } else if (triggerSource === 'interfaz_grafica' || triggerSource === 'gui' || triggerSource === 'touchscreen') {
-      trigger = 'interfaz_grafica'
+    } else if (triggerSource === 'tactile_button' || triggerSource === 'boton_tactil' || triggerSource === 'touch_button' || triggerSource === 'physical_button') {
+      trigger = 'tactile_button'
+    } else if (triggerSource === 'graphical_interface' || triggerSource === 'interfaz_grafica' || triggerSource === 'gui' || triggerSource === 'touchscreen') {
+      trigger = 'graphical_interface'
     }
 
     line = `[${now}] ACTIVATION VOCAL ASSISTANT (${trigger})`
@@ -202,7 +202,7 @@ export function writeTxtLog(source: string, target?: string, recognized?: string
     try {
       const state = loadState()
       if (!state.vocal_assistant_activations) {
-        state.vocal_assistant_activations = { wakeword: 0, boton_tactil: 0, interfaz_grafica: 0 }
+        state.vocal_assistant_activations = { wakeword: 0, tactile_button: 0, graphical_interface: 0 }
       }
       if ((state.vocal_assistant_activations as any)[trigger] !== undefined) {
         (state.vocal_assistant_activations as any)[trigger]++

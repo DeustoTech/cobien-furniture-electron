@@ -53,7 +53,7 @@ const configPath = join(_dirname, '../config/config.default.json')
 let _localConfigPath = ''  // set once app is ready
 
 
-function getPiperConfig(lang = 'es', gender = 'male') {
+function getPiperConfig(lang = 'es', gender?: string) {
   try {
     const configPath = join(_dirname, '../config/config.default.json')
     const localPath = join(app.getPath('userData'), 'config.local.json')
@@ -71,8 +71,10 @@ function getPiperConfig(lang = 'es', gender = 'male') {
 
     const bin = services.tts_piper_bin || internalBin
 
+    const effectiveGender = gender || services[`tts_piper_voice_${lang}`] || (lang === 'fr' ? 'female' : 'male')
+
     // Determine model based on lang and gender
-    let modelKey = `tts_piper_model_${lang}_${gender}`
+    let modelKey = `tts_piper_model_${lang}_${effectiveGender}`
     let modelName = services[modelKey] || services[`tts_piper_model_${lang}`]
 
     let model = ''
@@ -1152,8 +1154,9 @@ function setupIPC() {
     }
   })
 
-  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender = 'female', engine = 'piper') => {
-    console.log(`[TTS] Speaking (${lang}/${gender}) via ${engine}: "${text}"`)
+  ipcMain.handle('tts:speak', async (event, text: string, lang = 'es', gender?: string, engine = 'piper') => {
+    const effectiveGender = gender || (lang === 'fr' ? 'female' : 'male')
+    console.log(`[TTS] Speaking (${lang}/${effectiveGender}) via ${engine}: "${text}"`)
 
     if (currentTtsProcess) {
       try { currentTtsProcess.kill() } catch (e) { }
@@ -1167,7 +1170,7 @@ function setupIPC() {
     // The engine selection UI and logic now only supports 'piper'.
 
     // Default: Piper
-    const { bin, model } = getPiperConfig(lang, gender)
+    const { bin, model } = getPiperConfig(lang, effectiveGender)
     console.log(`[TTS] Piper Config: bin=${bin}, model=${model}`)
 
     if (!model) {

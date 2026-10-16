@@ -65,7 +65,7 @@ contextBridge.exposeInMainWorld('config', {
   deleteBoardMessage: (id: string) => ipcRenderer.invoke('board:delete', id),
   markMessageRead: (id: string) => ipcRenderer.invoke('board:read', id),
   submitQuickReply: (id: string, text: string) => ipcRenderer.invoke('board:reply', id, text),
-  ttsSpeak: (text: string, lang = 'es', gender = 'male', engine = 'piper') => ipcRenderer.invoke('tts:speak', text, lang, gender, engine),
+  ttsSpeak: (text: string, lang = 'es', gender?: string, engine = 'piper') => ipcRenderer.invoke('tts:speak', text, lang, gender, engine),
   ttsStop: () => ipcRenderer.invoke('tts:stop'),
 
 

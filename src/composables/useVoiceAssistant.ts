@@ -29,7 +29,7 @@ export function useVoiceAssistant() {
     try {
       const lang = locale.value as string
       const engine = ttsEngine.value
-      const gender = voiceGenders.value[lang] || 'female'
+      const gender = voiceGenders.value[lang] || (lang === 'fr' ? 'female' : 'male')
       const buffer = await (window as any).config.ttsSpeak(text, lang, gender, engine)
 
 
@@ -78,7 +78,7 @@ export function useVoiceAssistant() {
   }
 
 
-  async function startAssistant(triggerSource: string = 'interfaz_grafica') {
+  async function startAssistant(triggerSource: string = 'graphical_interface') {
     if (isActive.value) return
     isActive.value = true
 

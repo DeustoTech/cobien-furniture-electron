@@ -107,7 +107,7 @@ onMounted(async () => {
 
   // Listen for manual trigger (from buttons)
   window.addEventListener('start-voice-assistant', (e: any) => {
-    const triggerSource = e?.detail?.triggerSource || 'interfaz_grafica'
+    const triggerSource = e?.detail?.triggerSource || 'graphical_interface'
     voiceAssistantRef.value?.startAssistant(triggerSource)
   })
 

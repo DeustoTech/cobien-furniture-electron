@@ -319,19 +319,22 @@ Se ha solucionado la discrepancia entre los valores por defecto del sistema y la
 
 ---
 
-## Trazabilidad de Activación del Asistente Vocal en Logs ICSO y Estandarización de Voz Femenina (Versión 1.5.52)
+## Trazabilidad de Activación del Asistente Vocal en Logs ICSO y Ajuste de Voces (Versión 1.5.53)
 
 En respuesta a la solicitud de evaluación de interacciones de Simona y al documento de defectos de CoBien:
 
-### 1. Discriminación del Método de Activación en ICSO
-* **Objetivo:** Identificar con precisión en el fichero `icso_log.txt` y en la telemetría cómo se activó el asistente de voz en cada interacción (palabra clave de activación, botón táctil físico o interfaz gráfica).
+### 1. Discriminación del Método de Activación en ICSO (en Inglés)
+* **Objetivo:** Identificar con precisión en el fichero `icso_log.txt` y en la telemetría cómo se activó el asistente de voz en cada interacción utilizando términos estándar en inglés (`wakeword`, `tactile_button`, `graphical_interface`).
 * **Formatos registrados en `icso_log.txt`:**
   * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (wakeword)`: Activación mediante la palabra de activación por voz ("Co-bien").
-  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (boton_tactil)`: Activación mediante la pulsación del botón capacitivo físico de hardware (PIC 2 vía MQTT `sensors/update`).
-  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (interfaz_grafica)`: Activación mediante el botón de micrófono en la pantalla táctil / interfaz gráfica de usuario.
-* **Telemetría enriquecida (`icso_log.json`):** Se añadió el sub-objeto `vocal_assistant_activations` con conteos acumulativos independientes (`wakeword`, `boton_tactil`, `interfaz_grafica`) para la sincronización periódica con el portal de CoBien.
+  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (tactile_button)`: Activación mediante la pulsación del botón capacitivo físico de hardware (PIC 2 vía MQTT `sensors/update`).
+  * `[YYYY-MM-DD HH:MM:SS] ACTIVATION VOCAL ASSISTANT (graphical_interface)`: Activación mediante el botón de micrófono en la pantalla táctil / interfaz gráfica de usuario.
+* **Telemetría enriquecida (`icso_log.json`):** Se actualizó el sub-objeto `vocal_assistant_activations` con conteos acumulativos independientes (`wakeword`, `tactile_button`, `graphical_interface`) para la sincronización periódica con el portal de CoBien.
 
-### 2. Estandarización de la Voz Femenina del Asistente
-* **Objetivo:** Resolver el defecto donde el asistente leía los mensajes del tablón con voz masculina.
-* **Corrección:** Se configuró el género por defecto a `female` en el manejador IPC `tts:speak` de [main.ts](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/electron/main.ts) y se conectó el lector de mensajes de [BoardView.vue](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/src/views/BoardView.vue) con las preferencias del usuario (`voiceGenders.value[lang] || 'female'`), garantizando una locución femenina clara y consistente en todos los idiomas del sistema.
+### 2. Configuración de Género de Voz por Idioma (Francés Femenino / Español Masculino)
+* **Objetivo:** Ajustar las voces según los requisitos del proyecto: voz femenina en francés (`fr_FR-siwis-medium`) y voz masculina en español (`es_ES-davefx-medium`).
+* **Corrección:**
+  * Se configuró en `config.default.json` la propiedad `"tts_piper_voice_fr": "female"` y `"tts_piper_voice_es": "male"`.
+  * Se estableció la lógica de fallback por idioma tanto en `main.ts` (`getPiperConfig` e IPC `tts:speak`) como en [BoardView.vue](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/src/views/BoardView.vue) y [useVoiceAssistant.ts](file:///C:/Users/comos/Documents/GitHub/cobien-furniture-electron/src/composables/useVoiceAssistant.ts), asegurando que cualquier locución (asistente de voz o lectura de mensajes) respete la voz femenina en francés y masculina en español.
+
 

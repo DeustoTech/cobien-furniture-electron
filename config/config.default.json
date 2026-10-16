@@ -88,7 +88,7 @@
         "tts_piper_model_fr_male_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/mls_1840/low/fr_FR-mls_1840-low.onnx",
         "tts_piper_model_fr_female_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
         "tts_piper_voice_es": "male",
-        "tts_piper_voice_fr": "male",
+        "tts_piper_voice_fr": "female",
         "disable_system_sleep": "0",
         "notify_api_key": "",
         "videocall_device_api_key": "",

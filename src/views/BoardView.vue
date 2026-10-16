@@ -135,7 +135,7 @@ async function handleDelete() {
 async function speak(text: string) {
   try {
     const lang = locale.value.split('-')[0] || 'es'
-    const gender = voiceGenders.value[lang] || 'female'
+    const gender = voiceGenders.value[lang] || (lang === 'fr' ? 'female' : 'male')
     const engine = ttsEngine.value || 'piper'
     const buffer = await (window as any).config.ttsSpeak(text, lang, gender, engine)
     if (buffer) {
@@ -158,7 +158,7 @@ async function readCurrentMessage() {
 }
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'graphical_interface' } }))
 }
 
 function goBack() {

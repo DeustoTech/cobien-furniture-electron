@@ -70,7 +70,7 @@ export function useMqtt() {
           window.dispatchEvent(new Event('reopen-emotion-prompt'))
           break
         case 'voice_cmd':
-          window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'boton_tactil' } }))
+          window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'tactile_button' } }))
           break
         default:
           console.warn('[MQTT] Unknown nav target:', target)

@@ -23,7 +23,7 @@ async function fetchJoke() {
 
 
 function triggerVoiceAssistant() {
-  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'interfaz_grafica' } }))
+  window.dispatchEvent(new CustomEvent('start-voice-assistant', { detail: { triggerSource: 'graphical_interface' } }))
 }
 
 onMounted(fetchJoke)
